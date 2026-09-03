@@ -30,6 +30,15 @@ function deps(): GateDeps {
       recordConnection: async () => {},
     },
     chain: { submitConnect: vi.fn(async () => TX) },
+    profiles: {
+      listConnections: async () => [],
+      countConnections: async () => 0,
+      getDisplayName: async () => "",
+    },
+    identity: {
+      ensName: async () => null,
+      txCount: async () => 0,
+    },
   };
 }
 

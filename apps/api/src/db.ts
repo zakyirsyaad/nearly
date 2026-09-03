@@ -1,6 +1,6 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import type { Address, Hex } from "viem";
-import type { HandshakeStore, PendingOffer } from "./ports.js";
+import type { HandshakeStore, PendingOffer, ProfileStore } from "./ports.js";
 
 /** Urutan kanonik: selalu [min, max] dalam huruf kecil (constraint addr_a < addr_b). */
 export function orderPair(a: Address, b: Address): [Address, Address] {
@@ -104,6 +104,46 @@ export function createStore(db: SupabaseClient): HandshakeStore {
         created_at: new Date(row.atMs).toISOString(),
       });
       if (error) throw new Error(`catat koneksi gagal: ${error.message}`);
+    },
+  };
+}
+
+export function createProfileStore(db: SupabaseClient): ProfileStore {
+  return {
+    async listConnections(addr, limit) {
+      const lower = addr.toLowerCase();
+      const { data, error } = await db
+        .from("connections")
+        .select("addr_a, addr_b, tx_hash, created_at")
+        .or(`addr_a.eq.${lower},addr_b.eq.${lower}`)
+        .order("created_at", { ascending: false })
+        .limit(limit);
+      if (error) throw new Error(`baca koneksi gagal: ${error.message}`);
+
+      return (data ?? []).map((r) => ({
+        address: (r.addr_a === lower ? r.addr_b : r.addr_a) as Address,
+        txHash: r.tx_hash as Hex,
+        at: new Date(r.created_at as string).getTime(),
+      }));
+    },
+
+    async countConnections(addr) {
+      const lower = addr.toLowerCase();
+      const { count, error } = await db
+        .from("connections")
+        .select("id", { count: "exact", head: true })
+        .or(`addr_a.eq.${lower},addr_b.eq.${lower}`);
+      if (error) throw new Error(`hitung koneksi gagal: ${error.message}`);
+      return count ?? 0;
+    },
+
+    async getDisplayName(addr) {
+      const { data } = await db
+        .from("profiles")
+        .select("display_name")
+        .eq("address", addr.toLowerCase())
+        .maybeSingle();
+      return (data?.display_name as string | undefined) ?? "";
     },
   };
 }

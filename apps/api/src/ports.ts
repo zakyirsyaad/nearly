@@ -33,6 +33,22 @@ export type ChainPort = {
 export type GateDeps = {
   store: HandshakeStore;
   chain: ChainPort;
+  profiles: ProfileStore;
+  identity: IdentityPort;
   verifyingContract: Address;
   nowMs: () => number;
+};
+
+export type ConnectionRow = { address: Address; txHash: Hex; at: number };
+
+export type ProfileStore = {
+  listConnections(addr: Address, limit: number): Promise<ConnectionRow[]>;
+  countConnections(addr: Address): Promise<number>;
+  getDisplayName(addr: Address): Promise<string>;
+};
+
+export type IdentityPort = {
+  /** ENS hidup di Ethereum mainnet, BUKAN di opBNB. */
+  ensName(addr: Address): Promise<string | null>;
+  txCount(addr: Address): Promise<number>;
 };

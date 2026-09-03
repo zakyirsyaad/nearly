@@ -1,7 +1,8 @@
 import { serve } from "@hono/node-server";
 import type { Address, Hex } from "viem";
 import { createApp } from "./app.js";
-import { createStore, createSupabase } from "./db.js";
+import { createProfileStore, createStore, createSupabase } from "./db.js";
+import { createIdentity } from "./identity.js";
 import { createRelayer } from "./relayer.js";
 
 function required(name: string): string {
@@ -12,8 +13,15 @@ function required(name: string): string {
 
 const registry = required("CONNECTION_REGISTRY_ADDRESS") as Address;
 
+const supabase = createSupabase(
+  required("SUPABASE_URL"),
+  required("SUPABASE_SERVICE_ROLE_KEY"),
+);
+
 const app = createApp({
-  store: createStore(createSupabase(required("SUPABASE_URL"), required("SUPABASE_SERVICE_ROLE_KEY"))),
+  store: createStore(supabase),
+  profiles: createProfileStore(supabase),
+  identity: createIdentity(required("MAINNET_RPC"), required("OPBNB_TESTNET_RPC")),
   chain: createRelayer({
     rpcUrl: required("OPBNB_TESTNET_RPC"),
     privateKey: required("RELAYER_PRIVATE_KEY") as Hex,
