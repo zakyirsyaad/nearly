@@ -60,8 +60,12 @@ arsitektur social discovery umum; tidak ada yang dibuang saat meluas.
 
 Dinyatakan eksplisit supaya tidak merembes masuk saat implementasi:
 
-- **Bukan aplikasi dating.** Tidak ada swipe, tidak ada matching berbasis ketertarikan.
-- **Bukan messenger.** Tidak ada DM. Kontak lanjutan terjadi lewat selective reveal.
+- **Bukan aplikasi dating.** Tidak ada swipe, tidak ada pencocokan berbasis ketertarikan
+  romantis. Pengungkapan saat saling menandai "ingin bertemu" (§7.6) adalah sinyal niat
+  bertemu secara profesional/komunitas, bukan ketertarikan.
+- **Bukan messenger untuk orang asing.** Pesan hanya ada di dalam koneksi yang sudah
+  diperoleh lewat pertemuan fisik. Tidak ada cara mengirim pesan ke orang yang belum pernah
+  bertemu kamu — lihat §7.5.
 - **Bukan credit score.** Skor tidak boleh dipakai mengunci akses ke apa pun di dunia nyata.
 - **Bukan token launch.** Tidak ada token di MVP. Poin/tier saja.
 - **Tidak menilai kualitas manusia.** Tidak ada seseorang menilai seseorang. Lihat §6.
@@ -110,7 +114,7 @@ memangkas pekerjaan, bukan menambahnya.
 3. **Identitas asli tidak pernah publik.** Dibuka per-orang, atas pilihan pemiliknya.
 4. **Lokasi mentah dihapus dalam 24 jam.** Yang bertahan hanya koneksi.
 
-## 7. Empat Mekanik
+## 7. Enam Mekanik
 
 ### 7.1 Handshake — satu-satunya pintu masuk
 
@@ -135,12 +139,73 @@ vouch belakangan terbukti scammer, **kredibilitasmu ikut turun.** Skin in the ga
 
 ### 7.4 FYP + "Ingin bertemu" — yang menutup lingkaran
 
-Feed berisi unggahan orang Web3. Bisa dilihat, **tidak bisa dikoneksikan, tidak bisa di-DM.**
+Feed berisi unggahan orang Web3. Bisa dilihat, tapi **dari FYP tidak ada jalur untuk
+terkoneksi maupun mengirim pesan.** Pesan baru terbuka setelah bertemu fisik (§7.5).
 Yang bisa dilakukan: menandai **"ingin bertemu"**. Lalu suatu hari:
 
 > *"@0xghost yang kamu tandai sedang ada di event ini."*
 
 Online menciptakan keinginan, offline menyelesaikannya. Ini bukan keterbatasan — ini mesinnya.
+
+### 7.5 Pesan — hadiah dari sudah bertemu
+
+Setelah `Connection` tercetak, kalian bisa saling berkirim pesan. Ini yang langsung
+menyelesaikan masalah di §1: kamu tidak perlu menyerahkan Telegram sama sekali —
+**kamu bisa tetap anon dan tetap terhubung.**
+
+Konsekuensinya menjadi fitur tersendiri:
+
+> **Inbox tanpa spam, secara struktural.** Di dalam Nearly kamu tidak bisa dikirimi pesan
+> oleh orang yang belum pernah bertemu kamu. Bukan karena ada filter spam — karena tidak
+> ada jalurnya.
+
+**Teknologi: XMTP** (`@xmtp/react-native-sdk`). Pesan wallet-ke-wallet, E2E terenkripsi,
+identitasnya wallet — cocok betul dengan desain wallet-only kita, dan kita tidak perlu
+membangun server chat atau kriptografi sendiri.
+
+**Dua batas yang harus dinyatakan jujur, jangan diklaim lebih:**
+
+1. **XMTP adalah jaringan tersendiri, bukan di BNB Chain.** Jangan pernah menyebutnya
+   bagian dari opBNB dalam pitch.
+2. **Jaminan "tanpa spam" ditegakkan di sisi client, bukan di protokol.** Siapa pun bisa
+   mengirim ke alamat XMTP-mu, dan client XMTP lain akan menampilkannya. Nearly hanya
+   menampilkan percakapan dengan alamat yang ada di graf koneksimu. Di dalam Nearly bersih;
+   alamatmu tetap bisa dijangkau di luar Nearly.
+
+**Celah baru yang dibuka fitur ini, dan harus ditutup di fase yang sama:** sebelum ada
+pesan, orang yang pernah bertemu kamu tidak punya cara mengganggumu. Sekarang ada. Karena itu
+pesan **tidak boleh dikirim ke produksi tanpa** tiga hal ini:
+
+1. **Blokir dari dalam percakapan** — satu tap. Memblokir langsung menyembunyikan percakapan,
+   menghentikan pesan masuk, dan mencabut vouch serta kontribusi trust dari orang itu.
+2. **Lapor dari dalam percakapan**, tersambung ke gerbang laporan di §9.3.
+3. **Koneksi tetap ada di graf setelah blokir** (pertemuannya memang terjadi, itu fakta), tapi
+   ditandai diblokir sehingga tidak lagi menghantar trust ke arah mana pun.
+
+**Efek pada desain lain:** selective reveal (§11 Fase 3) turun prioritas. Kalau kamu sudah
+bisa ngobrol tanpa membuka apa pun, membuka identitas asli jadi benar-benar opsional —
+bukan jalur utama tindak lanjut.
+
+### 7.6 Penanda "Ingin bertemu" dan angkanya
+
+Setiap profil menampilkan **angka persis berapa orang yang ingin bertemu dia**, terlihat oleh
+semua orang. Ini social proof yang mudah dibaca dan mendorong orang datang ke event.
+
+- **Hanya bisa naik.** Tidak ada yang bisa menurunkan angka orang lain — konsisten dengan
+  prinsip di §6.
+- **Tap dari akun ber-trust nol tidak dihitung.** Angkanya tetap persis dan tetap publik;
+  ini semata supaya angka tidak bisa digelembungkan bot. Bot tidak bisa membangun graf, tapi
+  bot bisa menekan tombol — jadi penyaring ini perlu.
+- **Default anonim.** Yang ditandai tidak tahu siapa yang menandainya.
+- **Kalau saling menandai → keduanya terungkap dan diberi tahu.** Tidak creepy karena
+  timbal-balik, dan ini dorongan paling kuat untuk benar-benar bertemu.
+- **Pemilik profil melihat daftarnya secara privat** — berguna untuk memutuskan datang ke
+  event mana: *"12 orang ingin bertemu aku, 4 di antaranya hadir Jumat."*
+
+**Risiko yang disadari dan diterima:** angka publik menciptakan dinamika papan peringkat
+popularitas, dan angka kecil pada pengguna baru bisa terasa memalukan. Ini keputusan produk
+yang diambil sadar. Kalau nanti terbukti merusak, obatnya sudah diketahui: sembunyikan angka
+di bawah ambang tertentu, seperti yang dilakukan sistem tier di §8.
 
 ## 8. Algoritma Trust
 
@@ -269,7 +334,12 @@ nearly/
 
 ### 10.1 Mobile
 
-Expo SDK 52+, Expo Router, TypeScript, TanStack Query + Zustand.
+Expo SDK 52+, Expo Router, TypeScript, TanStack Query + Zustand, `@xmtp/react-native-sdk`
+untuk pesan.
+
+**Penting bagi yang baru di mobile:** XMTP memakai native module, jadi **Expo Go tidak bisa
+dipakai** begitu XMTP masuk. Dari Fase 3 ke atas wajib pakai dev build (`expo prebuild` /
+EAS development build). Rencanakan ini sebelum Fase 3, jangan pas mepet.
 
 Wallet: **connect wallet yang sudah ada** sebagai jalur utama — persona anon seseorang *adalah*
 wallet-nya, jadi reputasi harus menempel di sana. Embedded wallet lewat Privy sebagai cadangan
@@ -318,7 +388,8 @@ vouches(from_addr, to_addr, tags[], created_at, revoked_at, tx_hash)
 reveals(from_addr, to_addr, payload_encrypted, created_at)
 reports(reporter, subject, reason, evidence, status, created_at)   -- off-chain
 posts(id, author, media_url, text, geohash7, event_id, expires_at)
-want_to_meet(from_addr, target_addr, created_at)         -- privat, hanya pemiliknya
+want_to_meet(from_addr, target_addr, created_at, revealed_at)  -- anonim; terungkap kalau saling
+want_to_meet_counts(address, count, updated_at)          -- publik; hanya tap ber-trust > 0
 events(id, name, geofence, starts_at, ends_at)
 trust_snapshots(address, score, tier, connections, events, cities, computed_at)
 ```
@@ -326,8 +397,10 @@ trust_snapshots(address, score, tier, connections, events, cities, computed_at)
 ## 11. Fase Pembangunan
 
 **Fase 0 — Fondasi.** Monorepo pnpm, Supabase (skema + PostGIS + RLS), skeleton Expo + Expo
-Router, connect wallet, scaffolding Foundry.
-*Selesai = bisa masuk app dengan wallet.*
+Router, connect wallet, scaffolding Foundry. **Langsung pakai dev build (`expo prebuild` /
+EAS), jangan Expo Go** — XMTP di Fase 3 butuh native module, dan mengganti alur kerja di
+tengah jalan jauh lebih mahal daripada menyiapkannya sekarang.
+*Selesai = bisa masuk app dengan wallet, di atas dev build.*
 
 **Fase 1 — Jantung: pertemuan.** QR bertanda tangan + rotasi 30 detik, pemindai, verifikasi
 ko-lokasi di server, `ConnectionRegistry` di opBNB testnet, relayer EIP-712, layar Koneksi &
@@ -340,17 +413,19 @@ jari ko-lokasi), `VouchRegistry`, vouch + tag, tampilan tier & bukti, alur lapor
 trust-weighted (laporan off-chain, hasil slash on-chain), `TrustAttestor` + `NearlyResolver`.
 *Selesai = serangan sybil bisa didemokan dan gagal secara matematis.*
 
-**Fase 3 — Radar & pengungkapan.** Siapa di event ini sekarang (daftar kartu + Realtime), mode
-visibilitas (ghost / visible / event), selective reveal per-orang, blokir, penautan
-X/Farcaster + POAP.
+**Fase 3 — Radar & pesan.** Siapa di event ini sekarang (daftar kartu + Realtime), mode
+visibilitas (ghost / visible / event), blokir, penautan X/Farcaster + POAP, dan
+**pesan lewat XMTP — hanya dengan alamat yang ada di graf koneksi** (§7.5). Selective reveal
+dikerjakan terakhir di fase ini karena prioritasnya turun setelah ada pesan.
 
-*Selesai = bisa melihat siapa yang hadir di event ini, dan membuka identitas ke satu
-orang tertentu tanpa pernah menjadi publik.*
+*Selesai = dua orang yang pernah bertemu bisa saling berkirim pesan, dan orang yang belum
+pernah bertemu tidak punya jalur apa pun untuk mengirim pesan di dalam Nearly.*
 **Fase 4 — FYP.** Feed unggahan (view-only, tanpa jalur koneksi), upload ke Greenfield, tombol
-"Ingin bertemu" + notifikasi proximity, lapor & auto-hide.
+"Ingin bertemu" + notifikasi proximity, **angka "ingin bertemu" di profil (publik, persis,
+menyaring tap ber-trust nol) + pengungkapan saat saling menandai** (§7.6), lapor & auto-hide.
 
-*Selesai = feed berjalan, dan tanda "ingin bertemu" memicu notifikasi saat orangnya
-benar-benar hadir di satu tempat denganmu.*
+*Selesai = feed berjalan, angka "ingin bertemu" tampil di profil, dan saat dua orang saling
+menandai keduanya diberi tahu dan saling terungkap.*
 **Fase 5 — Demo.** Event mode untuk venue hackathon, **visualisasi graf live di web** (graf
 tumbuh saat orang bersalaman di ruangan — ini money shot-nya), seed trusted core, landing
 page, video pitch.
@@ -392,6 +467,17 @@ tidak bisa dicetak tanpa dua tanda tangan.
 **Uji handshake negatif** — dua device di geohash berbeda **harus gagal** terkoneksi. Ini test
 terpenting di seluruh proyek: kalau ini lolos, seluruh premis produk runtuh.
 
+**Uji gerbang pesan** — akun yang belum pernah handshake dengan kamu **tidak boleh** muncul
+di daftar percakapan dan tidak boleh bisa dikirimi pesan dari dalam Nearly. Ini penegakan
+sisi client, jadi harus diuji di client.
+
+**Uji blokir** — setelah memblokir, pesan dari orang itu tidak boleh masuk, percakapan hilang
+dari daftar, dan kontribusi trust serta vouch-nya harus hilang dari perhitungan.
+
+**Uji "ingin bertemu"** — tap dari akun ber-trust nol tidak menaikkan angka; saat A dan B
+saling menandai, keduanya harus terungkap dan menerima notifikasi; sebelum saling, identitas
+penanda tidak boleh terekspos lewat API mana pun.
+
 **Uji privasi** — verifikasi tabel presence mentah benar-benar terhapus setelah 24 jam.
 
 **E2E manual** — dua wallet nyata: scan → koneksi tercetak → cek di opBNB explorer → trust
@@ -415,7 +501,15 @@ masalah akurasi lokasi indoor dan baterai; tidak ada test yang bisa menggantikan
    - Wallet ber-reputasi yang dijual tidak bisa dicegah — hanya diredam peluruhan waktu.
    - **Nearly membuktikan seseorang manusia nyata yang hadir, bukan bahwa dia orang baik.**
      Jangan pernah mengklaim lebih dari ini.
-5. **Hukum privasi (UU PDP Indonesia / GDPR)** — aplikasi mengumpulkan lokasi kasar dan graf
+5. **XMTP menambah dua batasan praktis:**
+   - **Expo Go tidak bisa dipakai** setelah XMTP masuk — wajib dev build. Karena itu dev build
+     dipasang sejak Fase 0.
+   - Alamat XMTP-mu **tetap bisa dijangkau di luar Nearly.** "Inbox tanpa spam" berlaku di
+     dalam Nearly saja. Jangan diklaim sebagai jaminan protokol.
+   - XMTP **bukan** bagian dari BNB Chain. Jangan menyebutnya begitu dalam pitch.
+6. **Angka "ingin bertemu" yang publik** menciptakan dinamika papan peringkat popularitas —
+   keputusan produk yang diambil sadar (§7.6). Obatnya sudah diketahui kalau terbukti merusak.
+7. **Hukum privasi (UU PDP Indonesia / GDPR)** — aplikasi mengumpulkan lokasi kasar dan graf
    sosial. Wajib ada ekspor & hapus data satu tap sebelum ada pengguna publik.
 
 ## 15. Langkah Berikutnya
