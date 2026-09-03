@@ -1,0 +1,18 @@
+{
+  "name": "@nearly/shared",
+  "version": "0.0.0",
+  "type": "module",
+  "main": "./src/index.ts",
+  "scripts": {
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "ngeohash": "^0.6.3",
+    "viem": "^2.21.0",
+    "zod": "^3.23.0"
+  },
+  "devDependencies": {
+    "@types/ngeohash": "^0.6.8"
+  }
+}
