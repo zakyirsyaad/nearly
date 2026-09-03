@@ -1,0 +1,25 @@
+{
+  "cli": {
+    "version": ">= 12.0.0",
+    "appVersionSource": "remote"
+  },
+  "build": {
+    "development": {
+      "developmentClient": true,
+      "distribution": "internal",
+      "android": { "buildType": "apk" },
+      "env": {
+        "EXPO_PUBLIC_API_URL": "http://ISI-DENGAN-URL-API-KAMU",
+        "EXPO_PUBLIC_CONNECTION_REGISTRY": "0xISI_ALAMAT_KONTRAK"
+      }
+    },
+    "preview": {
+      "distribution": "internal",
+      "android": { "buildType": "apk" },
+      "env": {
+        "EXPO_PUBLIC_API_URL": "http://ISI-DENGAN-URL-API-KAMU",
+        "EXPO_PUBLIC_CONNECTION_REGISTRY": "0xISI_ALAMAT_KONTRAK"
+      }
+    }
+  }
+}
