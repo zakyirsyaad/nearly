@@ -70,6 +70,9 @@ Dinyatakan eksplisit supaya tidak merembes masuk saat implementasi:
 - **Bukan token launch.** Tidak ada token di MVP. Poin/tier saja.
 - **Tidak menilai kualitas manusia.** Tidak ada seseorang menilai seseorang. Lihat §6.
 - **Tidak membuktikan seseorang orang baik.** Hanya bahwa dia manusia nyata yang hadir.
+- **Bukan platform tiket.** Fitur event sengaja sederhana: buat, RSVP, check-in. **Tanpa**
+  pembayaran/tiket berbayar, tanpa waitlist, tanpa alur persetujuan, tanpa event berulang,
+  tanpa co-host, tanpa integrasi kalender & email blast. Semua itu pasca-hackathon.
 
 ## 5. Glosarium
 
@@ -83,6 +86,10 @@ Dinyatakan eksplisit supaya tidak merembes masuk saat implementasi:
 | **Seed set (S)** | Himpunan akun tepercaya awal yang menjadi sumber aliran trust |
 | **Selective reveal** | Membuka identitas asli ke satu orang tertentu, bukan ke publik |
 | **Ko-lokasi** | Dua device berada di sel geohash yang sama dalam jendela waktu yang sama |
+| **Event** | Acara yang dibuat seorang host: nama, tempat, geofence, waktu mulai & selesai |
+| **RSVP** | Pernyataan niat hadir. Murah, tidak membuktikan apa pun |
+| **Check-in** | Konfirmasi kehadiran yang **hanya berhasil di dalam geofence saat acara berlangsung** |
+| **Proof of Attendance** | SBT hasil check-in terverifikasi. Berbeda dari POAP: tidak bisa diklaim dari jauh |
 
 ## 6. Keputusan Desain yang Terkunci
 
@@ -95,6 +102,10 @@ Dinyatakan eksplisit supaya tidak merembes masuk saat implementasi:
 | Penautan opsional | ENS + riwayat on-chain + X/Farcaster + POAP |
 | Handshake | QR bertanda tangan (rotasi 30 detik) + verifikasi ko-lokasi di server |
 | FYP | View-only. **Tidak bisa konek dari sana.** Ada tombol "Ingin bertemu" |
+| Pesan | XMTP, **hanya dengan alamat yang ada di graf koneksi** |
+| Angka ingin bertemu | Persis & publik; tap dari akun ber-trust nol tidak dihitung |
+| Event | Siapa pun boleh mengadakan. **Discovery yang diperoleh, bukan izin membuat** |
+| Kehadiran | RSVP + check-in terverifikasi geofence + Proof of Attendance on-chain |
 | Platform | React Native / Expo |
 | Chain | opBNB |
 
@@ -114,7 +125,7 @@ memangkas pekerjaan, bukan menambahnya.
 3. **Identitas asli tidak pernah publik.** Dibuka per-orang, atas pilihan pemiliknya.
 4. **Lokasi mentah dihapus dalam 24 jam.** Yang bertahan hanya koneksi.
 
-## 7. Enam Mekanik
+## 7. Tujuh Mekanik
 
 ### 7.1 Handshake — satu-satunya pintu masuk
 
@@ -207,6 +218,45 @@ popularitas, dan angka kecil pada pengguna baru bisa terasa memalukan. Ini keput
 yang diambil sadar. Kalau nanti terbukti merusak, obatnya sudah diketahui: sembunyikan angka
 di bawah ambang tertentu, seperti yang dilakukan sistem tier di §8.
 
+### 7.7 Event & kehadiran terverifikasi
+
+Siapa pun bisa mengadakan event: nama, tempat, geofence, waktu mulai & selesai. Orang lain
+RSVP. Sengaja sederhana — batasannya ada di §4.
+
+**Kenapa ini strategis, bukan sekadar fitur tambahan:**
+
+1. **Event adalah sisi pasokan seluruh produk ini.** Nearly butuh orang berada di ruangan yang
+   sama. Tanpa fitur ini kita bergantung pada event yang diadakan orang lain di platform lain
+   — padahal kedekatan fisik adalah bahan bakar utama kita.
+2. **Ini menyambungkan loop "ingin bertemu" menjadi lengkap:**
+   > *"12 orang yang ingin bertemu kamu akan hadir di event ini."*
+   > *"4 orang yang kamu tandai sudah RSVP."*
+
+   Luma memberi tahu kamu *apa* acaranya. Nearly memberi tahu **siapa yang akan ada di sana
+   dan kenapa kamu harus datang.**
+3. **Kehadiran yang benar-benar terverifikasi.** RSVP di Luma tidak membuktikan apa pun —
+   orang RSVP lalu tidak datang. POAP sering cuma link klaim yang bisa disebar ke siapa saja.
+   Check-in Nearly **hanya berhasil kalau kamu berada di dalam geofence saat acara
+   berlangsung**, lalu dicetak sebagai Proof of Attendance SBT.
+
+**Dan ini memperbaiki algoritma trust, bukan cuma menambah fitur.** Faktor diversitas di §8
+sudah membutuhkan informasi "koneksi ini terjadi di event mana". Sebelumnya harus ditebak dari
+geohash; sekarang datanya terverifikasi.
+
+**Anti-event-palsu — discovery yang diperoleh, bukan izin membuat.**
+Event palsu untuk phishing adalah masalah nyata di Web3. Tapi membatasi *siapa yang boleh
+membuat* event akan melanggar prinsip kita sendiri di §6 ("skor tidak boleh dipakai mengunci
+akses"). Jadi:
+
+- **Siapa pun boleh mengadakan event.** Tidak ada gerbang.
+- Event dari host ber-trust rendah **tetap ada dan tetap bisa dibagikan lewat link** — hanya
+  tidak muncul di halaman discovery.
+- **Tidak ada yang dilarang; yang harus diperoleh adalah perhatian.** Ini konsisten dengan
+  cara kita memperlakukan trust di seluruh produk: sebagai informasi, bukan gerbang.
+
+**Reputasi host** muncul sendiri dari graf: host yang acaranya benar-benar dihadiri orang-orang
+tepercaya akan terlihat berbeda dari host yang tidak. Tidak perlu metrik baru.
+
 ## 8. Algoritma Trust
 
 Hidup di `packages/trust` sebagai fungsi murni. Bagian yang paling wajib diuji di seluruh
@@ -220,6 +270,7 @@ Seed S: akun tepercaya awal (penyelenggara event, tokoh komunitas)
 
 1. Propagasi   — personalized PageRank dari S dengan damping
 2. Diversitas  — H(event) x H(rentang waktu) x (1 - clustering coefficient)
+                 event diambil dari check-in TERVERIFIKASI (§7.7), bukan tebakan geohash
                  50 orang di 1 event dalam 1 jam  <<  50 orang di 10 event, 5 kota
 3. Bobot vouch — edge ber-vouch menghantar trust lebih besar dari koneksi biasa
 4. Peluruhan   — koneksi 2 tahun lalu menghantar lebih lemah dari bulan lalu
@@ -360,6 +411,7 @@ Tabel presence mentah **auto-purge 24 jam** (Postgres cron). Yang bertahan hanya
 | `NearlyIdentity` | SBT: wallet → handle anon + hash PFP. Tidak bisa dipindah |
 | `ConnectionRegistry` | Setiap koneksi ditulis langsung on-chain (opBNB cukup murah) |
 | `VouchRegistry` | Vouch + tag; bisa dicabut, bisa di-slash |
+| `AttendanceRegistry` | Proof of Attendance SBT hasil check-in terverifikasi geofence |
 | `TrustAttestor` | Publikasi skor trust berkala |
 | `NearlyResolver` | Antarmuka baca untuk dApp lain: `getTrust(address)`, `getTier(address)` |
 
@@ -390,50 +442,105 @@ reports(reporter, subject, reason, evidence, status, created_at)   -- off-chain
 posts(id, author, media_url, text, geohash7, event_id, expires_at)
 want_to_meet(from_addr, target_addr, created_at, revealed_at)  -- anonim; terungkap kalau saling
 want_to_meet_counts(address, count, updated_at)          -- publik; hanya tap ber-trust > 0
-events(id, name, geofence, starts_at, ends_at)
+events(id, host_addr, name, venue, geofence, starts_at, ends_at, created_at)
+rsvps(event_id, address, created_at)                     -- niat hadir; murah
+checkins(event_id, address, geohash7, checked_in_at, tx_hash)  -- hanya di dalam geofence
 trust_snapshots(address, score, tier, connections, events, cities, computed_at)
 ```
 
 ## 11. Fase Pembangunan
 
+Tujuh fase. Ruang lingkup bertambah setelah fitur Event masuk, dan keputusannya adalah
+**mempertahankan Event dan FYP sekaligus dengan mengurangi kedalaman di tempat lain.** Daftar
+pengurangan itu ada di §11.1 — tanpa daftar konkret, keputusan itu kosong dan yang terjadi
+justru semua fitur setengah matang.
+
 **Fase 0 — Fondasi.** Monorepo pnpm, Supabase (skema + PostGIS + RLS), skeleton Expo + Expo
 Router, connect wallet, scaffolding Foundry. **Langsung pakai dev build (`expo prebuild` /
-EAS), jangan Expo Go** — XMTP di Fase 3 butuh native module, dan mengganti alur kerja di
-tengah jalan jauh lebih mahal daripada menyiapkannya sekarang.
+EAS), jangan Expo Go** — XMTP butuh native module, dan mengganti alur kerja di tengah jalan
+jauh lebih mahal daripada menyiapkannya sekarang.
+
 *Selesai = bisa masuk app dengan wallet, di atas dev build.*
 
 **Fase 1 — Jantung: pertemuan.** QR bertanda tangan + rotasi 30 detik, pemindai, verifikasi
 ko-lokasi di server, `ConnectionRegistry` di opBNB testnet, relayer EIP-712, layar Koneksi &
 Profil anon. Sekalian: display name tidak unik + alamat/ENS selalu tampil, dan baca ENS &
 riwayat on-chain (keduanya cuma pembacaan chain, murah).
+
 *Selesai = dua HP hanya bisa terhubung kalau benar-benar berdekatan.*
 
-**Fase 2 — Trust & pertahanan.** `packages/trust` (PageRank + diversitas + peluruhan + sidik
-jari ko-lokasi), `VouchRegistry`, vouch + tag, tampilan tier & bukti, alur lapor + slashing
-trust-weighted (laporan off-chain, hasil slash on-chain), `TrustAttestor` + `NearlyResolver`.
+**Fase 2 — Trust & pertahanan.** `packages/trust` (PageRank + diversitas + sidik jari
+ko-lokasi), `VouchRegistry`, vouch + tag, tampilan tier & bukti, gerbang laporan +
+propagasi slash ke penjamin, `TrustAttestor` + `NearlyResolver`.
+
 *Selesai = serangan sybil bisa didemokan dan gagal secara matematis.*
 
-**Fase 3 — Radar & pesan.** Siapa di event ini sekarang (daftar kartu + Realtime), mode
-visibilitas (ghost / visible / event), blokir, penautan X/Farcaster + POAP, dan
-**pesan lewat XMTP — hanya dengan alamat yang ada di graf koneksi** (§7.5). Selective reveal
-dikerjakan terakhir di fase ini karena prioritasnya turun setelah ada pesan.
+**Fase 3 — Event & "ingin bertemu".** Buat event (nama, venue, geofence, waktu), RSVP,
+**check-in terverifikasi geofence** + `AttendanceRegistry` (Proof of Attendance SBT),
+discovery yang menyaring host ber-trust rendah, penanda + angka "ingin bertemu" (§7.6),
+pengungkapan saat saling menandai, dan loop *"N orang yang ingin bertemu kamu akan hadir."*
+
+*Ditaruh sebelum Radar karena Radar ("siapa di event ini sekarang") mensyaratkan event sudah
+menjadi entitas kelas satu. Penanda "ingin bertemu" ditaruh di sini, bukan di FYP, karena di
+sinilah nilainya benar-benar terwujud.*
+
+*Selesai = seseorang bisa membuat event, orang lain RSVP, dan check-in hanya berhasil kalau
+benar-benar berada di venue saat acara berlangsung.*
+
+**Fase 4 — Radar & pesan.** Siapa di event ini sekarang (daftar kartu), mode visibilitas,
+blokir, dan **pesan lewat XMTP — hanya dengan alamat yang ada di graf koneksi** (§7.5),
+lengkap dengan blokir & lapor dari dalam percakapan.
 
 *Selesai = dua orang yang pernah bertemu bisa saling berkirim pesan, dan orang yang belum
 pernah bertemu tidak punya jalur apa pun untuk mengirim pesan di dalam Nearly.*
-**Fase 4 — FYP.** Feed unggahan (view-only, tanpa jalur koneksi), upload ke Greenfield, tombol
-"Ingin bertemu" + notifikasi proximity, **angka "ingin bertemu" di profil (publik, persis,
-menyaring tap ber-trust nol) + pengungkapan saat saling menandai** (§7.6), lapor & auto-hide.
 
-*Selesai = feed berjalan, angka "ingin bertemu" tampil di profil, dan saat dua orang saling
-menandai keduanya diberi tahu dan saling terungkap.*
-**Fase 5 — Demo.** Event mode untuk venue hackathon, **visualisasi graf live di web** (graf
+**Fase 5 — FYP.** Feed unggahan (view-only, tanpa jalur koneksi maupun pesan), upload gambar
+ke Greenfield, tombol "Ingin bertemu" di kartu feed (mekaniknya sudah ada dari Fase 3),
+notifikasi proximity, lapor.
+
+*Selesai = feed berjalan dan "ingin bertemu" bisa ditandai langsung dari feed.*
+
+**Fase 6 — Demo.** Event mode untuk venue hackathon, **visualisasi graf live di web** (graf
 tumbuh saat orang bersalaman di ruangan — ini money shot-nya), seed trusted core, landing
 page, video pitch.
 
 *Selesai = graf tumbuh hidup di layar saat orang-orang bersalaman di ruangan.*
 
-**Kalau waktu menipis, Fase 4 yang dikorbankan** — FYP setengah jadi lebih merusak demo
-daripada tidak ada FYP.
+### 11.1 Pengurangan kedalaman yang disepakati
+
+Konsekuensi dari keputusan mempertahankan Event dan FYP sekaligus. Delapan pengurangan ini
+dipilih karena tidak ada satu pun yang menyentuh premis produk:
+
+1. **Selective reveal dibuang total.** Sudah redundan sejak pesan masuk — kalau bisa ngobrol
+   tanpa membuka apa pun, membuka identitas asli tidak lagi jadi jalur tindak lanjut.
+2. **Penautan X/Farcaster + POAP ditunda.** MVP cukup ENS + riwayat on-chain, yang keduanya
+   hanya pembacaan RPC. ⚠️ **Ini membalik keputusan sebelumnya** yang memilih ketiganya —
+   tiga integrasi OAuth/API di tengah hackathon adalah tempat paling masuk akal untuk memotong,
+   karena argumen anti-impersonasi kita bertumpu pada "graf tidak bisa disalin" (§9.2), bukan
+   pada tautan-tautan itu.
+3. **Tanpa UI antrean moderasi & sanggah.** Gerbang laporan algoritmik (§9.3) tetap dibangun
+   penuh; konfirmasinya manual oleh admin. Yang dipotong adalah UI-nya, bukan logikanya.
+4. **FYP diringankan** — teks + satu gambar, peringkat sederhana (event yang dihadiri +
+   kebaruan), tanpa auto-hide otomatis dan tanpa peringkat berbasis riwayat geohash.
+5. **Radar pakai polling ~10 detik**, bukan Supabase Realtime. Cukup untuk satu ruangan.
+6. **Mode visibilitas 3 → 2**: hadir-terlihat vs ghost. Mode event digabung ke hadir-terlihat.
+7. **Peluruhan waktu trust: skema siap, tidak diaktifkan.** Dalam rentang waktu demo tidak ada
+   yang cukup tua untuk meluruh, jadi mengaktifkannya tidak terlihat sama sekali.
+8. **Kuota vouch per-event → kuota harian global.** Menghapus satu ketergantungan ke entitas
+   event di jalur vouch.
+
+### 11.2 Yang TIDAK boleh dikurangi
+
+Kalau salah satu dari ini dipotong, produknya kehilangan premisnya dan lebih baik tidak
+didemokan sama sekali:
+
+- QR handshake + verifikasi ko-lokasi, **termasuk uji negatifnya** (§13)
+- `ConnectionRegistry` on-chain
+- PageRank + faktor diversitas + sidik jari ko-lokasi
+- Event: buat, RSVP, **check-in terverifikasi**, Proof of Attendance
+- Pesan yang digerbangi graf koneksi, **plus blokir & lapor dari dalam percakapan** — ini
+  keselamatan pengguna, tidak bisa ditawar (§7.5)
+- Angka "ingin bertemu" + pengungkapan saat saling menandai
 
 ## 12. File & Modul Kunci
 
@@ -446,7 +553,9 @@ daripada tidak ada FYP.
 - `apps/mobile/src/handshake/` — QR bertanda tangan, rotasi, pemindai. Alur paling penting.
 - `apps/api/src/routes/handshake.ts` — verifikasi ko-lokasi (query PostGIS) sebelum mencetak
   koneksi.
+- `apps/api/src/routes/checkin.ts` — verifikasi geofence sebelum mencetak Proof of Attendance.
 - `packages/contracts/src/ConnectionRegistry.sol` — graf on-chain.
+- `packages/contracts/src/AttendanceRegistry.sol` — Proof of Attendance SBT.
 - `packages/shared/src/schema.ts` — skema Zod dipakai mobile + api, satu sumber kebenaran.
 - `apps/web/src/app/live/page.tsx` — visualisasi graf untuk juri (react-force-graph).
 
@@ -466,6 +575,17 @@ tidak bisa dicetak tanpa dua tanda tangan.
 
 **Uji handshake negatif** — dua device di geohash berbeda **harus gagal** terkoneksi. Ini test
 terpenting di seluruh proyek: kalau ini lolos, seluruh premis produk runtuh.
+
+**Uji check-in negatif** — check-in dari **luar** geofence, atau di dalam geofence tapi
+**di luar rentang waktu acara**, harus **gagal** dan tidak boleh mencetak Proof of Attendance.
+Ini kembarannya uji handshake negatif: kalau ini lolos, klaim "kehadiran terverifikasi" jadi
+bohong dan lebih buruk daripada tidak punya fiturnya.
+
+**Uji RSVP ≠ kehadiran** — akun yang RSVP tapi tidak pernah check-in tidak boleh punya Proof
+of Attendance, dan tidak boleh menyumbang apa pun ke faktor diversitas di §8.
+
+**Uji discovery event** — event dari host ber-trust rendah tidak muncul di discovery, tapi
+**tetap bisa dibuka lewat link langsung**. Bukan diblokir, hanya tidak dipromosikan.
 
 **Uji gerbang pesan** — akun yang belum pernah handshake dengan kamu **tidak boleh** muncul
 di daftar percakapan dan tidak boleh bisa dikirimi pesan dari dalam Nearly. Ini penegakan
@@ -501,15 +621,20 @@ masalah akurasi lokasi indoor dan baterai; tidak ada test yang bisa menggantikan
    - Wallet ber-reputasi yang dijual tidak bisa dicegah — hanya diredam peluruhan waktu.
    - **Nearly membuktikan seseorang manusia nyata yang hadir, bukan bahwa dia orang baik.**
      Jangan pernah mengklaim lebih dari ini.
-5. **XMTP menambah dua batasan praktis:**
+5. **XMTP menambah tiga batasan praktis:**
    - **Expo Go tidak bisa dipakai** setelah XMTP masuk — wajib dev build. Karena itu dev build
      dipasang sejak Fase 0.
    - Alamat XMTP-mu **tetap bisa dijangkau di luar Nearly.** "Inbox tanpa spam" berlaku di
      dalam Nearly saja. Jangan diklaim sebagai jaminan protokol.
    - XMTP **bukan** bagian dari BNB Chain. Jangan menyebutnya begitu dalam pitch.
-6. **Angka "ingin bertemu" yang publik** menciptakan dinamika papan peringkat popularitas —
+6. **Ruang lingkup adalah risiko terbesar sekarang.** Tujuh fase untuk satu hackathon itu
+   berat, dan keputusannya adalah mempertahankan Event + FYP sekaligus dengan mengurangi
+   kedalaman (§11.1). Kalau di tengah jalan ternyata tetap tidak cukup waktu, urutan
+   pengorbanan berikutnya: **FYP (Fase 5) dulu, lalu vouch/tag di Fase 2** — jangan pernah
+   memotong apa pun di §11.2.
+7. **Angka "ingin bertemu" yang publik** menciptakan dinamika papan peringkat popularitas —
    keputusan produk yang diambil sadar (§7.6). Obatnya sudah diketahui kalau terbukti merusak.
-7. **Hukum privasi (UU PDP Indonesia / GDPR)** — aplikasi mengumpulkan lokasi kasar dan graf
+8. **Hukum privasi (UU PDP Indonesia / GDPR)** — aplikasi mengumpulkan lokasi kasar dan graf
    sosial. Wajib ada ekspor & hapus data satu tap sebelum ada pengguna publik.
 
 ## 15. Langkah Berikutnya
