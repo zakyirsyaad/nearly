@@ -37,3 +37,13 @@ describe("kunci kontrak EIP-712 TS <-> Solidity", () => {
     expect(encodeEip712Type("HandshakeOffer", ditukar)).not.toBe(OFFER_TYPE_STRING);
   });
 });
+
+describe("chain id terikat ke jaringan deploy", () => {
+  it("NEARLY_CHAIN_ID = 97 (BSC testnet)", async () => {
+    const { NEARLY_CHAIN_ID } = await import("../src/index.js");
+    // Kalau kontrak dipindah ke jaringan lain, ubah NEARLY_CHAIN_ID DAN angka di
+    // sini bersamaan. Kalau tidak, setiap tanda tangan ditolak kontrak dengan
+    // bad_offer_signature tanpa petunjuk penyebabnya.
+    expect(NEARLY_CHAIN_ID).toBe(97);
+  });
+});

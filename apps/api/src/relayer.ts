@@ -1,6 +1,6 @@
 import { createWalletClient, http, type Address, type Hex } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
-import { opBNBTestnet } from "viem/chains";
+import { bscTestnet } from "viem/chains";
 import { CONNECTION_REGISTRY_ABI } from "./abi.js";
 import type { ChainPort } from "./ports.js";
 
@@ -13,7 +13,7 @@ export function createRelayer(cfg: {
 }): ChainPort {
   const client = createWalletClient({
     account: privateKeyToAccount(cfg.privateKey),
-    chain: opBNBTestnet,
+    chain: bscTestnet,
     transport: http(cfg.rpcUrl),
   });
 

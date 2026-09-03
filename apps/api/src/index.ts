@@ -21,9 +21,9 @@ const supabase = createSupabase(
 const app = createApp({
   store: createStore(supabase),
   profiles: createProfileStore(supabase),
-  identity: createIdentity(required("MAINNET_RPC"), required("OPBNB_TESTNET_RPC")),
+  identity: createIdentity(required("MAINNET_RPC"), required("RPC_URL")),
   chain: createRelayer({
-    rpcUrl: required("OPBNB_TESTNET_RPC"),
+    rpcUrl: required("RPC_URL"),
     privateKey: required("RELAYER_PRIVATE_KEY") as Hex,
     registry,
   }),

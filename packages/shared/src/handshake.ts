@@ -3,8 +3,15 @@ import { recoverTypedDataAddress, type Address, type Hex } from "viem";
 /** Umur QR (spec §7.1): 30 detik. */
 export const QR_TTL_MS = 30_000;
 
-/** opBNB testnet. */
-export const NEARLY_CHAIN_ID = 5611 as const;
+/**
+ * BSC testnet.
+ *
+ * WAJIB sama dengan chain tempat ConnectionRegistry di-deploy. Kontrak
+ * menurunkan DOMAIN_SEPARATOR dari block.chainid, jadi kalau nilai ini beda,
+ * SETIAP tanda tangan ditolak dengan bad_offer_signature — dan errornya tidak
+ * menunjukkan penyebabnya. Dijaga oleh test di eip712-types.test.ts.
+ */
+export const NEARLY_CHAIN_ID = 97 as const;
 
 export type HandshakeOffer = { initiator: Address; nonce: Hex; expiresAt: bigint };
 export type HandshakeAccept = HandshakeOffer & { counterparty: Address };
