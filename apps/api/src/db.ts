@@ -1,0 +1,109 @@
+import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import type { Address, Hex } from "viem";
+import type { HandshakeStore, PendingOffer } from "./ports.js";
+
+/** Urutan kanonik: selalu [min, max] dalam huruf kecil (constraint addr_a < addr_b). */
+export function orderPair(a: Address, b: Address): [Address, Address] {
+  const x = a.toLowerCase() as Address;
+  const y = b.toLowerCase() as Address;
+  return x < y ? [x, y] : [y, x];
+}
+
+type OfferRow = {
+  nonce: string; initiator: string; expires_at: string | number;
+  sig_offer: string; cell: string; at_ms: string | number; consumed_at: string | null;
+};
+
+export function rowToOffer(row: OfferRow): PendingOffer {
+  return {
+    nonce: row.nonce as Hex,
+    initiator: row.initiator as Address,
+    expiresAt: BigInt(row.expires_at),
+    sigOffer: row.sig_offer as Hex,
+    cell: row.cell,
+    atMs: Number(row.at_ms),
+    consumed: row.consumed_at !== null,
+  };
+}
+
+export function createSupabase(url: string, serviceRoleKey: string): SupabaseClient {
+  return createClient(url, serviceRoleKey, { auth: { persistSession: false } });
+}
+
+export function createStore(db: SupabaseClient): HandshakeStore {
+  async function ensureProfile(address: Address): Promise<void> {
+    const { error } = await db
+      .from("profiles")
+      .upsert({ address: address.toLowerCase() }, { onConflict: "address", ignoreDuplicates: true });
+    if (error) throw new Error(`upsert profile gagal: ${error.message}`);
+  }
+
+  return {
+    async putOffer(offer) {
+      await ensureProfile(offer.initiator);
+      const { error } = await db.from("handshake_offers").insert({
+        nonce: offer.nonce.toLowerCase(),
+        initiator: offer.initiator.toLowerCase(),
+        expires_at: offer.expiresAt.toString(),
+        sig_offer: offer.sigOffer,
+        cell: offer.cell,
+        at_ms: offer.atMs,
+      });
+      if (error) throw new Error(`insert offer gagal: ${error.message}`);
+    },
+
+    async getOffer(nonce) {
+      const { data, error } = await db
+        .from("handshake_offers")
+        .select("nonce, initiator, expires_at, sig_offer, cell, at_ms, consumed_at")
+        .eq("nonce", nonce.toLowerCase())
+        .maybeSingle();
+      if (error) throw new Error(`baca offer gagal: ${error.message}`);
+      return data ? rowToOffer(data as OfferRow) : null;
+    },
+
+    async consumeOffer(nonce) {
+      const { error } = await db
+        .from("handshake_offers")
+        .update({ consumed_at: new Date().toISOString() })
+        .eq("nonce", nonce.toLowerCase())
+        .is("consumed_at", null);
+      if (error) throw new Error(`tandai offer terpakai gagal: ${error.message}`);
+    },
+
+    async areConnected(a, b) {
+      const [x, y] = orderPair(a, b);
+      const { count, error } = await db
+        .from("connections")
+        .select("id", { count: "exact", head: true })
+        .eq("addr_a", x)
+        .eq("addr_b", y);
+      if (error) throw new Error(`cek koneksi gagal: ${error.message}`);
+      return (count ?? 0) > 0;
+    },
+
+    async countConnectionsSince(addr, sinceMs) {
+      const lower = addr.toLowerCase();
+      const since = new Date(sinceMs).toISOString();
+      const { count, error } = await db
+        .from("connections")
+        .select("id", { count: "exact", head: true })
+        .or(`addr_a.eq.${lower},addr_b.eq.${lower}`)
+        .gte("created_at", since);
+      if (error) throw new Error(`hitung kuota gagal: ${error.message}`);
+      return count ?? 0;
+    },
+
+    async recordConnection(row) {
+      await ensureProfile(row.b);
+      const [x, y] = orderPair(row.a, row.b);
+      const { error } = await db.from("connections").insert({
+        addr_a: x, addr_b: y,
+        nonce: row.nonce.toLowerCase(),
+        tx_hash: row.txHash,
+        created_at: new Date(row.atMs).toISOString(),
+      });
+      if (error) throw new Error(`catat koneksi gagal: ${error.message}`);
+    },
+  };
+}
