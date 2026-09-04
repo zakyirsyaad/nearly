@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link } from "expo-router";
 import { FlatList, StyleSheet, Text, View } from "react-native";
 import { CONFIG } from "../src/config";
@@ -7,7 +7,10 @@ import { createDevSigner } from "../src/signer";
 type Row = { address: string; txHash: string; at: number };
 
 export default function Connections() {
-  const signer = createDevSigner(CONFIG.devPrivateKey!, CONFIG.verifyingContract);
+  const signer = useMemo(
+    () => createDevSigner(CONFIG.devPrivateKey!, CONFIG.verifyingContract),
+    [],
+  );
   const [rows, setRows] = useState<Row[] | null>(null);
 
   useEffect(() => {

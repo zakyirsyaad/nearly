@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import QRCode from "react-native-qrcode-svg";
 import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
 import { CONFIG } from "../src/config";
@@ -5,7 +6,12 @@ import { createDevSigner } from "../src/signer";
 import { useRotatingQr } from "../src/handshake/useRotatingQr";
 
 export default function QrScreen() {
-  const signer = createDevSigner(CONFIG.devPrivateKey!, CONFIG.verifyingContract);
+  // WAJIB useMemo: tanpa ini signer lahir baru tiap render, refresh ikut berubah,
+  // dan efek rotasi jalan ulang tiap detik — QR berganti tiap detik, bukan 30 detik.
+  const signer = useMemo(
+    () => createDevSigner(CONFIG.devPrivateKey!, CONFIG.verifyingContract),
+    [],
+  );
   const { value, secondsLeft, error } = useRotatingQr(signer);
 
   if (error) return <View style={s.root}><Text style={s.err}>{error}</Text></View>;
