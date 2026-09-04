@@ -7,18 +7,22 @@
     "development": {
       "developmentClient": true,
       "distribution": "internal",
-      "android": { "buildType": "apk" },
+      "android": {
+        "buildType": "apk"
+      },
       "env": {
-        "EXPO_PUBLIC_API_URL": "http://ISI-DENGAN-URL-API-KAMU",
-        "EXPO_PUBLIC_CONNECTION_REGISTRY": "0xISI_ALAMAT_KONTRAK"
+        "EXPO_PUBLIC_API_URL": "http://192.168.0.102:8787",
+        "EXPO_PUBLIC_CONNECTION_REGISTRY": "0x7814656e4bcc5acae46099bd0238856e2a118811"
       }
     },
     "preview": {
       "distribution": "internal",
-      "android": { "buildType": "apk" },
+      "android": {
+        "buildType": "apk"
+      },
       "env": {
-        "EXPO_PUBLIC_API_URL": "http://ISI-DENGAN-URL-API-KAMU",
-        "EXPO_PUBLIC_CONNECTION_REGISTRY": "0xISI_ALAMAT_KONTRAK"
+        "EXPO_PUBLIC_API_URL": "http://192.168.0.102:8787",
+        "EXPO_PUBLIC_CONNECTION_REGISTRY": "0x7814656e4bcc5acae46099bd0238856e2a118811"
       }
     }
   }
