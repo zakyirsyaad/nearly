@@ -37,9 +37,40 @@ describe("detectOperators", () => {
       });
     });
 
+    // Para korban juga punya kenalannya sendiri-sendiri, seperti orang sungguhan
+    // di ruangan sungguhan. Tanpa baris-baris ini himpunan lawan bicara mereka
+    // identik satu sama lain dan mereka ikut tergabung — lihat test berikutnya,
+    // yang mengunci batas itu dengan sengaja.
+    korban.forEach((k, ki) => {
+      for (let j = 0; j < 3; j++) {
+        edges.push(edge(k, addr(500 + ki * 10 + j), "acara-a", NOW + (ki * 3 + j) * MIN * 11));
+      }
+    });
+
     const clusters = detectOperators(edges);
     expect(clusters).toHaveLength(1);
     expect(clusters[0]!.members.sort()).toEqual(palsu.map((p) => p.toLowerCase()).sort());
+  });
+
+  it("BATAS YANG DIAKUI: riwayat pertemuan yang identik dan bersamaan tidak bisa dibedakan dari satu operator", () => {
+    // Kalau enam orang jujur HANYA pernah menyalami himpunan orang yang sama,
+    // pada menit yang sama, tidak ada satu pun informasi di graf yang
+    // membedakan mereka dari lima akun milik satu orang. Detektor akan
+    // menggabungkan mereka, dan skor mereka dibagi rata.
+    //
+    // Ini batas nyata, bukan bug, dan tercatat di spec fase §12. Test ini
+    // menguncinya supaya perilakunya tidak berubah diam-diam — dan supaya
+    // siapa pun yang menyetel ambangnya nanti tahu apa yang dipertaruhkan.
+    const edges: TrustEdge[] = [];
+    const palsu = [901, 902, 903, 904, 905].map(addr);
+    const korban = [1, 2, 3, 4, 5, 6].map(addr);
+    palsu.forEach((p, pi) => {
+      korban.forEach((k, ki) => edges.push(edge(p, k, "acara-a", NOW + ki * MIN + pi * 1000)));
+    });
+
+    const clusters = detectOperators(edges);
+    expect(clusters).toHaveLength(2);
+    expect(clusters.map((c) => c.members.length).sort()).toEqual([5, 6]);
   });
 
   it("orang jujur yang menghadiri acara sama TIDAK digabung", () => {
