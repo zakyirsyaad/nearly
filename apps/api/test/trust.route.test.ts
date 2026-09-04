@@ -1,16 +1,12 @@
 import { describe, expect, it, vi } from "vitest";
 import { privateKeyToAccount } from "viem/accounts";
-import type { Address, Hex } from "viem";
+import type { Hex } from "viem";
 import { TIER_LABELS } from "@nearly/trust";
 import { tagsHashOf, vouchTypedData } from "@nearly/shared";
-import { createApp, type TrustDeps } from "../src/app";
+import { createApp } from "../src/app";
 import { trustRoutes } from "../src/routes/trust";
 import { vouchRoutes } from "../src/routes/vouch";
-
-const A = "0x000000000000000000000000000000000000000a" as Address;
-const B = "0x000000000000000000000000000000000000000b" as Address;
-const CONTRACT = "0x00000000000000000000000000000000000c0de0" as Address;
-const NOW = 1_700_000_000_000;
+import { A, B, CONTRACT, NOW, depsFor } from "./support/deps";
 
 // PK Anvil default #0, dipakai hanya sebagai penanda tanda tangan asli untuk
 // test pemicu ini — pola sama seperti helper `input()` di vouch-gate.test.ts.
@@ -37,75 +33,6 @@ async function signedVouchBody() {
     tags,
     expiresAt: String(Math.floor(NOW / 1000) + 3600),
     sig: await account.signTypedData(vouchTypedData(msg, CONTRACT)),
-  };
-}
-
-/**
- * TrustDeps lengkap untuk createApp, seluruh port distub sebagai vi.fn().
- *
- * `overrides.saveSnapshots` dan `overrides.setScore` menggantikan spy default
- * trust.saveSnapshots / attestor.setScore, supaya test bisa mengamati jalur
- * recompute SUNGGUHAN (lewat onChanged di app.ts), bukan spy lokal yang tidak
- * tersambung ke apa pun.
- */
-function depsFor(overrides: {
-  saveSnapshots?: ReturnType<typeof vi.fn>;
-  setScore?: ReturnType<typeof vi.fn>;
-  recordReport?: ReturnType<typeof vi.fn>;
-} = {}): TrustDeps {
-  return {
-    verifyingContract: CONTRACT,
-    nowMs: () => NOW,
-    store: {
-      putOffer: vi.fn(async () => {}),
-      getOffer: vi.fn(async () => null),
-      consumeOffer: vi.fn(async () => {}),
-      // true supaya jalur vouch (submitVouch -> areConnected) bisa lewat.
-      areConnected: vi.fn(async () => true),
-      countConnectionsSince: vi.fn(async () => 0),
-      recordConnection: vi.fn(async () => {}),
-    },
-    chain: { submitConnect: vi.fn(async (): Promise<Hex> => "0xtx" as Hex) },
-    profiles: {
-      listConnections: vi.fn(async () => []),
-      countConnections: vi.fn(async () => 0),
-      getDisplayName: vi.fn(async () => ""),
-    },
-    identity: {
-      ensName: vi.fn(async () => null),
-      txCount: vi.fn(async () => 0),
-    },
-    trust: {
-      // Graf minimal berisi satu seed, cukup untuk computeTrust menghasilkan
-      // satu baris tanpa melempar.
-      loadGraph: vi.fn(async () => ({
-        edges: [], vouches: [], seeds: [{ address: A, weight: 1 }], slashed: [], nowMs: NOW,
-      })),
-      saveSnapshots: overrides.saveSnapshots ?? vi.fn(async () => {}),
-      getSnapshot: vi.fn(async () => null),
-      listPublishedTiers: vi.fn(async () => new Map()),
-      markPublished: vi.fn(async () => {}),
-    },
-    vouches: {
-      countVouchesSince: vi.fn(async () => 0),
-      hasVouch: vi.fn(async () => false),
-      recordVouch: vi.fn(async () => {}),
-      markRevoked: vi.fn(async () => {}),
-    },
-    reports: {
-      recordReport: overrides.recordReport ?? vi.fn(async () => {}),
-      listReports: vi.fn(async () => []),
-      setReportStatus: vi.fn(async () => {}),
-      recordSlash: vi.fn(async () => {}),
-    },
-    attestor: { setScore: overrides.setScore ?? vi.fn(async (): Promise<Hex> => "0xtx" as Hex) },
-    vouchChain: {
-      submitVouch: vi.fn(async (): Promise<Hex> => "0xtx" as Hex),
-      submitRevoke: vi.fn(async (): Promise<Hex> => "0xtx" as Hex),
-      submitSlash: vi.fn(async (): Promise<Hex> => "0xtx" as Hex),
-    },
-    vouchContract: CONTRACT,
-    adminToken: "test-admin-token",
   };
 }
 
