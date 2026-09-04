@@ -23,5 +23,6 @@ export function createWalletSigner(
       signTypedDataAsync(offerTypedData(offer, verifyingContract)),
     signAccept: (accept: HandshakeAccept) =>
       signTypedDataAsync(acceptTypedData(accept, verifyingContract)),
+    signTypedData: (data: unknown) => signTypedDataAsync(data),
   };
 }

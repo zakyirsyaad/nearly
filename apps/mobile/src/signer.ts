@@ -9,6 +9,8 @@ export type NearlySigner = {
   address: Address;
   signOffer(offer: HandshakeOffer): Promise<Hex>;
   signAccept(accept: HandshakeAccept): Promise<Hex>;
+  /** Method generik untuk EIP-712 lain di luar handshake, mis. vouch (Fase 2). */
+  signTypedData(data: unknown): Promise<Hex>;
 };
 
 /**
@@ -26,5 +28,6 @@ export function createDevSigner(privateKey: Hex, verifyingContract: Address): Ne
     address: account.address,
     signOffer: (offer) => account.signTypedData(offerTypedData(offer, verifyingContract)),
     signAccept: (accept) => account.signTypedData(acceptTypedData(accept, verifyingContract)),
+    signTypedData: (data) => account.signTypedData(data as Parameters<typeof account.signTypedData>[0]),
   };
 }
