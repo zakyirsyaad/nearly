@@ -468,9 +468,16 @@ Sampaikan jujur, jangan diklaim lebih:
    ulang dan tanpa restart.
 3. **Ambang sidik jari ko-lokasi belum tervalidasi lapangan.** `J >= 0.8`, `T >= 0.6` adalah
    tebakan awal; keduanya parameter supaya bisa disetel setelah data nyata masuk.
-4. **Sybil multi-device dideteksi, belum dicegah** (§14 spec induk). Pencegahnya device
+4. **Sidik jari ko-lokasi bisa menggabungkan orang jujur.** Kalau beberapa orang yang
+   benar-benar berbeda hanya pernah menyalami himpunan lawan bicara yang sama, pada menit
+   yang sama, tidak ada satu pun informasi di graf yang membedakan mereka dari beberapa akun
+   milik satu orang — dan mereka akan digabung, sehingga skor mereka dibagi rata. Dalam
+   praktik ini jarang, karena orang sungguhan di ruangan sungguhan juga menyalami orang lain
+   yang berbeda-beda; justru keragaman kecil itulah sinyalnya. Ditemukan lewat test dan
+   dikunci sebuah test yang sengaja menyatakan batas ini.
+5. **Sybil multi-device dideteksi, belum dicegah** (§14 spec induk). Pencegahnya device
    attestation, ditunda pasca-hackathon.
-5. **Nearly membuktikan seseorang manusia nyata yang hadir — bukan bahwa dia orang baik.**
+6. **Nearly membuktikan seseorang manusia nyata yang hadir — bukan bahwa dia orang baik.**
    Mengklaim lebih dari ini berbahaya.
 
 ## 13. Yang Sengaja TIDAK Ada di Fase Ini
