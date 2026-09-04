@@ -173,6 +173,58 @@ contract VouchRegistryTest is Test {
         reg.revoke(alice, bob, expiresAt, sigR);
     }
 
+    function test_vouch_TIDAK_bisa_diputar_ulang_setelah_revoke() public {
+        bytes memory sigV = _sign(pkA, _vouchDigest(alice, bob, TAGS, expiresAt));
+        vm.prank(attestor);
+        reg.vouch(alice, bob, TAGS, expiresAt, sigV);
+
+        bytes memory sigR = _sign(pkA, _revokeDigest(alice, bob, expiresAt));
+        vm.prank(attestor);
+        reg.revoke(alice, bob, expiresAt, sigR);
+
+        // Tanda tangan vouch yang SAMA dikirim ulang. Tanpa penjagaan ini,
+        // attestor bisa menghidupkan kembali vouch yang sudah dicabut pengguna
+        // tanpa persetujuan baru dari pengguna itu.
+        vm.expectRevert(VouchRegistry.AlreadyVouched.selector);
+        vm.prank(attestor);
+        reg.vouch(alice, bob, TAGS, expiresAt, sigV);
+    }
+
+    function test_revoke_TIDAK_bisa_diputar_ulang() public {
+        bytes memory sigV = _sign(pkA, _vouchDigest(alice, bob, TAGS, expiresAt));
+        vm.prank(attestor);
+        reg.vouch(alice, bob, TAGS, expiresAt, sigV);
+
+        bytes memory sigR = _sign(pkA, _revokeDigest(alice, bob, expiresAt));
+        vm.prank(attestor);
+        reg.revoke(alice, bob, expiresAt, sigR);
+
+        vm.expectRevert(VouchRegistry.NotVouched.selector);
+        vm.prank(attestor);
+        reg.revoke(alice, bob, expiresAt, sigR);
+    }
+
+    function test_tanda_tangan_high_s_ditolak() public {
+        bytes memory sig = _sign(pkA, _vouchDigest(alice, bob, TAGS, expiresAt));
+        bytes32 r;
+        bytes32 sVal;
+        uint8 v;
+        assembly {
+            r := mload(add(sig, 32))
+            sVal := mload(add(sig, 64))
+            v := byte(0, mload(add(sig, 96)))
+        }
+        // Pasangan malleable: (r, n - s, v terbalik) memulihkan alamat yang sama
+        // di ecrecover polos. Kontrak harus menolaknya.
+        bytes32 sHigh = bytes32(
+            0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364141 - uint256(sVal)
+        );
+        bytes memory malleable = abi.encodePacked(r, sHigh, v == 27 ? uint8(28) : uint8(27));
+        vm.expectRevert(VouchRegistry.BadSignature.selector);
+        vm.prank(attestor);
+        reg.vouch(alice, bob, TAGS, expiresAt, malleable);
+    }
+
     function test_slash_hanya_attestor() public {
         vm.expectRevert(VouchRegistry.NotAttestor.selector);
         reg.slash(bob);
