@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { privateKeyToAccount } from "viem/accounts";
 import type { Address, Hex } from "viem";
-import { tagsHashOf, vouchTypedData } from "@nearly/shared";
+import { normalizeTags, tagsHashOf, vouchTypedData } from "@nearly/shared";
 import { DAILY_VOUCH_QUOTA, submitVouch } from "../src/vouch-gate";
 
 const NOW = 1_700_000_000_000;
@@ -120,5 +120,43 @@ describe("submitVouch", () => {
 
   it("kuota harian memang 3 (spec §11.1 butir 8)", () => {
     expect(DAILY_VOUCH_QUOTA).toBe(3);
+  });
+
+  it("GERBANG Task 4: tag yang TERSIMPAN sama persis dengan tag yang DIHASH, walau kirimannya 16 tag panjang tak dinormalisasi", async () => {
+    // VouchRequestSchema mengizinkan hingga 16 tag mentah, tapi tagsHashOf
+    // MAX_TAGS=5 hanya menghash 5 pertama (dinormalisasi). Tanpa fix Task 4,
+    // recordVouch menyimpan 16 tag mentah ke Postgres sementara hash on-chain
+    // cuma membuktikan 5 — membatalkan janji spec §5 bahwa hash membuktikan
+    // tag tidak diubah.
+    const rawTags = [
+      "  Solid Dev  ", "REAL builder", "zk enthusiast wow", "on-chain sleuth",
+      "night owl coder", "extra tag satu", "extra tag dua", "extra tag tiga",
+    ];
+    const expectedStored = normalizeTags(rawTags);
+    expect(expectedStored).toHaveLength(5); // dipotong ke MAX_TAGS, membuktikan input memang >5
+
+    const expiresAt = BigInt(Math.floor(NOW / 1000) + 3600);
+    const msg = { from: account.address, to: TO, tagsHash: tagsHashOf(rawTags), expiresAt };
+    const sig = await account.signTypedData(vouchTypedData(msg, CONTRACT));
+
+    const recordVouch = vi.fn(async () => {});
+    const d = deps({
+      vouches: {
+        countVouchesSince: vi.fn(async () => 0),
+        hasVouch: vi.fn(async () => false),
+        recordVouch,
+        markRevoked: vi.fn(async () => {}),
+      },
+    });
+
+    const r = await submitVouch(
+      { from: account.address, to: TO, tags: rawTags, expiresAt, sig },
+      d,
+    );
+
+    expect(r.ok).toBe(true);
+    expect(recordVouch).toHaveBeenCalledWith(
+      expect.objectContaining({ tags: expectedStored, tagsHash: tagsHashOf(rawTags) }),
+    );
   });
 });

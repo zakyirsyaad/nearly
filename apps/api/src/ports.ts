@@ -68,7 +68,14 @@ export type TrustStore = {
 
 export type VouchStore = {
   countVouchesSince(from: Address, sinceMs: number): Promise<number>;
+  /** "Pernah vouch", TERMASUK yang sudah dicabut. Dipakai untuk menolak vouch
+   * kedua ke pasangan yang sama (satu vouch per pasangan, selamanya). */
   hasVouch(from: Address, to: Address): Promise<boolean>;
+  /** Vouch yang MASIH berlaku (revoked_at is null). Dipakai untuk menjaga
+   * revoke: tanpa ini API bisa meneruskan revoke ke pasangan yang belum
+   * pernah vouch atau yang sudah dicabut, dan kontrak PASTI revert
+   * NotVouched — membakar gas relayer untuk transaksi yang sudah tahu gagal. */
+  isActiveVouch(from: Address, to: Address): Promise<boolean>;
   recordVouch(row: {
     from: Address; to: Address; tags: string[]; tagsHash: Hex; txHash: Hex;
   }): Promise<void>;

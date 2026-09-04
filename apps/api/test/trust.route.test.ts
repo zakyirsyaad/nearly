@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import { privateKeyToAccount } from "viem/accounts";
 import type { Hex } from "viem";
 import { TIER_LABELS } from "@nearly/trust";
-import { tagsHashOf, vouchTypedData } from "@nearly/shared";
+import { reasonHashOf, reportTypedData, tagsHashOf, vouchTypedData } from "@nearly/shared";
 import { createApp } from "../src/app";
 import { trustRoutes } from "../src/routes/trust";
 import { vouchRoutes } from "../src/routes/vouch";
@@ -33,6 +33,23 @@ async function signedVouchBody() {
     tags,
     expiresAt: String(Math.floor(NOW / 1000) + 3600),
     sig: await account.signTypedData(vouchTypedData(msg, CONTRACT)),
+  };
+}
+
+// Task 1: laporan JUGA lewat EIP-712 sekarang — `reporter` tidak lagi datang
+// telanjang dari body. `reporter` di sini WAJIB alamat yang bisa menandatangani
+// (account.address), bukan konstanta A, karena A bukan turunan private key.
+async function signedReportBody(reason: string, subject = B) {
+  const expiresAt = BigInt(Math.floor(NOW / 1000) + 3600);
+  const msg = {
+    reporter: account.address, subject, reasonHash: reasonHashOf(reason), expiresAt,
+  };
+  return {
+    reporter: account.address,
+    subject,
+    reason,
+    expiresAt: String(Math.floor(NOW / 1000) + 3600),
+    sig: await account.signTypedData(reportTypedData(msg, CONTRACT)),
   };
 }
 
@@ -154,9 +171,7 @@ describe("POST /report", () => {
     const res = await app.request("/report", {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({
-        reporter: A, subject: B, reason: "menjual token palsu di venue",
-      }),
+      body: JSON.stringify(await signedReportBody("menjual token palsu di venue")),
     });
 
     expect(res.status).toBe(200);

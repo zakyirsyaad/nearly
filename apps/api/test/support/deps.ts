@@ -19,11 +19,12 @@ export const NOW = 1_700_000_000_000;
  * recompute SUNGGUHAN (lewat onChanged di app.ts), bukan spy lokal yang tidak
  * tersambung ke apa pun.
  *
- * `overrides.trust`, `overrides.reports`, `overrides.vouchChain`, dan
- * `overrides.adminToken` di-merge di atas nilai default masing-masing —
- * dipakai admin.route.test.ts untuk mengendalikan gerbang confirmSlash
- * (snapshot pelapor, graf koneksi, dan hasil chain) tanpa menduplikasi
- * seluruh helper ini.
+ * `overrides.trust`, `overrides.reports`, `overrides.vouchChain`,
+ * `overrides.vouches`, dan `overrides.adminToken` di-merge di atas nilai
+ * default masing-masing — dipakai admin.route.test.ts untuk mengendalikan
+ * gerbang confirmSlash (snapshot pelapor, graf koneksi, dan hasil chain), dan
+ * revoke-vouch.test.ts untuk mengendalikan status vouch aktif, tanpa
+ * menduplikasi seluruh helper ini.
  */
 export function depsFor(overrides: {
   saveSnapshots?: ReturnType<typeof vi.fn>;
@@ -32,6 +33,7 @@ export function depsFor(overrides: {
   trust?: Partial<TrustDeps["trust"]>;
   reports?: Partial<TrustDeps["reports"]>;
   vouchChain?: Partial<TrustDeps["vouchChain"]>;
+  vouches?: Partial<TrustDeps["vouches"]>;
   adminToken?: string;
 } = {}): TrustDeps {
   return {
@@ -71,8 +73,10 @@ export function depsFor(overrides: {
     vouches: {
       countVouchesSince: vi.fn(async () => 0),
       hasVouch: vi.fn(async () => false),
+      isActiveVouch: vi.fn(async () => true),
       recordVouch: vi.fn(async () => {}),
       markRevoked: vi.fn(async () => {}),
+      ...overrides.vouches,
     },
     reports: {
       recordReport: overrides.recordReport ?? vi.fn(async () => {}),

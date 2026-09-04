@@ -14,7 +14,7 @@ const NOW = 1_700_000_000_000;
 const EXPIRES = BigInt(Math.floor(NOW / 1000) + 30);
 const TX = `0x${"ab".repeat(32)}` as Hex;
 
-function deps(): TrustDeps {
+function deps(over: { saveSnapshots?: ReturnType<typeof vi.fn> } = {}): TrustDeps {
   const offers = new Map<Hex, PendingOffer>();
   return {
     verifyingContract: VC,
@@ -44,7 +44,7 @@ function deps(): TrustDeps {
     // berhasil, jadi bentuknya harus lengkap.
     trust: {
       loadGraph: async () => ({ edges: [], vouches: [], seeds: [], slashed: [], nowMs: NOW }),
-      saveSnapshots: async () => {},
+      saveSnapshots: over.saveSnapshots ?? (async () => {}),
       getSnapshot: async () => null,
       listPublishedTiers: async () => new Map(),
       markPublished: async () => {},
@@ -52,6 +52,7 @@ function deps(): TrustDeps {
     vouches: {
       countVouchesSince: async () => 0,
       hasVouch: async () => false,
+      isActiveVouch: async () => false,
       recordVouch: async () => {},
       markRevoked: async () => {},
     },
@@ -134,6 +135,21 @@ describe("POST /handshake/accept", () => {
     const res = await post(app, "/handshake/accept", await acceptBody());
     expect(res.status).toBe(200);
     expect(await res.json()).toEqual({ txHash: TX });
+  });
+
+  it("GERBANG spec §11: handshake yang berhasil memicu perhitungan ulang trust", async () => {
+    // Spy yang SAMA yang dipakai jalur recompute sungguhan (deps.trust.saveSnapshots
+    // di app.ts -> onChanged -> recomputeTrust), bukan spy lokal yang tidak
+    // tersambung ke apa pun — pola yang sama seperti trust.route.test.ts.
+    const saveSnapshots = vi.fn(async () => {});
+    const dSpy = deps({ saveSnapshots });
+    const appSpy = createApp(dSpy);
+    await post(appSpy, "/handshake/offer", await offerBody());
+
+    const res = await post(appSpy, "/handshake/accept", await acceptBody());
+
+    expect(res.status).toBe(200);
+    expect(saveSnapshots).toHaveBeenCalledTimes(1);
   });
 
   it("422 ketika keduanya berjauhan, dan TIDAK menyentuh chain", async () => {

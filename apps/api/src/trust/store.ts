@@ -123,6 +123,17 @@ export function createVouchStore(db: SupabaseClient): VouchStore {
       return (count ?? 0) > 0;
     },
 
+    async isActiveVouch(from, to) {
+      const { count, error } = await db
+        .from("vouches")
+        .select("from_addr", { count: "exact", head: true })
+        .eq("from_addr", from.toLowerCase())
+        .eq("to_addr", to.toLowerCase())
+        .is("revoked_at", null);
+      if (error) throw new Error(`cek vouch aktif gagal: ${error.message}`);
+      return (count ?? 0) > 0;
+    },
+
     async recordVouch(row) {
       const { error } = await db.from("vouches").upsert(
         {
@@ -179,10 +190,15 @@ export function createReportStore(db: SupabaseClient): ReportStore {
     },
 
     async setReportStatus(subject, status) {
+      // Hanya laporan yang MASIH "baru" ikut berubah. Tanpa penjagaan ini,
+      // gerbang yang gagal menandai SEMUA laporan untuk subjek ini sebagai
+      // "ditolak" — termasuk laporan yang masuk SETELAH admin menekan tombol
+      // dan belum sempat ditinjau sama sekali.
       const { error } = await db
         .from("reports")
         .update({ status })
-        .eq("subject", subject.toLowerCase());
+        .eq("subject", subject.toLowerCase())
+        .eq("status", "baru");
       if (error) throw new Error(`ubah status laporan gagal: ${error.message}`);
     },
 

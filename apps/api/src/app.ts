@@ -19,19 +19,37 @@ export type TrustDeps = GateDeps & {
   adminToken: string;
 };
 
+// Modul-level, dengan sengaja (Task 8): relayer yang sama menandatangani
+// connect, vouch, DAN setScore (lihat index.ts — satu RELAYER_PRIVATE_KEY
+// untuk ketiganya). recomputeTrust melakukan loadGraph + computeTrust +
+// setScore berurutan; dua panggilan onChanged() yang tumpang tindih (dua
+// handshake bersamaan di ruangan 100 orang, kasus yang PALING mungkin
+// terjadi) akan sama-sama writeContract dengan account yang sama, viem
+// mengambil pending nonce yang SAMA untuk keduanya, dan satu transaksi
+// tergantikan diam-diam. Paling aman: paling banyak SATU recompute
+// berjalan sekaligus, dan panggilan yang tumpang tindih bergabung ke
+// promise yang sama alih-alih memicu loadGraph-nya sendiri-sendiri.
+let recomputeInFlight: Promise<void> | null = null;
+
 export function createApp(deps: TrustDeps) {
   const app = new Hono();
   app.get("/health", (c) => c.json({ ok: true }));
 
-  const onChanged = async () => {
-    try {
-      await recomputeTrust({ trust: deps.trust, attestor: deps.attestor, nowMs: deps.nowMs });
-    } catch (e) {
-      // Perhitungan ulang yang gagal TIDAK boleh menggagalkan handshake atau
-      // vouch yang sudah tercetak on-chain. Skor akan menyusul pada pemicu
-      // berikutnya; koneksinya sendiri sudah permanen.
-      console.error("recompute gagal:", e);
-    }
+  const onChanged = (): Promise<void> => {
+    if (recomputeInFlight) return recomputeInFlight;
+    recomputeInFlight = (async () => {
+      try {
+        await recomputeTrust({ trust: deps.trust, attestor: deps.attestor, nowMs: deps.nowMs });
+      } catch (e) {
+        // Perhitungan ulang yang gagal TIDAK boleh menggagalkan handshake atau
+        // vouch yang sudah tercetak on-chain. Skor akan menyusul pada pemicu
+        // berikutnya; koneksinya sendiri sudah permanen.
+        console.error("recompute gagal:", e);
+      } finally {
+        recomputeInFlight = null;
+      }
+    })();
+    return recomputeInFlight;
   };
 
   app.route("/", handshakeRoutes({ ...deps, onChanged }));

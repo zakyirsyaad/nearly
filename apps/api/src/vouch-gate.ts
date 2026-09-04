@@ -1,5 +1,5 @@
 import type { Address, Hex } from "viem";
-import { recoverRevokeSigner, recoverVouchSigner, tagsHashOf } from "@nearly/shared";
+import { normalizeTags, recoverRevokeSigner, recoverVouchSigner, tagsHashOf } from "@nearly/shared";
 import { reportGate, type Report } from "@nearly/trust";
 import type {
   AttestorPort, HandshakeStore, ReportStore, TrustStore, VouchChainPort, VouchStore,
@@ -53,7 +53,13 @@ export async function submitVouch(
     return fail({ code: "not_connected", httpStatus: 422 });
   }
 
-  const tagsHash = tagsHashOf(input.tags);
+  // Dinormalisasi SEKALI dan dipakai untuk hash MAUPUN penyimpanan DB, supaya
+  // tag yang tersimpan selalu sama persis dengan yang dibuktikan hash-nya
+  // (VouchRequestSchema mengizinkan hingga 16 tag mentah tak terbatas panjang;
+  // tanpa normalisasi di sini, DB bisa menyimpan tag yang hash-nya tidak
+  // membuktikan apa-apa tentang isi sebenarnya, membatalkan janji spec §5).
+  const tags = normalizeTags(input.tags);
+  const tagsHash = tagsHashOf(tags);
   const signer = await recoverVouchSigner(
     { from: input.from, to: input.to, tagsHash, expiresAt: input.expiresAt },
     input.sig,
@@ -82,7 +88,7 @@ export async function submitVouch(
   }
 
   await deps.vouches.recordVouch({
-    from: input.from, to: input.to, tags: input.tags, tagsHash, txHash,
+    from: input.from, to: input.to, tags, tagsHash, txHash,
   });
   return { ok: true, value: { txHash } };
 }
@@ -105,7 +111,11 @@ export async function revokeVouch(
     return fail({ code: "bad_signature", httpStatus: 401 });
   }
 
-  if (!(await deps.vouches.hasVouch(input.from, input.to))) {
+  // isActiveVouch, BUKAN hasVouch: hasVouch berarti "pernah vouch", yang tetap
+  // benar setelah dicabut (satu vouch per pasangan, selamanya). Kalau dipakai
+  // di sini, revoke kedua akan lolos gerbang API dan mengirim tx yang PASTI
+  // di-revert kontrak dengan NotVouched — membakar gas relayer sia-sia.
+  if (!(await deps.vouches.isActiveVouch(input.from, input.to))) {
     return fail({ code: "not_vouched", httpStatus: 404 });
   }
 
@@ -177,6 +187,14 @@ export async function confirmSlash(
   }
 
   await deps.reports.recordSlash(subject, txHash);
-  await deps.reports.setReportStatus(subject, "terkonfirmasi");
+  try {
+    await deps.reports.setReportStatus(subject, "terkonfirmasi");
+  } catch (e) {
+    // Slash-nya SUDAH mendarat on-chain (txHash di atas nyata) — kegagalan
+    // menandai status laporan tidak boleh membuat pemanggil kehilangan
+    // txHash itu dan berpikir slash-nya gagal. Statusnya bisa disinkronkan
+    // manual belakangan; yang tidak boleh hilang adalah bukti on-chain-nya.
+    console.error("gagal menandai status laporan terkonfirmasi:", e);
+  }
   return { ok: true, value: { txHash } };
 }
