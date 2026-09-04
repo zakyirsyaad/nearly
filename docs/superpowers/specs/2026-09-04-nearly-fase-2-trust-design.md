@@ -43,7 +43,7 @@ diberi tanda.
 | Kapan ditulis on-chain | Hanya alamat yang **tier**-nya berubah | Pengendali biaya gas |
 | Seed set | Wallet pemilik project, satu alamat | Bisa dilebarkan tanpa deploy ulang |
 | Penyimpanan seed | Tabel `trust_seeds` | Bukan env var |
-| Tier | Rasio terhadap skor seed tertinggi | Ambang tetap 0.02 / 0.15 / 0.45 |
+| Tier | Rasio terhadap skor tertinggi di graf | Ambang tetap 0.02 / 0.15 / 0.45 |
 | Vouch + tag | **Masuk** Fase 2 | §14 risiko 6 mengizinkan menundanya; tidak diambil |
 | Peluruhan waktu | Dibangun & diuji, **tidak diaktifkan** | §11.1 butir 7 |
 | Arsitektur | Fungsi murni di `packages/trust`, dirakit API | Sama seperti pola Fase 1 |
@@ -130,7 +130,7 @@ type TrustGraph = {
 type TrustResult = {
   address: Address;
   score: number;            // PageRank mentah
-  ratio: number;            // score / skor seed tertinggi, 0..1
+  ratio: number;            // score / skor tertinggi di graf, 0..1
   tier: 0 | 1 | 2 | 3;      // Baru, Dikenal, Terpercaya, Inti
   evidence: {
     connections: number; occasions: number; regions: number; vouches: number;
@@ -201,7 +201,7 @@ fungsi.
 ### 4.5 Tier & bukti
 
 ```
-rasio = skor / skor seed tertinggi
+rasio = skor / skor tertinggi di graf
 
 Baru        rasio < 0.02
 Dikenal     0.02 <= rasio < 0.15
@@ -209,14 +209,26 @@ Terpercaya  0.15 <= rasio < 0.45
 Inti        rasio >= 0.45
 ```
 
+**Penyebutnya skor tertinggi di graf, bukan skor seed.** Ini koreksi terhadap rancangan awal,
+dan alasannya matematis: PageRank berpersonalisasi **tidak menjamin seed memegang skor
+tertinggi.** Kepercayaan mengalir keluar dari seed lalu menumpuk di simpul yang paling banyak
+tetangganya; seed sendiri hanya menerima kembali lewat jatah teleport dan pantulan. Pada graf
+sesederhana `seed—A—B`, A memperoleh 0.459 sementara seed 0.345.
+
+Kalau penyebutnya skor seed, rasio bisa melebihi 1 dan janji "hasilnya 0 sampai 1" jadi tidak
+benar. Dengan penyebut skor tertinggi, rentangnya benar menurut konstruksi, selalu ada tepat
+satu orang di 1.00, dan kalimat *"seberapa dekat orang ini ke pusat kepercayaan"* menjadi tepat
+apa adanya. Sifat yang membuat rasio dipilih sejak awal tidak berubah sedikit pun: pembilang
+dan penyebut menyusut dengan proporsi yang sama saat populasi bertambah.
+
 **Kenapa rasio, bukan skor mentah.** Skor PageRank bersifat relatif — jumlah seluruh skor
 selalu 1. Dengan 20 pengguna rata-rata orang mendapat 0.05; dengan 200 pengguna, 0.005. Orang
 yang sama, posisi yang sama di graf, tapi angkanya menyusut 10x hanya karena orang lain
 mendaftar. Ambang absolut pada skor mentah akan menurunkan tier semua peserta serentak di
 tengah demo, dan di depan juri itu terlihat seperti sistemnya rusak.
 
-Rasio terhadap seed tidak bergerak saat populasi bertambah, karena pembilang dan penyebut
-menyusut dengan proporsi yang sama. Tier hanya berubah kalau **posisi orang itu di graf**
+Rasio tidak bergerak saat populasi bertambah, karena pembilang dan penyebut menyusut dengan
+proporsi yang sama. Tier hanya berubah kalau **posisi orang itu di graf**
 berubah.
 
 **Persentil populasi ditolak** meski tampak menarik: ia membuat tier jadi zero-sum — seseorang
@@ -241,7 +253,7 @@ implementasi.
 4. Kalikan dengan pengali diversitas                    -> pr x (0.15 + 0.85 x D)
 5. Bagi rata skor antar anggota satu klaster operator   (§4.4)
 6. Terapkan penalti penjamin 0.7^n                      (§6, n = jumlah pelaku terkonfirmasi)
-7. rasio = skor / skor seed tertinggi  ->  tier         (§4.5)
+7. rasio = skor / skor tertinggi di graf  ->  tier      (§4.5)
 ```
 
 Diversitas diterapkan **setelah** PageRank, bukan sebagai bobot edge di dalamnya: diversitas

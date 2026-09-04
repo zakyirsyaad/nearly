@@ -19,7 +19,7 @@
 - **Alamat selalu huruf kecil** di seluruh perbandingan dan kunci map. Ini sudah jadi aturan repo sejak `orderPair()` di `apps/api/src/db.ts`.
 - **Import relatif ditulis tanpa ekstensi** (aturan repo dari catatan Fase 1 butir 8 — Metro tidak memetakan `"./x.js"` ke `x.ts`).
 - **Chain: BSC testnet, chainId 97.** `NEARLY_CHAIN_ID` di `packages/shared/src/handshake.ts` adalah sumber kebenarannya, dijaga test.
-- **Ambang tier:** `0.02` / `0.15` / `0.45` atas rasio terhadap skor seed tertinggi.
+- **Ambang tier:** `0.02` / `0.15` / `0.45` atas rasio terhadap **skor tertinggi di graf** (bukan skor seed — PageRank berpersonalisasi tidak menjamin seed yang tertinggi).
 - **Kuota vouch:** 3 per hari, global, ditegakkan di API.
 - **Peluruhan waktu dibangun tapi tidak diaktifkan** (§11.1 butir 7 spec induk).
 - Bahasa komentar & pesan commit: Indonesia. Nama simbol kode: Inggris.
@@ -202,7 +202,7 @@ export type TrustResult = {
   address: Address;
   /** Skor akhir setelah seluruh pipeline §4.6. */
   score: number;
-  /** score / skor seed tertinggi, 0..1. */
+  /** score / skor tertinggi di graf, 0..1. */
   ratio: number;
   tier: Tier;
   evidence: TrustEvidence;
@@ -507,10 +507,22 @@ describe("personalizedPageRank", () => {
     }
   });
 
-  it("seed memegang skor tertinggi", () => {
+  it("seed selalu menerima setidaknya jatah teleport-nya", () => {
     const scores = run([edge(SEED, addr(2)), edge(addr(2), addr(3))]);
-    const seedScore = scores.get(SEED.toLowerCase())!;
-    for (const [a, s] of scores) if (a !== SEED.toLowerCase()) expect(s).toBeLessThan(seedScore);
+    // (1 - damping) x bobot teleport = 0.15. Ini lantai yang dijamin
+    // matematika: seed tidak bisa jatuh di bawahnya sebesar apa pun grafnya.
+    expect(scores.get(SEED.toLowerCase())!).toBeGreaterThanOrEqual(0.15);
+  });
+
+  it("simpul hub BISA melampaui seed — dan itu memang benar", () => {
+    // seed hanya punya satu tetangga; addr(2) punya dua, jadi kepercayaan
+    // menumpuk di sana. PageRank berpersonalisasi TIDAK menjamin seed
+    // tertinggi, dan inilah alasan rasio dinormalisasi terhadap skor
+    // tertinggi di graf, bukan terhadap skor seed (spec fase §4.5).
+    // Jangan "perbaiki" ini dengan memaksa seed menang.
+    const scores = run([edge(SEED, addr(2)), edge(addr(2), addr(3))]);
+    expect(scores.get(addr(2).toLowerCase())!).toBeCloseTo(0.45946, 4);
+    expect(scores.get(SEED.toLowerCase())!).toBeCloseTo(0.34527, 4);
   });
 
   it("makin jauh dari seed makin kecil", () => {
@@ -657,7 +669,7 @@ export * from "./pagerank";
 - [ ] **Step 4: Jalankan test, pastikan LULUS**
 
 Jalankan: `pnpm --filter @nearly/trust test`
-Diharapkan: PASS — 18 test
+Diharapkan: PASS — 19 test
 
 - [ ] **Step 5: Commit**
 
@@ -1538,7 +1550,7 @@ Diharapkan: FAIL — `tierOf is not a function`
 import type { Tier } from "./types";
 
 /**
- * Ambang atas RASIO terhadap skor seed tertinggi, bukan atas skor mentah.
+ * Ambang atas RASIO terhadap skor tertinggi di graf, bukan atas skor mentah.
  *
  * Skor PageRank bersifat relatif — totalnya selalu 1. Ambang absolut pada skor
  * mentah akan menurunkan tier semua peserta serentak begitu populasi bertambah,
@@ -1628,10 +1640,23 @@ describe("computeTrust", () => {
     expect(find(setelah, SEED).tier).toBe(find(kecil, SEED).tier);
   });
 
-  it("seed selalu rasio 1 dan tier Inti", () => {
+  it("selalu ada TEPAT SATU alamat di rasio 1, dan dia tier Inti", () => {
     const rows = computeTrust(graph({ edges: honestEdges(SEED, 5, 100) }));
-    expect(find(rows, SEED).ratio).toBeCloseTo(1, 9);
-    expect(find(rows, SEED).tier).toBe(3);
+    const puncak = rows.filter((r) => r.ratio >= 1);
+    expect(puncak).toHaveLength(1);
+    expect(puncak[0]!.tier).toBe(3);
+    // Penyebutnya skor tertinggi, bukan skor seed: PageRank berpersonalisasi
+    // tidak menjamin seed yang tertinggi (spec fase §4.5).
+    for (const r of rows) expect(r.ratio).toBeLessThanOrEqual(1);
+  });
+
+  it("seed tetap berada jauh di atas gumpalan yang tidak terhubung", () => {
+    const edges = [...honestEdges(SEED, 5, 100)];
+    for (let i = 0; i < 20; i++) {
+      edges.push(edge(addr(3000 + i), addr(3000 + ((i + 1) % 20)), "gumpalan", NOW));
+    }
+    const rows = computeTrust(graph({ edges }));
+    expect(find(rows, SEED).ratio).toBeGreaterThan(find(rows, addr(3000)).ratio * 50);
   });
 
   it("vouch menaikkan skor orang yang dijamin", () => {
@@ -1816,15 +1841,17 @@ export function computeTrust(graph: TrustGraph, opts: TrustOptions = {}): TrustR
   // Pelaku terkonfirmasi kehilangan skornya sendiri, bukan cuma aliran keluarnya.
   for (const s of graph.slashed) adjusted.set(s.toLowerCase(), 0);
 
-  // 7. Rasio terhadap seed tertinggi -> tier.
-  const seedTop = Math.max(
-    0,
-    ...graph.seeds.map((s) => adjusted.get(s.address.toLowerCase()) ?? 0),
-  );
+  // 7. Rasio terhadap skor TERTINGGI DI GRAF -> tier.
+  //
+  // Penyebutnya bukan skor seed. PageRank berpersonalisasi tidak menjamin seed
+  // memegang skor tertinggi: kepercayaan mengalir keluar dari seed lalu menumpuk
+  // di simpul yang paling banyak tetangganya. Kalau penyebutnya skor seed,
+  // rasio bisa melebihi 1 dan janji rentang 0..1 di spec fase §4.5 jadi bohong.
+  const topScore = Math.max(0, ...nodes.map((n) => adjusted.get(n) ?? 0));
 
   const rows: TrustResult[] = nodes.map((n) => {
     const score = adjusted.get(n) ?? 0;
-    const ratio = seedTop > 0 ? score / seedTop : 0;
+    const ratio = topScore > 0 ? score / topScore : 0;
     return {
       address: n as Address,
       score,
@@ -1849,7 +1876,7 @@ export * from "./compute";
 - [ ] **Step 7: Jalankan seluruh test paket, pastikan LULUS**
 
 Jalankan: `pnpm --filter @nearly/trust test && pnpm --filter @nearly/trust typecheck`
-Diharapkan: PASS — 67 test, typecheck bersih
+Diharapkan: PASS — 69 test, typecheck bersih
 
 - [ ] **Step 8: Commit**
 
@@ -4866,11 +4893,13 @@ Diharapkan: keluaran menyebut jumlah alamat yang dihitung, dan `dipublikasi` sam
 
 Empat pemeriksaan, semua harus lulus:
 
-1. **Seed berdiri di `Inti`.**
+1. **Seed berdiri tinggi.**
    ```bash
    curl -s "$API_URL/trust/$SEED_ADDRESS" | jq
    ```
-   Diharapkan: `"tier": 3`, `"tierLabel": "Inti"`.
+   Diharapkan: `"tier"` bernilai **2 atau 3** (`Terpercaya` atau `Inti`). Jangan menuntut
+   `Inti`: penyebut rasio adalah skor tertinggi di graf, dan peserta yang paling banyak
+   bersalaman bisa saja melampaui seed. Itu perilaku yang benar, bukan kerusakan.
 
 2. **Alamat asing berdiri di `Baru`.**
    ```bash
@@ -5132,7 +5161,7 @@ git commit -m "feat: tampilan tier + bukti, tombol vouch dan lapor di profil"
 pnpm test && pnpm typecheck && (cd packages/contracts && forge test)
 ```
 
-Diharapkan hijau semua: `shared` 65, `trust` 67, `api` 72, `mobile` 21, Solidity 41.
+Diharapkan hijau semua: `shared` 65, `trust` 69, `api` 72, `mobile` 21, Solidity 41.
 Angka-angka ini indikatif — kalau kamu menambahkan test di luar yang tertulis di rencana,
 jumlahnya wajar lebih besar. Yang tidak boleh terjadi adalah **lebih kecil**.
 
