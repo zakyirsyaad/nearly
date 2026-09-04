@@ -1,4 +1,4 @@
-import { neighborCells } from "./geohash.js";
+import { neighborCells } from "./geohash";
 
 /** Toleransi waktu ko-lokasi (spec §7.1 langkah 4): ±120 detik. */
 export const COLOCATION_WINDOW_MS = 120_000;

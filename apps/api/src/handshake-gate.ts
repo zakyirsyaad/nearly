@@ -1,6 +1,6 @@
 import type { Address, Hex } from "viem";
 import { recoverAcceptSigner, recoverOfferSigner, verifyColocation } from "@nearly/shared";
-import type { GateDeps } from "./ports.js";
+import type { GateDeps } from "./ports";
 
 /** Spec §11.1 butir 8 diterapkan sama untuk koneksi: kuota harian global. */
 export const DAILY_CONNECTION_QUOTA = 30;

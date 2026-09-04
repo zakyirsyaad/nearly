@@ -1,9 +1,9 @@
 import { serve } from "@hono/node-server";
 import type { Address, Hex } from "viem";
-import { createApp } from "./app.js";
-import { createProfileStore, createStore, createSupabase } from "./db.js";
-import { createIdentity } from "./identity.js";
-import { createRelayer } from "./relayer.js";
+import { createApp } from "./app";
+import { createProfileStore, createStore, createSupabase } from "./db";
+import { createIdentity } from "./identity";
+import { createRelayer } from "./relayer";
 
 function required(name: string): string {
   const v = process.env[name];

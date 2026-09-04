@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { handshakeErrorMessage } from "../src/messages.js";
+import { handshakeErrorMessage } from "../src/messages";
 
 describe("handshakeErrorMessage", () => {
   it("menjelaskan bahwa keduanya terlalu jauh", () => {

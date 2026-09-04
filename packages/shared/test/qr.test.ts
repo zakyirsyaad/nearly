@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { Address, Hex } from "viem";
 import {
   makeNonce, qrExpiresAt, encodeQr, decodeQr, isQrExpired, QR_TTL_MS,
-} from "../src/index.js";
+} from "../src/index";
 
 const P = {
   v: 1 as const,

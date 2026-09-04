@@ -3,7 +3,7 @@ import {
   acceptTypedData, offerTypedData,
   type HandshakeAccept, type HandshakeOffer,
 } from "@nearly/shared";
-import type { NearlySigner } from "./signer.js";
+import type { NearlySigner } from "./signer";
 
 type SignTypedData = (args: unknown) => Promise<Hex>;
 

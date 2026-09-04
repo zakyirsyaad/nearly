@@ -1,8 +1,8 @@
 import { createWalletClient, http, type Address, type Hex } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 import { bscTestnet } from "viem/chains";
-import { CONNECTION_REGISTRY_ABI } from "./abi.js";
-import type { ChainPort } from "./ports.js";
+import { CONNECTION_REGISTRY_ABI } from "./abi";
+import type { ChainPort } from "./ports";
 
 /**
  * Relayer = attestor. Server membayar gas supaya pengguna tidak pernah melihat

@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { GEOHASH_PRECISION } from "./geohash.js";
+import { GEOHASH_PRECISION } from "./geohash";
 
 const address = z.string().regex(/^0x[0-9a-fA-F]{40}$/);
 const bytes32 = z.string().regex(/^0x[0-9a-fA-F]{64}$/);

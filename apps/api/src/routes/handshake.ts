@@ -1,8 +1,8 @@
 import { Hono } from "hono";
 import type { Address, Hex } from "viem";
 import { AcceptRequestSchema, OfferRequestSchema } from "@nearly/shared";
-import { acceptHandshake, submitOffer } from "../handshake-gate.js";
-import type { GateDeps } from "../ports.js";
+import { acceptHandshake, submitOffer } from "../handshake-gate";
+import type { GateDeps } from "../ports";
 
 export function handshakeRoutes(deps: GateDeps) {
   const r = new Hono();

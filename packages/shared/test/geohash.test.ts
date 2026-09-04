@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { encodeCell, neighborCells, GEOHASH_PRECISION } from "../src/geohash.js";
+import { encodeCell, neighborCells, GEOHASH_PRECISION } from "../src/geohash";
 
 describe("encodeCell", () => {
   it("menghasilkan geohash presisi 7", () => {

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { Address } from "viem";
-import { orderPair, rowToOffer } from "../src/db.js";
+import { orderPair, rowToOffer } from "../src/db";
 
 const LOW = "0x0000000000000000000000000000000000000001" as Address;
 const HIGH = "0xffffffffffffffffffffffffffffffffffffffff" as Address;

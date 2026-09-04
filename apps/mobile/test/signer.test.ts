@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { privateKeyToAccount } from "viem/accounts";
 import type { Address, Hex } from "viem";
 import { recoverOfferSigner, recoverAcceptSigner } from "@nearly/shared";
-import { createDevSigner } from "../src/signer.js";
+import { createDevSigner } from "../src/signer";
 
 const PK = "0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d" as Hex;
 const VC = "0x0000000000000000000000000000000000000abc" as Address;

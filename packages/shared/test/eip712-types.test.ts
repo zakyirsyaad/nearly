@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   encodeEip712Type, OFFER_TYPE_STRING, ACCEPT_TYPE_STRING, HANDSHAKE_TYPES,
-} from "../src/index.js";
+} from "../src/index";
 
 describe("kunci kontrak EIP-712 TS <-> Solidity", () => {
   it("HandshakeOffer di TS menghasilkan string tipe yang sama dengan Solidity", () => {

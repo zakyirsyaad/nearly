@@ -1,7 +1,7 @@
 import { Hono } from "hono";
-import { handshakeRoutes } from "./routes/handshake.js";
-import { profileRoutes } from "./routes/profile.js";
-import type { GateDeps } from "./ports.js";
+import { handshakeRoutes } from "./routes/handshake";
+import { profileRoutes } from "./routes/profile";
+import type { GateDeps } from "./ports";
 
 export function createApp(deps: GateDeps) {
   const app = new Hono();

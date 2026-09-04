@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useState } from "react";
 import { encodeQr, makeNonce, qrExpiresAt, QR_TTL_MS } from "@nearly/shared";
-import type { NearlySigner } from "../signer.js";
-import { getCurrentCell } from "../location.js";
-import { postOffer } from "../api.js";
+import type { NearlySigner } from "../signer";
+import { getCurrentCell } from "../location";
+import { postOffer } from "../api";
 
 /**
  * Menyiapkan QR baru setiap 30 detik. Setiap siklus: ambil lokasi SENDIRI,

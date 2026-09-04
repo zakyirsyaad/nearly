@@ -1,6 +1,6 @@
 import { Hono } from "hono";
 import { isAddress, type Address } from "viem";
-import type { GateDeps } from "../ports.js";
+import type { GateDeps } from "../ports";
 
 export function profileRoutes(deps: GateDeps) {
   const r = new Hono();

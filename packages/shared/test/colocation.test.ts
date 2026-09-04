@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { encodeCell, neighborCells } from "../src/geohash.js";
-import { verifyColocation, COLOCATION_WINDOW_MS } from "../src/colocation.js";
+import { encodeCell, neighborCells } from "../src/geohash";
+import { verifyColocation, COLOCATION_WINDOW_MS } from "../src/colocation";
 
 const JAKARTA = encodeCell(-6.2088, 106.8456);
 const BANDUNG = encodeCell(-6.9175, 107.6191);

@@ -1,6 +1,6 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import type { Address, Hex } from "viem";
-import type { HandshakeStore, PendingOffer, ProfileStore } from "./ports.js";
+import type { HandshakeStore, PendingOffer, ProfileStore } from "./ports";
 
 /** Urutan kanonik: selalu [min, max] dalam huruf kecil (constraint addr_a < addr_b). */
 export function orderPair(a: Address, b: Address): [Address, Address] {

@@ -1,5 +1,5 @@
 import type { Hex } from "viem";
-import { CONFIG } from "./config.js";
+import { CONFIG } from "./config";
 
 export class ApiError extends Error {
   constructor(public code: string, public status: number, public reason?: string) {

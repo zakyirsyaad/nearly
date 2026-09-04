@@ -1,5 +1,5 @@
 import { bytesToHex, type Address, type Hex } from "viem";
-import { QR_TTL_MS } from "./handshake.js";
+import { QR_TTL_MS } from "./handshake";
 
 export type QrPayload = {
   v: 1;

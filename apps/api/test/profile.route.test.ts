@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import type { Address } from "viem";
-import { createApp } from "../src/app.js";
-import type { GateDeps } from "../src/ports.js";
+import { createApp } from "../src/app";
+import type { GateDeps } from "../src/ports";
 
 const A = "0x0000000000000000000000000000000000000aaa" as Address;
 const B = "0x0000000000000000000000000000000000000bbb" as Address;

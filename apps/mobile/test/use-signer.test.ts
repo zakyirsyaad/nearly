@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { Address, Hex } from "viem";
-import { pickSigner } from "../src/use-signer.js";
+import { pickSigner } from "../src/use-signer";
 
 const ADDR = "0x0000000000000000000000000000000000000aaa" as Address;
 const PK = "0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d" as Hex;

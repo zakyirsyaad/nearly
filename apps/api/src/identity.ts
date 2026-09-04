@@ -1,6 +1,6 @@
 import { createPublicClient, http, type Address } from "viem";
 import { bscTestnet, mainnet } from "viem/chains";
-import type { IdentityPort } from "./ports.js";
+import type { IdentityPort } from "./ports";
 
 /**
  * ENS hanya ada di Ethereum mainnet — memakai RPC BSC untuk ENS akan SELALU
