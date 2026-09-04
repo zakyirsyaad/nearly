@@ -1,6 +1,9 @@
 // Konfigurasi Metro untuk monorepo pnpm.
-// Tanpa watchFolders ke akar workspace, perubahan di packages/shared tidak
-// terdeteksi; tanpa nodeModulesPaths, resolusi paket gagal saat build EAS.
+// watchFolders membuat perubahan di packages/shared ikut terdeteksi;
+// nodeModulesPaths memastikan resolusi paket bekerja saat build EAS.
+//
+// disableHierarchicalLookup TIDAK diset — expo/metro-config SDK 57 sudah
+// menangani monorepo sendiri, dan mengoverride-nya justru merusak resolusi.
 const { getDefaultConfig } = require("expo/metro-config");
 const path = require("node:path");
 
@@ -13,6 +16,5 @@ config.resolver.nodeModulesPaths = [
   path.resolve(projectRoot, "node_modules"),
   path.resolve(workspaceRoot, "node_modules"),
 ];
-config.resolver.disableHierarchicalLookup = true;
 
 module.exports = config;
