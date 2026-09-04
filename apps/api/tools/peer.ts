@@ -12,10 +12,11 @@
  *   tsx tools/peer.ts --qr '<isi QR>' --at jakarta     # harus BERHASIL
  *   tsx tools/peer.ts --qr '<isi QR>' --at bandung     # harus GAGAL
  *   tsx tools/peer.ts --qr '<isi QR>' --at -6.2,106.84 # koordinat bebas
+ *   tsx tools/peer.ts --qr '<isi QR>' --at qqws0xd --fresh   # dompet B baru
  *
  * Env: PEER_PRIVATE_KEY, API_URL, CONNECTION_REGISTRY_ADDRESS
  */
-import { privateKeyToAccount } from "viem/accounts";
+import { generatePrivateKey, privateKeyToAccount } from "viem/accounts";
 import type { Address, Hex } from "viem";
 import { acceptTypedData, decodeQr, encodeCell, isQrExpired } from "@nearly/shared";
 
@@ -60,7 +61,14 @@ async function main() {
   // supaya satu .env yang sama bisa dipakai aplikasi mobile dan alat ini.
   const apiUrl = need("API_URL", process.env.API_URL ?? process.env.EXPO_PUBLIC_API_URL);
   const registry = need("CONNECTION_REGISTRY_ADDRESS", process.env.CONNECTION_REGISTRY_ADDRESS) as Address;
-  const account = privateKeyToAccount(need("PEER_PRIVATE_KEY", process.env.PEER_PRIVATE_KEY) as Hex);
+  // --fresh: dompet B sekali pakai. Berguna untuk uji berulang, karena satu
+  // pasangan hanya boleh terkoneksi sekali selamanya (spec §9.4) sehingga
+  // percobaan kedua dengan dompet yang sama selalu ditolak already_connected.
+  const fresh = process.argv.includes("--fresh");
+  const account = privateKeyToAccount(
+    fresh ? generatePrivateKey() : (need("PEER_PRIVATE_KEY", process.env.PEER_PRIVATE_KEY) as Hex),
+  );
+  if (fresh) console.error("(dompet B sekali pakai)");
 
   const payload = decodeQr(need("--qr", arg("qr")));
   if (!payload) throw new Error("Isi QR tidak bisa dibaca sebagai payload Nearly.");
