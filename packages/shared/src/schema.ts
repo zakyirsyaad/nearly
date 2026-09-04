@@ -65,4 +65,6 @@ export const ReportRequestSchema = z.object({
   subject: AddressSchema,
   reason: z.string().min(10).max(1000),
   evidence: z.string().max(2000).optional(),
+  expiresAt: z.string().regex(/^\d+$/),
+  sig: SignatureSchema,
 });

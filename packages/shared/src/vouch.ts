@@ -1,5 +1,5 @@
 import {
-  encodeAbiParameters, keccak256, recoverTypedDataAddress, type Address, type Hex,
+  encodeAbiParameters, keccak256, recoverTypedDataAddress, toHex, type Address, type Hex,
 } from "viem";
 import { NEARLY_CHAIN_ID } from "./handshake";
 
@@ -15,8 +15,21 @@ export type VouchMessage = {
 
 export type RevokeMessage = { from: Address; to: Address; expiresAt: bigint };
 
+/**
+ * Laporan JUGA lewat EIP-712, meniru pola vouch — tanpa ini `reporter` datang
+ * telanjang dari body request dan siapa pun bisa mengaku sebagai tiga pelapor
+ * ber-trust tinggi yang saling asing untuk menembus gerbang §6 spec fase.
+ * Catatan: laporan TETAP off-chain (spec fase §6) — tanda tangan ini hanya
+ * dipakai server untuk membuktikan `reporter` benar-benar menandatangani
+ * laporannya sendiri, tidak pernah diverifikasi kontrak.
+ */
+export type ReportMessage = {
+  reporter: Address; subject: Address; reasonHash: Hex; expiresAt: bigint;
+};
+
 // WAJIB identik dengan typehash di packages/contracts/src/VouchRegistry.sol.
-// Dijaga oleh test kunci di Task 9.
+// Dijaga oleh test kunci di Task 9. (Report tidak punya typehash Solidity —
+// laporan tidak pernah naik on-chain — jadi hanya Vouch & RevokeVouch dijaga.)
 const TYPES = {
   Vouch: [
     { name: "from", type: "address" },
@@ -27,6 +40,12 @@ const TYPES = {
   RevokeVouch: [
     { name: "from", type: "address" },
     { name: "to", type: "address" },
+    { name: "expiresAt", type: "uint64" },
+  ],
+  Report: [
+    { name: "reporter", type: "address" },
+    { name: "subject", type: "address" },
+    { name: "reasonHash", type: "bytes32" },
     { name: "expiresAt", type: "uint64" },
   ],
 } as const;
@@ -64,6 +83,12 @@ export function tagsHashOf(tags: string[]): Hex {
   return keccak256(encodeAbiParameters([{ type: "string[]" }], [normalizeTags(tags)]));
 }
 
+/** Hash isi laporan, dipakai di dalam tanda tangan supaya reasonnya tidak bisa
+ * ditukar diam-diam setelah tanda tangan dibuat. */
+export function reasonHashOf(reason: string): Hex {
+  return keccak256(toHex(reason));
+}
+
 export function vouchTypedData(msg: VouchMessage, verifyingContract: Address) {
   return {
     domain: domain(verifyingContract),
@@ -82,6 +107,15 @@ export function revokeTypedData(msg: RevokeMessage, verifyingContract: Address) 
   } as const;
 }
 
+export function reportTypedData(msg: ReportMessage, verifyingContract: Address) {
+  return {
+    domain: domain(verifyingContract),
+    types: { Report: TYPES.Report },
+    primaryType: "Report",
+    message: msg,
+  } as const;
+}
+
 export function recoverVouchSigner(
   msg: VouchMessage, signature: Hex, verifyingContract: Address,
 ): Promise<Address> {
@@ -92,4 +126,10 @@ export function recoverRevokeSigner(
   msg: RevokeMessage, signature: Hex, verifyingContract: Address,
 ): Promise<Address> {
   return recoverTypedDataAddress({ ...revokeTypedData(msg, verifyingContract), signature });
+}
+
+export function recoverReportSigner(
+  msg: ReportMessage, signature: Hex, verifyingContract: Address,
+): Promise<Address> {
+  return recoverTypedDataAddress({ ...reportTypedData(msg, verifyingContract), signature });
 }

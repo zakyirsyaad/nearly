@@ -2,8 +2,9 @@ import { describe, expect, it } from "vitest";
 import { privateKeyToAccount } from "viem/accounts";
 import type { Address, Hex } from "viem";
 import {
-  normalizeTags, recoverRevokeSigner, recoverVouchSigner, revokeTypedData,
-  tagsHashOf, vouchTypedData, VouchRequestSchema,
+  normalizeTags, reasonHashOf, recoverReportSigner, recoverRevokeSigner, recoverVouchSigner,
+  reportTypedData, revokeTypedData, tagsHashOf, vouchTypedData,
+  ReportRequestSchema, VouchRequestSchema,
 } from "../src/index";
 
 const PK = "0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d" as Hex;
@@ -100,6 +101,61 @@ describe("revokeTypedData", () => {
   });
 });
 
+describe("reasonHashOf", () => {
+  it("isi berbeda menghasilkan hash berbeda", () => {
+    expect(reasonHashOf("alasan A")).not.toBe(reasonHashOf("alasan B"));
+  });
+
+  it("isi sama menghasilkan hash sama", () => {
+    expect(reasonHashOf("sama persis")).toBe(reasonHashOf("sama persis"));
+  });
+});
+
+describe("reportTypedData / recoverReportSigner (Task 1)", () => {
+  const reportMsg = {
+    reporter: account.address,
+    subject: TO,
+    reasonHash: reasonHashOf("menjual token palsu di venue"),
+    expiresAt: 1_800_000_000n,
+  };
+
+  it("tanda tangan bisa dipulihkan kembali ke penandatangan", async () => {
+    const sig = await account.signTypedData(reportTypedData(reportMsg, CONTRACT));
+    expect((await recoverReportSigner(reportMsg, sig, CONTRACT)).toLowerCase())
+      .toBe(account.address.toLowerCase());
+  });
+
+  it("GERBANG: tanda tangan untuk satu alasan tidak sah untuk reasonHash lain", async () => {
+    // Ini persis serangan yang ditutup Task 1: tanpa reasonHash di dalam
+    // pesan yang ditandatangani, `reason` di body bisa ditukar diam-diam
+    // setelah tanda tangan dibuat tanpa membatalkannya.
+    const sig = await account.signTypedData(reportTypedData(reportMsg, CONTRACT));
+    const ditukar = { ...reportMsg, reasonHash: reasonHashOf("alasan yang berbeda") };
+    expect((await recoverReportSigner(ditukar, sig, CONTRACT)).toLowerCase())
+      .not.toBe(account.address.toLowerCase());
+  });
+
+  it("mengubah reporter atau subject membuat pemulihan meleset", async () => {
+    const sig = await account.signTypedData(reportTypedData(reportMsg, CONTRACT));
+    const diubah = { ...reportMsg, subject: CONTRACT };
+    expect((await recoverReportSigner(diubah, sig, CONTRACT)).toLowerCase())
+      .not.toBe(account.address.toLowerCase());
+  });
+
+  it("terikat ke chainId 97", () => {
+    expect(reportTypedData(reportMsg, CONTRACT).domain.chainId).toBe(97);
+  });
+
+  it("tanda tangan vouch TIDAK bisa dipakai sebagai laporan", async () => {
+    const sig = await account.signTypedData(vouchTypedData(msg, CONTRACT));
+    const r = {
+      reporter: account.address, subject: TO, reasonHash: msg.tagsHash, expiresAt: msg.expiresAt,
+    };
+    expect((await recoverReportSigner(r, sig, CONTRACT)).toLowerCase())
+      .not.toBe(account.address.toLowerCase());
+  });
+});
+
 describe("VouchRequestSchema", () => {
   it("menerima badan permintaan yang sah", () => {
     expect(VouchRequestSchema.safeParse({
@@ -111,6 +167,28 @@ describe("VouchRequestSchema", () => {
   it("menolak alamat yang tidak sah", () => {
     expect(VouchRequestSchema.safeParse({
       from: "bukan-alamat", to: TO, tags: [], expiresAt: "1800000000", sig: `0x${"1".repeat(130)}`,
+    }).success).toBe(false);
+  });
+});
+
+describe("ReportRequestSchema (Task 1: wajib expiresAt + sig)", () => {
+  it("menerima badan permintaan yang sah, termasuk expiresAt dan sig", () => {
+    expect(ReportRequestSchema.safeParse({
+      reporter: account.address, subject: TO, reason: "alasan yang cukup panjang untuk lolos",
+      expiresAt: "1800000000", sig: `0x${"1".repeat(130)}`,
+    }).success).toBe(true);
+  });
+
+  it("GERBANG: menolak badan TANPA sig — reporter tidak lagi boleh telanjang", () => {
+    expect(ReportRequestSchema.safeParse({
+      reporter: account.address, subject: TO, reason: "alasan yang cukup panjang untuk lolos",
+    }).success).toBe(false);
+  });
+
+  it("menolak badan tanpa expiresAt", () => {
+    expect(ReportRequestSchema.safeParse({
+      reporter: account.address, subject: TO, reason: "alasan yang cukup panjang untuk lolos",
+      sig: `0x${"1".repeat(130)}`,
     }).success).toBe(false);
   });
 });
