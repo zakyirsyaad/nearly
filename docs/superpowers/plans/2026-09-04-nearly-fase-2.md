@@ -1716,11 +1716,19 @@ describe("computeTrust", () => {
     }
 
     const rows = computeTrust(graph({ edges }));
+
+    // Gumpalan sybil: NOL MUTLAK, bukan sekadar kecil. Tidak ada satu pun
+    // jalur dari mereka ke seed, jadi tidak ada kepercayaan yang bisa masuk.
     for (const s of sybil) {
+      expect(find(rows, s).ratio).toBe(0);
       expect(find(rows, s).tier).toBe(0);
-      expect(find(rows, s).ratio).toBeLessThan(0.01);
     }
-    expect(find(rows, addr(100)).tier).toBeGreaterThan(0);
+
+    // addr(100) baru sekali bersalaman, jadi dia pun tier Baru — dan itu benar,
+    // dia memang baru. Yang membedakannya dari bot bukan tier-nya, melainkan
+    // bahwa skornya BUKAN nol: ada jalur nyata dari dia ke seed.
+    expect(find(rows, addr(100)).ratio).toBeGreaterThan(0.01);
+    expect(find(rows, SEED).tier).toBe(3);
   });
 
   it("GERBANG: tier orang yang sama TIDAK berubah saat populasi naik 20 -> 200", () => {
@@ -1826,8 +1834,10 @@ describe("computeTrust", () => {
       edge(SEED, addr(101), "qqguv1r:2", NOW),
       edge(SEED, addr(102), "w1xyz00:1", NOW),
     ];
+    // Vouch mengarah KE seed, karena bukti vouch menghitung yang DITERIMA —
+    // lihat test berikutnya. Menjamin orang lain bukan bukti tentang dirimu.
     const rows = computeTrust(
-      graph({ edges, vouches: [{ from: SEED, to: addr(100), atMs: NOW }] }),
+      graph({ edges, vouches: [{ from: addr(100), to: SEED, atMs: NOW }] }),
     );
     const seed = find(rows, SEED);
     expect(seed.evidence.connections).toBe(3);
