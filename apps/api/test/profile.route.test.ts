@@ -1,12 +1,12 @@
 import { describe, expect, it, vi } from "vitest";
 import type { Address } from "viem";
-import { createApp } from "../src/app";
-import type { GateDeps } from "../src/ports";
+import { createApp, type TrustDeps } from "../src/app";
 
 const A = "0x0000000000000000000000000000000000000aaa" as Address;
 const B = "0x0000000000000000000000000000000000000bbb" as Address;
+const TX = `0x${"ab".repeat(32)}`;
 
-function deps(): GateDeps {
+function deps(): TrustDeps {
   return {
     verifyingContract: A,
     nowMs: () => 1_700_000_000_000,
@@ -15,7 +15,7 @@ function deps(): GateDeps {
       areConnected: async () => false, countConnectionsSince: async () => 0,
       recordConnection: async () => {},
     },
-    chain: { submitConnect: async () => `0x${"ab".repeat(32)}` },
+    chain: { submitConnect: async () => TX },
     profiles: {
       listConnections: vi.fn(async () => [{ address: B, txHash: `0x${"cd".repeat(32)}`, at: 1 }]),
       countConnections: vi.fn(async () => 1),
@@ -25,7 +25,36 @@ function deps(): GateDeps {
       ensName: vi.fn(async () => "ghost.eth"),
       txCount: vi.fn(async () => 42),
     },
-  } as unknown as GateDeps;
+    // Stub Fase 2: tidak dipakai langsung oleh test profil ini, hanya supaya
+    // bentuk TrustDeps lengkap untuk onChanged() yang dipicu createApp.
+    trust: {
+      loadGraph: async () => ({ edges: [], vouches: [], seeds: [], slashed: [], nowMs: 0 }),
+      saveSnapshots: async () => {},
+      getSnapshot: async () => null,
+      listPublishedTiers: async () => new Map(),
+      markPublished: async () => {},
+    },
+    vouches: {
+      countVouchesSince: async () => 0,
+      hasVouch: async () => false,
+      recordVouch: async () => {},
+      markRevoked: async () => {},
+    },
+    reports: {
+      recordReport: async () => {},
+      listReports: async () => [],
+      setReportStatus: async () => {},
+      recordSlash: async () => {},
+    },
+    attestor: { setScore: async () => TX },
+    vouchChain: {
+      submitVouch: async () => TX,
+      submitRevoke: async () => TX,
+      submitSlash: async () => TX,
+    },
+    vouchContract: A,
+    adminToken: "test-admin-token",
+  } as unknown as TrustDeps;
 }
 
 describe("GET /connections/:address", () => {

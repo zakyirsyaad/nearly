@@ -2,8 +2,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { privateKeyToAccount } from "viem/accounts";
 import type { Address, Hex } from "viem";
 import { encodeCell, offerTypedData, acceptTypedData } from "@nearly/shared";
-import { createApp } from "../src/app";
-import type { GateDeps, PendingOffer } from "../src/ports";
+import { createApp, type TrustDeps } from "../src/app";
+import type { PendingOffer } from "../src/ports";
 
 const A = privateKeyToAccount("0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d");
 const B = privateKeyToAccount("0x5de4111afa1a4b94908f83103eb1f1706367c2e68ca870fc3fb9a804cdab365a");
@@ -14,7 +14,7 @@ const NOW = 1_700_000_000_000;
 const EXPIRES = BigInt(Math.floor(NOW / 1000) + 30);
 const TX = `0x${"ab".repeat(32)}` as Hex;
 
-function deps(): GateDeps {
+function deps(): TrustDeps {
   const offers = new Map<Hex, PendingOffer>();
   return {
     verifyingContract: VC,
@@ -39,6 +39,36 @@ function deps(): GateDeps {
       ensName: async () => null,
       txCount: async () => 0,
     },
+    // Stub Fase 2: tidak dipakai langsung oleh test handshake ini, tapi
+    // createApp memicu onChanged() (yang membaca deps trust) setelah accept
+    // berhasil, jadi bentuknya harus lengkap.
+    trust: {
+      loadGraph: async () => ({ edges: [], vouches: [], seeds: [], slashed: [], nowMs: NOW }),
+      saveSnapshots: async () => {},
+      getSnapshot: async () => null,
+      listPublishedTiers: async () => new Map(),
+      markPublished: async () => {},
+    },
+    vouches: {
+      countVouchesSince: async () => 0,
+      hasVouch: async () => false,
+      recordVouch: async () => {},
+      markRevoked: async () => {},
+    },
+    reports: {
+      recordReport: async () => {},
+      listReports: async () => [],
+      setReportStatus: async () => {},
+      recordSlash: async () => {},
+    },
+    attestor: { setScore: async () => TX },
+    vouchChain: {
+      submitVouch: async () => TX,
+      submitRevoke: async () => TX,
+      submitSlash: async () => TX,
+    },
+    vouchContract: VC,
+    adminToken: "test-admin-token",
   };
 }
 
@@ -92,7 +122,7 @@ describe("POST /handshake/offer", () => {
 });
 
 describe("POST /handshake/accept", () => {
-  let d: GateDeps;
+  let d: TrustDeps;
   let app: ReturnType<typeof createApp>;
   beforeEach(async () => {
     d = deps();

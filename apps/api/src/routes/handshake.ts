@@ -4,7 +4,7 @@ import { AcceptRequestSchema, OfferRequestSchema } from "@nearly/shared";
 import { acceptHandshake, submitOffer } from "../handshake-gate";
 import type { GateDeps } from "../ports";
 
-export function handshakeRoutes(deps: GateDeps) {
+export function handshakeRoutes(deps: GateDeps & { onChanged: () => Promise<void> }) {
   const r = new Hono();
 
   r.post("/handshake/offer", async (c) => {
@@ -47,6 +47,8 @@ export function handshakeRoutes(deps: GateDeps) {
       deps,
     );
     if (!result.ok) return c.json(result.failure, result.failure.httpStatus);
+
+    await deps.onChanged();
     return c.json({ txHash: result.value.txHash });
   });
 

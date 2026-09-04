@@ -4,6 +4,9 @@ import { createApp } from "./app";
 import { createProfileStore, createStore, createSupabase } from "./db";
 import { createIdentity } from "./identity";
 import { createRelayer } from "./relayer";
+import { createTrustStore, createVouchStore, createReportStore } from "./trust/store";
+import { createAttestor } from "./trust/attestor";
+import { createVouchRelayer } from "./vouch-relayer";
 
 function required(name: string): string {
   const v = process.env[name];
@@ -12,6 +15,8 @@ function required(name: string): string {
 }
 
 const registry = required("CONNECTION_REGISTRY_ADDRESS") as Address;
+const vouchRegistry = required("VOUCH_REGISTRY_ADDRESS") as Address;
+const trustAttestorAddress = required("TRUST_ATTESTOR_ADDRESS") as Address;
 
 const supabase = createSupabase(
   required("SUPABASE_URL"),
@@ -29,6 +34,21 @@ const app = createApp({
   }),
   verifyingContract: registry,
   nowMs: () => Date.now(),
+  trust: createTrustStore(supabase),
+  vouches: createVouchStore(supabase),
+  reports: createReportStore(supabase),
+  attestor: createAttestor({
+    rpcUrl: required("RPC_URL"),
+    privateKey: required("RELAYER_PRIVATE_KEY") as Hex,
+    attestor: trustAttestorAddress,
+  }),
+  vouchChain: createVouchRelayer({
+    rpcUrl: required("RPC_URL"),
+    privateKey: required("RELAYER_PRIVATE_KEY") as Hex,
+    registry: vouchRegistry,
+  }),
+  vouchContract: vouchRegistry,
+  adminToken: required("ADMIN_TOKEN"),
 });
 
 serve({ fetch: app.fetch, port: 8787 });
