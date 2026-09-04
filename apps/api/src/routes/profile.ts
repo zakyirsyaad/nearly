@@ -12,6 +12,21 @@ export function profileRoutes(deps: GateDeps) {
     return c.json({ connections: await deps.profiles.listConnections(addr, 100) });
   });
 
+  // Jawaban ya/tidak untuk "apakah A dan B sudah terkoneksi", dipakai layar
+  // profil mobile untuk memutuskan apakah tombol Vouch muncul. Sengaja BUKAN
+  // menarik daftar koneksi (GET /connections/:address dibatasi 100 terbaru) —
+  // pasangan yang sudah terkoneksi tapi di luar 100 terbaru harus tetap benar.
+  r.get("/connected/:a/:b", async (c) => {
+    const rawA = c.req.param("a");
+    const rawB = c.req.param("b");
+    if (!isAddress(rawA) || !isAddress(rawB)) return c.json({ code: "invalid_address" }, 400);
+    const connected = await deps.store.areConnected(
+      rawA.toLowerCase() as Address,
+      rawB.toLowerCase() as Address,
+    );
+    return c.json({ connected });
+  });
+
   r.get("/profile/:address", async (c) => {
     const raw = c.req.param("address");
     if (!isAddress(raw)) return c.json({ code: "invalid_address" }, 400);

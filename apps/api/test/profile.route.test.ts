@@ -12,7 +12,7 @@ function deps(): TrustDeps {
     nowMs: () => 1_700_000_000_000,
     store: {
       putOffer: async () => {}, getOffer: async () => null, consumeOffer: async () => {},
-      areConnected: async () => false, countConnectionsSince: async () => 0,
+      areConnected: vi.fn(async () => false), countConnectionsSince: async () => 0,
       recordConnection: async () => {},
     },
     chain: { submitConnect: async () => TX },
@@ -99,5 +99,37 @@ describe("GET /profile/:address", () => {
 
   it("400 untuk alamat yang tidak sah", async () => {
     expect((await createApp(deps()).request("/profile/xyz")).status).toBe(400);
+  });
+});
+
+describe("GET /connected/:a/:b", () => {
+  it("true untuk pasangan yang sudah terkoneksi", async () => {
+    const d = deps();
+    d.store.areConnected = vi.fn(async () => true);
+    const res = await createApp(d).request(`/connected/${A}/${B}`);
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({ connected: true });
+    expect(d.store.areConnected).toHaveBeenCalledWith(
+      A.toLowerCase() as Address, B.toLowerCase() as Address,
+    );
+  });
+
+  it("false untuk pasangan yang belum terkoneksi", async () => {
+    const d = deps();
+    d.store.areConnected = vi.fn(async () => false);
+    const res = await createApp(d).request(`/connected/${A}/${B}`);
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({ connected: false });
+    expect(d.store.areConnected).toHaveBeenCalledWith(
+      A.toLowerCase() as Address, B.toLowerCase() as Address,
+    );
+  });
+
+  it("400 untuk alamat yang tidak sah", async () => {
+    const d = deps();
+    d.store.areConnected = vi.fn(async () => true);
+    const res = await createApp(d).request(`/connected/bukan-alamat/${B}`);
+    expect(res.status).toBe(400);
+    expect(d.store.areConnected).not.toHaveBeenCalled();
   });
 });
