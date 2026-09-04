@@ -2067,6 +2067,13 @@ describe("tagsHashOf", () => {
     expect(tagsHashOf(["b", "a"])).toBe(tagsHashOf(["a", "b"]));
   });
 
+  it("GERBANG: tag bermultikata tidak bertabrakan dengan pemisah", () => {
+    // Digabung dengan spasi, keduanya menjadi "a b c" dan hash-nya identik.
+    // Itu membuat satu himpunan tag bisa ditukar diam-diam dengan himpunan
+    // lain yang tetap lolos verifikasi terhadap hash on-chain.
+    expect(tagsHashOf(["a b", "c"])).not.toBe(tagsHashOf(["a", "b c"]));
+  });
+
   it("isi berbeda menghasilkan hash berbeda", () => {
     expect(tagsHashOf(["a"])).not.toBe(tagsHashOf(["b"]));
   });
@@ -2143,7 +2150,9 @@ Diharapkan: FAIL — `normalizeTags is not a function`
 
 `packages/shared/src/vouch.ts`:
 ```ts
-import { keccak256, recoverTypedDataAddress, toHex, type Address, type Hex } from "viem";
+import {
+  encodeAbiParameters, keccak256, recoverTypedDataAddress, type Address, type Hex,
+} from "viem";
 import { NEARLY_CHAIN_ID } from "./handshake";
 
 export const MAX_TAGS = 5;
@@ -2195,9 +2204,16 @@ export function normalizeTags(tags: string[]): string[] {
  * Teks tag hidup di Postgres; hanya hash-nya yang naik on-chain (spec fase §5).
  * Menyimpan array string di BSC mahal tanpa guna, sementara hash sudah cukup
  * membuktikan tag tidak diubah belakangan.
+ *
+ * Array-nya di-ABI-encode, TIDAK digabung dengan spasi. Menggabung dengan
+ * pemisah yang bisa muncul di dalam tag menciptakan tabrakan sungguhan:
+ * ["a b", "c"] dan ["a", "b c"] sama-sama menjadi "a b c" dan menghasilkan hash
+ * identik — yang persis membatalkan jaminan bahwa hash membuktikan tag tidak
+ * diubah. ABI encoding membawa panjang tiap elemen, jadi batas antar tag tidak
+ * bisa dikaburkan.
  */
 export function tagsHashOf(tags: string[]): Hex {
-  return keccak256(toHex(normalizeTags(tags).join(" ")));
+  return keccak256(encodeAbiParameters([{ type: "string[]" }], [normalizeTags(tags)]));
 }
 
 export function vouchTypedData(msg: VouchMessage, verifyingContract: Address) {
@@ -2233,11 +2249,12 @@ export function recoverRevokeSigner(
 
 - [ ] **Step 4: Tambahkan skema Zod**
 
-Periksa dulu isi `packages/shared/src/schema.ts` dengan `sed -n '1,40p' packages/shared/src/schema.ts`. Kalau `AddressSchema` atau `SignatureSchema` sudah ada dari Fase 1, **pakai yang sudah ada**, jangan mendeklarasikan ulang. Kalau belum ada, definisinya:
+Periksa dulu isi `packages/shared/src/schema.ts`. Fase 1 sudah punya validator alamat dan tanda tangan di sana, hanya belum diekspor — kemungkinan bernama `address` dan `signature`. **Ekspor ulang yang sudah ada, jangan mendeklarasikan pasangan kedua dengan regex yang sama.** Dua definisi untuk satu konsep akan menyimpang diam-diam begitu format alamat berubah di salah satunya:
 
 ```ts
-const AddressSchema = z.string().regex(/^0x[0-9a-fA-F]{40}$/, "alamat tidak sah");
-const SignatureSchema = z.string().regex(/^0x[0-9a-fA-F]{130}$/, "tanda tangan tidak sah");
+// Satu definisi per konsep. Nama lama tetap dipakai skema Fase 1.
+export const AddressSchema = address;
+export const SignatureSchema = signature;
 ```
 
 Lalu tambahkan di akhir file:
