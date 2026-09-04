@@ -1,4 +1,6 @@
-import { keccak256, recoverTypedDataAddress, toHex, type Address, type Hex } from "viem";
+import {
+  encodeAbiParameters, keccak256, recoverTypedDataAddress, type Address, type Hex,
+} from "viem";
 import { NEARLY_CHAIN_ID } from "./handshake";
 
 export const MAX_TAGS = 5;
@@ -50,9 +52,16 @@ export function normalizeTags(tags: string[]): string[] {
  * Teks tag hidup di Postgres; hanya hash-nya yang naik on-chain (spec fase §5).
  * Menyimpan array string di BSC mahal tanpa guna, sementara hash sudah cukup
  * membuktikan tag tidak diubah belakangan.
+ *
+ * Array-nya di-ABI-encode, TIDAK digabung dengan spasi. Menggabung dengan
+ * pemisah yang bisa muncul di dalam tag menciptakan tabrakan sungguhan:
+ * ["a b", "c"] dan ["a", "b c"] sama-sama menjadi "a b c" dan menghasilkan hash
+ * identik — yang persis membatalkan jaminan bahwa hash membuktikan tag tidak
+ * diubah. ABI encoding membawa panjang tiap elemen, jadi batas antar tag tidak
+ * bisa dikaburkan.
  */
 export function tagsHashOf(tags: string[]): Hex {
-  return keccak256(toHex(normalizeTags(tags).join(" ")));
+  return keccak256(encodeAbiParameters([{ type: "string[]" }], [normalizeTags(tags)]));
 }
 
 export function vouchTypedData(msg: VouchMessage, verifyingContract: Address) {

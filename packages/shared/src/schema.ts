@@ -6,8 +6,9 @@ const bytes32 = z.string().regex(/^0x[0-9a-fA-F]{64}$/);
 const signature = z.string().regex(/^0x[0-9a-fA-F]{130}$/);
 const cell = z.string().length(GEOHASH_PRECISION).regex(/^[0-9b-hjkmnp-z]+$/);
 
-export const AddressSchema = z.string().regex(/^0x[0-9a-fA-F]{40}$/, "alamat tidak sah");
-export const SignatureSchema = z.string().regex(/^0x[0-9a-fA-F]{130}$/, "tanda tangan tidak sah");
+// Satu definisi per konsep. Nama lama tetap dipakai skema Fase 1.
+export const AddressSchema = address;
+export const SignatureSchema = signature;
 
 /**
  * Satuan waktu — sumber bug klasik:

@@ -42,6 +42,13 @@ describe("tagsHashOf", () => {
     expect(tagsHashOf(["b", "a"])).toBe(tagsHashOf(["a", "b"]));
   });
 
+  it("GERBANG: tag bermultikata tidak bertabrakan dengan pemisah", () => {
+    // Digabung dengan spasi, keduanya menjadi "a b c" dan hash-nya identik.
+    // Itu membuat satu himpunan tag bisa ditukar diam-diam dengan himpunan
+    // lain yang tetap lolos verifikasi terhadap hash on-chain.
+    expect(tagsHashOf(["a b", "c"])).not.toBe(tagsHashOf(["a", "b c"]));
+  });
+
   it("isi berbeda menghasilkan hash berbeda", () => {
     expect(tagsHashOf(["a"])).not.toBe(tagsHashOf(["b"]));
   });
