@@ -69,7 +69,6 @@ export function computeTrust(graph: TrustGraph, opts: TrustOptions = {}): TrustR
   // memegang skor tertinggi: kepercayaan mengalir keluar dari seed lalu menumpuk
   // di simpul yang paling banyak tetangganya. Kalau penyebutnya skor seed,
   // rasio bisa melebihi 1 dan janji rentang 0..1 di spec fase §4.5 jadi bohong.
-  //
   // reduce, bukan Math.max(...spread): spread punya batas jumlah argumen di
   // mesin JS (~65k di V8), dan API memanggil ini atas SELURUH graf, bukan satu
   // event. Batas itu akan terlampaui jauh sebelum grafnya terasa besar.
