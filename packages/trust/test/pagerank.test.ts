@@ -42,8 +42,11 @@ describe("personalizedPageRank", () => {
 
   it("seed selalu menerima setidaknya jatah teleport-nya", () => {
     const scores = run([edge(SEED, addr(2)), edge(addr(2), addr(3))]);
-    // (1 - damping) x bobot teleport = 0.15. Ini lantai yang dijamin
-    // matematika: seed tidak bisa jatuh di bawahnya sebesar apa pun grafnya.
+    // Lantai matematis: (1 - damping) x bobot-teleport-SEED-sendiri. Di sini
+    // SEED sendirian memegang seluruh bobot teleport (weight 1 dari total 1),
+    // jadi lantainya persis 0.15 = 0.15 x 1. Kalau ada seed lain yang berbagi
+    // bobot teleport, lantai TIAP seed adalah porsinya masing-masing —
+    // bukan tetap 0.15 "sebesar apa pun grafnya".
     expect(scores.get(SEED.toLowerCase())!).toBeGreaterThanOrEqual(0.15);
   });
 
@@ -93,5 +96,51 @@ describe("personalizedPageRank", () => {
     const seeds = [{ address: SEED, weight: 3 }, { address: s2, weight: 1 }];
     const scores = run([edge(SEED, addr(5)), edge(s2, addr(6))], seeds);
     expect(scores.get(SEED.toLowerCase())!).toBeGreaterThan(scores.get(s2.toLowerCase())!);
+  });
+
+  it("graf tanpa seed sama sekali menghasilkan skor nol untuk semua node", () => {
+    // Constraint global: tanpa seed (total bobot seed <= 0), tidak ada
+    // kepercayaan sama sekali — bukan cuma seed yang nol, SEMUA node nol.
+    const g: TrustGraph = {
+      edges: [edge(SEED, addr(2)), edge(addr(2), addr(3))],
+      vouches: [],
+      seeds: [],
+      slashed: [],
+      nowMs: NOW,
+    };
+    const scores = personalizedPageRank(buildDirectedGraph(g), g.seeds, allAddresses(g));
+    for (const [, s] of scores) expect(s).toBe(0);
+  });
+
+  it("massa dangling dari akun ter-slash kembali ke seed, bukan disebar rata", () => {
+    const A = addr(10);
+    const X = addr(11); // akan di-slash
+    const Z1 = addr(20);
+    const Z2 = addr(21); // komponen terpisah total, tanpa jalur ke seed sama sekali
+
+    const seeds = [{ address: SEED, weight: 1 }];
+    const g: TrustGraph = {
+      edges: [edge(SEED, A), edge(A, X), edge(Z1, Z2)],
+      vouches: [],
+      seeds,
+      slashed: [X],
+      nowMs: NOW,
+    };
+    const nodes = allAddresses(g);
+    const scores = personalizedPageRank(buildDirectedGraph(g), seeds, nodes);
+
+    // X ter-slash: edge KELUAR-nya dihapus (lihat buildDirectedGraph), jadi X
+    // jadi buntu sambil tetap memegang massa MASUK dari A — inilah dangling
+    // mass yang nyata, bukan node kosong seperti test "node tanpa koneksi".
+    expect(scores.get(X.toLowerCase())!).toBeGreaterThan(0);
+
+    // Massa buntu itu WAJIB kembali ke seed lewat vektor teleport, bukan
+    // disebar rata ke semua node. Z1/Z2 adalah komponen terpisah total, nol
+    // bobot teleport, nol jalur ke seed — persis seperti gumpalan sybil di
+    // test GERBANG. Kalau baris `dangling * t` diganti jadi `dangling /
+    // nodes.length` (sebar rata), Z1 dan Z2 akan ikut kebagian dan tesnya
+    // akan gagal.
+    expect(scores.get(Z1.toLowerCase())).toBe(0);
+    expect(scores.get(Z2.toLowerCase())).toBe(0);
   });
 });
