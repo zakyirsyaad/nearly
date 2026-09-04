@@ -42,7 +42,7 @@ export type TrustResult = {
   address: Address;
   /** Skor akhir setelah seluruh pipeline §4.6. */
   score: number;
-  /** score / skor seed tertinggi, 0..1. */
+  /** score / skor TERTINGGI DI GRAF (bukan skor seed), 0..1. */
   ratio: number;
   tier: Tier;
   evidence: TrustEvidence;

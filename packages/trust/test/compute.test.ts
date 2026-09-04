@@ -59,18 +59,66 @@ describe("computeTrust", () => {
     expect(find(rows, SEED).tier).toBe(3);
   });
 
-  it("GERBANG: tier orang yang sama TIDAK berubah saat populasi naik 20 -> 200", () => {
-    const inti = honestEdges(SEED, 12, 100);
+  it("GERBANG: tier orang yang sama TIDAK berubah saat populasi naik, walau skor mentahnya turun", () => {
+    // addr(100) sengaja diberi DUA koneksi tambahan (bukan sekadar satu jabat
+    // tangan) supaya rasionya mendarat di TENGAH pita tier Dikenal, bukan di
+    // dasar tier Baru — di dasar, rasio DAN skor mentah sudah nol/dekat nol
+    // di kedua metrik, dan tidak ada satu pun angka yang bisa membedakan
+    // "tiering pakai rasio" dari "tiering pakai skor mentah".
+    const inti = [
+      ...honestEdges(SEED, 12, 100),
+      edge(addr(100), addr(101), "lingkaran-101", NOW - 101 * DAY),
+      edge(addr(100), addr(102), "lingkaran-102", NOW - 102 * DAY),
+    ];
     const kecil = computeTrust(graph({ edges: inti }));
 
-    const besar = [...inti];
-    // 180 orang baru berdatangan, saling kenal di antara mereka sendiri.
+    // Gerbang TERPISAH untuk pendatang baru — addr(150..156), bukan
+    // addr(100..111) — supaya struktur LOKAL di sekitar addr(100) sama
+    // persis di kedua graf. Yang berubah murni ukuran graf secara
+    // keseluruhan, bukan koneksi addr(100) sendiri.
+    const gerbang = [150, 151, 152, 153, 154, 155, 156].map((n) =>
+      edge(SEED, addr(n), `gerbang-${n}`, NOW - n * DAY));
+
+    const besar = [...inti, ...gerbang];
+    // 180 orang baru berdatangan, saling kenal di antara mereka sendiri, DAN
+    // masing-masing juga bertemu salah satu dari tujuh alamat gerbang.
+    //
+    // Ini pengganti versi sebelumnya, yang membuat 180 orang baru itu SAMA
+    // SEKALI terputus dari graf lama. Teleport PageRank berpersonalisasi
+    // hanya mengisi ulang ke seed (§4.2), jadi gumpalan yang terputus total
+    // tidak pernah menerima massa sedikit pun — skor addr(100) jadi BIT-IDENTIK
+    // sebelum/sesudah, dan test itu lolos sama baiknya di bawah tiering skor
+    // ABSOLUT, yaitu persis klaim yang seharusnya dibantah test ini.
+    //
+    // Begitu newcomer TERHUBUNG ke graf lama (seperti di bawah), rasio hanya
+    // stabil secara APROKSIMASI, bukan identik persis: pembilang (skor
+    // addr(100)) dan penyebut (skor tertinggi di graf) sama-sama menyusut
+    // karena massa PageRank sekarang terbagi ke populasi yang jauh lebih
+    // besar, dan keduanya menyusut dengan proporsi yang kira-kira sama —
+    // tapi TIDAK identik: skor mentah addr(100) menyusut jauh lebih cepat
+    // (~2.8x) daripada rasionya (~1.9x), karena skor SEED (penyebutnya) juga
+    // ikut menyusut, walau lebih lambat. Invarian rasio yang PERSIS hanya
+    // berlaku untuk pertumbuhan yang terputus (edge case yang tidak terjadi
+    // di dunia nyata); untuk pertumbuhan yang terhubung begini, klaim spec
+    // fase §4.5 adalah rasio STABIL, bukan konstan.
     for (let i = 0; i < 180; i++) {
       besar.push(edge(addr(5000 + i), addr(5000 + ((i + 1) % 180)), `baru-${i % 5}`, NOW - (i % 5) * DAY));
+      besar.push(edge(addr(5000 + i), addr(150 + (i % 7)), `masuk-${i % 7}`, NOW - (i % 5) * DAY));
     }
     const setelah = computeTrust(graph({ edges: besar }));
 
-    expect(find(setelah, addr(100)).tier).toBe(find(kecil, addr(100)).tier);
+    const sebelum100 = find(kecil, addr(100));
+    const sesudah100 = find(setelah, addr(100));
+
+    // Klaim yang sebenarnya diuji, dan yang GAGAL di bawah tiering skor
+    // mentah dengan ambang yang SAMA (0.02 / 0.15 / 0.45): skor mentah turun
+    // cukup jauh untuk melintasi ambang 0.02 sendirian (dari ~0.036 ke
+    // ~0.013 — akan jatuh dari tier Dikenal ke tier Baru kalau tiering
+    // dihitung dari skor), padahal rasionya (~0.107 -> ~0.057) tetap sama
+    // sekali di dalam pita Dikenal [0.02, 0.15) sepanjang waktu, sehingga
+    // TIER-nya (dihitung dari rasio, benar menurut spec §4.5) tidak berubah.
+    expect(sesudah100.score).toBeLessThan(sebelum100.score * 0.9);
+    expect(sesudah100.tier).toBe(sebelum100.tier);
     expect(find(setelah, SEED).tier).toBe(find(kecil, SEED).tier);
   });
 
