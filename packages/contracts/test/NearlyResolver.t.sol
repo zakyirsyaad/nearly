@@ -87,6 +87,15 @@ contract NearlyResolverTest is Test {
         assertTrue(resolver.isSlashed(bob));
     }
 
+    function test_konstruktor_menolak_alamat_nol() public {
+        vm.expectRevert(NearlyResolver.ZeroAddress.selector);
+        new NearlyResolver(address(0), address(vouch), address(att));
+        vm.expectRevert(NearlyResolver.ZeroAddress.selector);
+        new NearlyResolver(address(conn), address(0), address(att));
+        vm.expectRevert(NearlyResolver.ZeroAddress.selector);
+        new NearlyResolver(address(conn), address(vouch), address(0));
+    }
+
     function test_resolver_bukan_attestor_di_kontrak_mana_pun() public view {
         // Resolver hanya baca. Kalau suatu saat seseorang menambahkan fungsi
         // tulis di sini, panggilannya tetap gagal karena alamat ini bukan

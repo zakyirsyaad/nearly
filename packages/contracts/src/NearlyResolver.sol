@@ -23,11 +23,19 @@ interface IAttestor {
  * HANYA BACA. Tidak ada satu pun fungsi yang mengubah state.
  */
 contract NearlyResolver {
+    error ZeroAddress();
+
     IConnections public immutable connections;
     IVouches public immutable vouches;
     IAttestor public immutable attestor;
 
     constructor(address _connections, address _vouches, address _attestor) {
+        // Ketiganya immutable dan diisi dari variabel env saat deploy. Alamat
+        // nol membuat setiap panggilan revert dan kontraknya mati permanen —
+        // satu-satunya obatnya deploy ulang. Murah dijaga di sini.
+        if (_connections == address(0) || _vouches == address(0) || _attestor == address(0)) {
+            revert ZeroAddress();
+        }
         connections = IConnections(_connections);
         vouches = IVouches(_vouches);
         attestor = IAttestor(_attestor);

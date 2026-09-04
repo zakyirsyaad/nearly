@@ -67,6 +67,11 @@ contract TrustAttestorTest is Test {
         assertEq(at, 0);
     }
 
+    function test_konstruktor_menolak_attestor_nol() public {
+        vm.expectRevert(TrustAttestor.ZeroAddress.selector);
+        new TrustAttestor(address(0));
+    }
+
     function test_skala_penuh_diterima() public {
         vm.prank(attestor);
         att.setScore(who, 1_000_000, 3);

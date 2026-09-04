@@ -16,6 +16,7 @@ contract TrustAttestor {
     error NotAttestor();
     error BadTier();
     error BadScore();
+    error ZeroAddress();
 
     /// Solidity tidak punya desimal: rasio 0.15 disimpan sebagai 150000.
     uint32 public constant SCORE_SCALE = 1_000_000;
@@ -32,6 +33,9 @@ contract TrustAttestor {
     event ScoreUpdated(address indexed who, uint32 score, uint8 tier, uint64 at);
 
     constructor(address _attestor) {
+        // attestor immutable: salah ketik saat deploy tidak bisa diperbaiki,
+        // dan address(0) membuat setScore mustahil dipanggil selamanya.
+        if (_attestor == address(0)) revert ZeroAddress();
         attestor = _attestor;
     }
 
