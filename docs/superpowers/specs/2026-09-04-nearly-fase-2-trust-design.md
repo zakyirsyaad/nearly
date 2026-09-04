@@ -43,7 +43,7 @@ diberi tanda.
 | Kapan ditulis on-chain | Hanya alamat yang **tier**-nya berubah | Pengendali biaya gas |
 | Seed set | Wallet pemilik project, satu alamat | Bisa dilebarkan tanpa deploy ulang |
 | Penyimpanan seed | Tabel `trust_seeds` | Bukan env var |
-| Tier | Rasio terhadap skor seed tertinggi | Ambang tetap 0.02 / 0.15 / 0.45 |
+| Tier | Rasio terhadap skor tertinggi di graf | Ambang tetap 0.02 / 0.15 / 0.45 |
 | Vouch + tag | **Masuk** Fase 2 | §14 risiko 6 mengizinkan menundanya; tidak diambil |
 | Peluruhan waktu | Dibangun & diuji, **tidak diaktifkan** | §11.1 butir 7 |
 | Arsitektur | Fungsi murni di `packages/trust`, dirakit API | Sama seperti pola Fase 1 |
@@ -130,7 +130,7 @@ type TrustGraph = {
 type TrustResult = {
   address: Address;
   score: number;            // PageRank mentah
-  ratio: number;            // score / skor seed tertinggi, 0..1
+  ratio: number;            // score / skor tertinggi di graf, 0..1
   tier: 0 | 1 | 2 | 3;      // Baru, Dikenal, Terpercaya, Inti
   evidence: {
     connections: number; occasions: number; regions: number; vouches: number;
@@ -201,7 +201,7 @@ fungsi.
 ### 4.5 Tier & bukti
 
 ```
-rasio = skor / skor seed tertinggi
+rasio = skor / skor tertinggi di graf
 
 Baru        rasio < 0.02
 Dikenal     0.02 <= rasio < 0.15
@@ -209,14 +209,26 @@ Terpercaya  0.15 <= rasio < 0.45
 Inti        rasio >= 0.45
 ```
 
+**Penyebutnya skor tertinggi di graf, bukan skor seed.** Ini koreksi terhadap rancangan awal,
+dan alasannya matematis: PageRank berpersonalisasi **tidak menjamin seed memegang skor
+tertinggi.** Kepercayaan mengalir keluar dari seed lalu menumpuk di simpul yang paling banyak
+tetangganya; seed sendiri hanya menerima kembali lewat jatah teleport dan pantulan. Pada graf
+sesederhana `seed—A—B`, A memperoleh 0.459 sementara seed 0.345.
+
+Kalau penyebutnya skor seed, rasio bisa melebihi 1 dan janji "hasilnya 0 sampai 1" jadi tidak
+benar. Dengan penyebut skor tertinggi, rentangnya benar menurut konstruksi, selalu ada tepat
+satu orang di 1.00, dan kalimat *"seberapa dekat orang ini ke pusat kepercayaan"* menjadi tepat
+apa adanya. Sifat yang membuat rasio dipilih sejak awal tidak berubah sedikit pun: pembilang
+dan penyebut menyusut dengan proporsi yang sama saat populasi bertambah.
+
 **Kenapa rasio, bukan skor mentah.** Skor PageRank bersifat relatif — jumlah seluruh skor
 selalu 1. Dengan 20 pengguna rata-rata orang mendapat 0.05; dengan 200 pengguna, 0.005. Orang
 yang sama, posisi yang sama di graf, tapi angkanya menyusut 10x hanya karena orang lain
 mendaftar. Ambang absolut pada skor mentah akan menurunkan tier semua peserta serentak di
 tengah demo, dan di depan juri itu terlihat seperti sistemnya rusak.
 
-Rasio terhadap seed tidak bergerak saat populasi bertambah, karena pembilang dan penyebut
-menyusut dengan proporsi yang sama. Tier hanya berubah kalau **posisi orang itu di graf**
+Rasio tidak bergerak saat populasi bertambah, karena pembilang dan penyebut menyusut dengan
+proporsi yang sama. Tier hanya berubah kalau **posisi orang itu di graf**
 berubah.
 
 **Persentil populasi ditolak** meski tampak menarik: ia membuat tier jadi zero-sum — seseorang
@@ -241,7 +253,7 @@ implementasi.
 4. Kalikan dengan pengali diversitas                    -> pr x (0.15 + 0.85 x D)
 5. Bagi rata skor antar anggota satu klaster operator   (§4.4)
 6. Terapkan penalti penjamin 0.7^n                      (§6, n = jumlah pelaku terkonfirmasi)
-7. rasio = skor / skor seed tertinggi  ->  tier         (§4.5)
+7. rasio = skor / skor tertinggi di graf  ->  tier      (§4.5)
 ```
 
 Diversitas diterapkan **setelah** PageRank, bukan sebagai bobot edge di dalamnya: diversitas
@@ -270,6 +282,11 @@ mengirim dan membayar gas.
 - **Tag: teks di DB, hash-nya on-chain.** Menyimpan array string di BSC mahal tanpa guna.
   `VouchRegistry` menyimpan `(from, to, at, tagsHash)`; teksnya di Postgres. Hash tetap
   membuktikan tag tidak diubah belakangan.
+- **Satu vouch per pasangan, selamanya.** Catatan vouch tidak pernah dihapus on-chain; revoke
+  hanya menandainya dicabut. Tanpa itu, tanda tangan vouch lama menjadi sah kembali dan
+  attestor bisa membatalkan pencabutan pengguna tanpa persetujuan baru. Aturannya cerminan
+  "satu koneksi per pasangan orang, selamanya" (§9.4 spec induk). Konsekuensinya: mencabut
+  vouch tidak bisa dibatalkan — kamu tidak bisa menjamin orang yang sama untuk kedua kalinya.
 - **Bisa dicabut.** `revoke()` menghapus bobot tambahan dan melepas tanggung jawab ke depan,
   **tapi tidak menghapus slash yang sudah terjadi.** Kalau tidak begitu, orang tinggal
   mencabut vouch begitu tercium ada masalah, dan "skin in the game" (§7.3) jadi kosong.
@@ -320,7 +337,7 @@ Jaringan: **BSC testnet, chainId 97** — mengikuti keputusan Fase 1 (catatan pe
 |---|---|
 | `VouchRegistry` | `vouch(from, to, tagsHash, expiresAt, sig)`, `revoke(...)`, `slash(subject)` |
 | `TrustAttestor` | `setScore(who, score, tier)` + event `ScoreUpdated` |
-| `NearlyResolver` | `getTrust()`, `getTier()`, `isSlashed()`, `isConnected()` — hanya baca |
+| `NearlyResolver` | `getTrust()`, `getTier()`, `isSlashed()`, `isConnected()`, `getUpdatedAt()` — hanya baca |
 
 **`VouchRegistry`.** Semua fungsi `onlyAttestor` dan memverifikasi tanda tangan pengguna,
 sama seperti `ConnectionRegistry` di Fase 1. Kunci map-nya **berarah** (`keccak(from, to)`),
@@ -456,9 +473,24 @@ Sampaikan jujur, jangan diklaim lebih:
    ulang dan tanpa restart.
 3. **Ambang sidik jari ko-lokasi belum tervalidasi lapangan.** `J >= 0.8`, `T >= 0.6` adalah
    tebakan awal; keduanya parameter supaya bisa disetel setelah data nyata masuk.
-4. **Sybil multi-device dideteksi, belum dicegah** (§14 spec induk). Pencegahnya device
+4. **Sidik jari ko-lokasi bisa menggabungkan orang jujur.** Kalau beberapa orang yang
+   benar-benar berbeda hanya pernah menyalami himpunan lawan bicara yang sama, pada menit
+   yang sama, tidak ada satu pun informasi di graf yang membedakan mereka dari beberapa akun
+   milik satu orang — dan mereka akan digabung, sehingga skor mereka dibagi rata. Dalam
+   praktik ini jarang, karena orang sungguhan di ruangan sungguhan juga menyalami orang lain
+   yang berbeda-beda; justru keragaman kecil itulah sinyalnya. Ditemukan lewat test dan
+   dikunci sebuah test yang sengaja menyatakan batas ini.
+5. **"Independen" di gerbang laporan berarti tidak bersebelahan berpasangan, bukan lebih.**
+   Rantai kenalan A-B-C-D-E bisa menyumbang {A, C, E} — ketiganya memang tidak saling
+   terkoneksi langsung, tapi mereka satu lingkaran sosial. Aturan yang lebih ketat tidak
+   tersedia secara praktis: menuntut pelapor dari komponen terhubung yang berbeda akan
+   membuat gerbang tidak pernah lolos, karena di graf sosial nyata hampir semua orang berada
+   di satu komponen raksasa. Yang menahan celah ini adalah tiga lapis lain — pelapor harus
+   mencapai tier Terpercaya, klaster operator ikut diperiksa, dan **tidak ada slash yang
+   terjadi tanpa konfirmasi manusia.** Dikunci sebuah test yang sengaja menyatakan batas ini.
+6. **Sybil multi-device dideteksi, belum dicegah** (§14 spec induk). Pencegahnya device
    attestation, ditunda pasca-hackathon.
-5. **Nearly membuktikan seseorang manusia nyata yang hadir — bukan bahwa dia orang baik.**
+7. **Nearly membuktikan seseorang manusia nyata yang hadir — bukan bahwa dia orang baik.**
    Mengklaim lebih dari ini berbahaya.
 
 ## 13. Yang Sengaja TIDAK Ada di Fase Ini

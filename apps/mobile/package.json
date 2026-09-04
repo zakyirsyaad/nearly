@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@nearly/shared": "workspace:*",
+    "@nearly/trust": "workspace:*",
     "expo": "~57.0.19",
     "expo-asset": "~57.0.16",
     "expo-camera": "~57.0.4",

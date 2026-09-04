@@ -9,6 +9,7 @@
   },
   "dependencies": {
     "@nearly/shared": "workspace:*",
+    "@nearly/trust": "workspace:*",
     "@supabase/supabase-js": "^2.45.0",
     "hono": "^4.6.0",
     "viem": "^2.21.0",

@@ -102,6 +102,7 @@ export function createStore(db: SupabaseClient): HandshakeStore {
         nonce: row.nonce.toLowerCase(),
         tx_hash: row.txHash,
         created_at: new Date(row.atMs).toISOString(),
+        cell: row.cell,
       });
       if (error) throw new Error(`catat koneksi gagal: ${error.message}`);
     },

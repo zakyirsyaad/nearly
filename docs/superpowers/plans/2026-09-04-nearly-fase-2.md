@@ -19,7 +19,7 @@
 - **Alamat selalu huruf kecil** di seluruh perbandingan dan kunci map. Ini sudah jadi aturan repo sejak `orderPair()` di `apps/api/src/db.ts`.
 - **Import relatif ditulis tanpa ekstensi** (aturan repo dari catatan Fase 1 butir 8 — Metro tidak memetakan `"./x.js"` ke `x.ts`).
 - **Chain: BSC testnet, chainId 97.** `NEARLY_CHAIN_ID` di `packages/shared/src/handshake.ts` adalah sumber kebenarannya, dijaga test.
-- **Ambang tier:** `0.02` / `0.15` / `0.45` atas rasio terhadap skor seed tertinggi.
+- **Ambang tier:** `0.02` / `0.15` / `0.45` atas rasio terhadap **skor tertinggi di graf** (bukan skor seed — PageRank berpersonalisasi tidak menjamin seed yang tertinggi).
 - **Kuota vouch:** 3 per hari, global, ditegakkan di API.
 - **Peluruhan waktu dibangun tapi tidak diaktifkan** (§11.1 butir 7 spec induk).
 - Bahasa komentar & pesan commit: Indonesia. Nama simbol kode: Inggris.
@@ -202,7 +202,7 @@ export type TrustResult = {
   address: Address;
   /** Skor akhir setelah seluruh pipeline §4.6. */
   score: number;
-  /** score / skor seed tertinggi, 0..1. */
+  /** score / skor tertinggi di graf, 0..1. */
   ratio: number;
   tier: Tier;
   evidence: TrustEvidence;
@@ -507,10 +507,22 @@ describe("personalizedPageRank", () => {
     }
   });
 
-  it("seed memegang skor tertinggi", () => {
+  it("seed selalu menerima setidaknya jatah teleport-nya", () => {
     const scores = run([edge(SEED, addr(2)), edge(addr(2), addr(3))]);
-    const seedScore = scores.get(SEED.toLowerCase())!;
-    for (const [a, s] of scores) if (a !== SEED.toLowerCase()) expect(s).toBeLessThan(seedScore);
+    // (1 - damping) x bobot teleport = 0.15. Ini lantai yang dijamin
+    // matematika: seed tidak bisa jatuh di bawahnya sebesar apa pun grafnya.
+    expect(scores.get(SEED.toLowerCase())!).toBeGreaterThanOrEqual(0.15);
+  });
+
+  it("simpul hub BISA melampaui seed — dan itu memang benar", () => {
+    // seed hanya punya satu tetangga; addr(2) punya dua, jadi kepercayaan
+    // menumpuk di sana. PageRank berpersonalisasi TIDAK menjamin seed
+    // tertinggi, dan inilah alasan rasio dinormalisasi terhadap skor
+    // tertinggi di graf, bukan terhadap skor seed (spec fase §4.5).
+    // Jangan "perbaiki" ini dengan memaksa seed menang.
+    const scores = run([edge(SEED, addr(2)), edge(addr(2), addr(3))]);
+    expect(scores.get(addr(2).toLowerCase())!).toBeCloseTo(0.45946, 4);
+    expect(scores.get(SEED.toLowerCase())!).toBeCloseTo(0.34527, 4);
   });
 
   it("makin jauh dari seed makin kecil", () => {
@@ -657,7 +669,7 @@ export * from "./pagerank";
 - [ ] **Step 4: Jalankan test, pastikan LULUS**
 
 Jalankan: `pnpm --filter @nearly/trust test`
-Diharapkan: PASS — 18 test
+Diharapkan: PASS — 19 test
 
 - [ ] **Step 5: Commit**
 
@@ -716,8 +728,25 @@ describe("normalizedEntropy", () => {
     expect(normalizedEntropy([50])).toBe(0);
   });
 
-  it("tersebar merata mendekati 1", () => {
-    expect(normalizedEntropy([10, 10, 10, 10, 10])).toBeCloseTo(1, 6);
+  it("tiap koneksi di ember sendiri memberi 1", () => {
+    expect(normalizedEntropy(Array.from({ length: 50 }, () => 1))).toBeCloseTo(1, 6);
+  });
+
+  it("GERBANG: makin banyak ember makin tinggi, pada jumlah koneksi yang sama", () => {
+    // Ini yang membedakan penyebut ln(TOTAL) dari ln(jumlah ember).
+    // Dengan ln(jumlah ember), ketiganya bernilai 1.0 dan sebaran ke 2 occasion
+    // dinilai sama dengan sebaran ke 10 — membatalkan aturan inti spec §8
+    // ("50 orang di 1 event jauh di bawah 50 orang di 10 event, 5 kota").
+    // JANGAN mengganti penyebutnya menjadi ln(counts.length).
+    const dua = normalizedEntropy([25, 25]);
+    const lima = normalizedEntropy([10, 10, 10, 10, 10]);
+    const sepuluh = normalizedEntropy([5, 5, 5, 5, 5, 5, 5, 5, 5, 5]);
+    expect(dua).toBeLessThan(lima);
+    expect(lima).toBeLessThan(sepuluh);
+  });
+
+  it("mereproduksi angka yang ditulis spec §4.3: 50 koneksi di 10 occasion", () => {
+    expect(normalizedEntropy([5, 5, 5, 5, 5, 5, 5, 5, 5, 5])).toBeCloseTo(0.5886, 4);
   });
 
   it("tersebar timpang berada di antaranya", () => {
@@ -834,7 +863,19 @@ export function regionOf(occasionId: string): string {
   return occasionId.split(":")[0]!.slice(0, REGION_PREFIX);
 }
 
-/** Entropi Shannon dinormalisasi ke 0..1 oleh ln(total pengamatan). */
+/**
+ * Entropi Shannon dinormalisasi oleh ln(TOTAL PENGAMATAN), bukan ln(jumlah ember).
+ *
+ * Bedanya menentukan arti seluruh faktor diversitas. Dengan ln(jumlah ember),
+ * yang terukur adalah KERATAAN saja: 50 koneksi merata di 2 occasion bernilai
+ * 1.0, sama persis dengan 50 koneksi merata di 10 occasion. Dengan ln(total),
+ * yang terukur adalah KELUASAN: 2 occasion memberi 0.177, 10 occasion memberi
+ * 0.589, dan nilai 1.0 hanya tercapai kalau tiap koneksi terjadi di occasion
+ * yang berbeda.
+ *
+ * Aturan inti spec §8 menuntut yang kedua. Angka 0.589 itu pun tertulis di
+ * spec fase §4.3 dan dikunci sebuah test.
+ */
 export function normalizedEntropy(counts: number[]): number {
   const total = counts.reduce((s, c) => s + c, 0);
   if (total <= 1 || counts.length <= 1) return 0;
@@ -927,7 +968,7 @@ export * from "./diversity";
 - [ ] **Step 4: Jalankan test, pastikan LULUS**
 
 Jalankan: `pnpm --filter @nearly/trust test`
-Diharapkan: PASS — 30 test
+Diharapkan: PASS — 35 test (21 dari Task 1-2 + 14 baru)
 
 - [ ] **Step 5: Commit**
 
@@ -946,7 +987,7 @@ git commit -m "feat: faktor diversitas — entropi occasion, waktu, dan clusteri
 - Test: `packages/trust/test/fingerprint.test.ts`
 
 **Interfaces:**
-- Consumes: `TrustEdge`, `neighborsOf` (Task 1, 3)
+- Consumes: `TrustEdge` (Task 1). Sengaja TIDAK memakai `neighborsOf`: sidik jari butuh WAKTU tiap pertemuan, sedangkan `neighborsOf` membuang informasi itu
 - Produces:
   - `FINGERPRINT_DEFAULTS: { minJaccard: 0.8; minTemporal: 0.6; minConnections: 5; windowMs: 600_000 }`
   - `type OperatorCluster = { id: string; members: string[] }`
@@ -998,9 +1039,40 @@ describe("detectOperators", () => {
       });
     });
 
+    // Para korban juga punya kenalannya sendiri-sendiri, seperti orang sungguhan
+    // di ruangan sungguhan. Tanpa baris-baris ini himpunan lawan bicara mereka
+    // identik satu sama lain dan mereka ikut tergabung — lihat test berikutnya,
+    // yang mengunci batas itu dengan sengaja.
+    korban.forEach((k, ki) => {
+      for (let j = 0; j < 3; j++) {
+        edges.push(edge(k, addr(500 + ki * 10 + j), "acara-a", NOW + (ki * 3 + j) * MIN * 11));
+      }
+    });
+
     const clusters = detectOperators(edges);
     expect(clusters).toHaveLength(1);
     expect(clusters[0]!.members.sort()).toEqual(palsu.map((p) => p.toLowerCase()).sort());
+  });
+
+  it("BATAS YANG DIAKUI: riwayat pertemuan yang identik dan bersamaan tidak bisa dibedakan dari satu operator", () => {
+    // Kalau enam orang jujur HANYA pernah menyalami himpunan orang yang sama,
+    // pada menit yang sama, tidak ada satu pun informasi di graf yang
+    // membedakan mereka dari lima akun milik satu orang. Detektor akan
+    // menggabungkan mereka, dan skor mereka dibagi rata.
+    //
+    // Ini batas nyata, bukan bug, dan tercatat di spec fase §12. Test ini
+    // menguncinya supaya perilakunya tidak berubah diam-diam — dan supaya
+    // siapa pun yang menyetel ambangnya nanti tahu apa yang dipertaruhkan.
+    const edges: TrustEdge[] = [];
+    const palsu = [901, 902, 903, 904, 905].map(addr);
+    const korban = [1, 2, 3, 4, 5, 6].map(addr);
+    palsu.forEach((p, pi) => {
+      korban.forEach((k, ki) => edges.push(edge(p, k, "acara-a", NOW + ki * MIN + pi * 1000)));
+    });
+
+    const clusters = detectOperators(edges);
+    expect(clusters).toHaveLength(2);
+    expect(clusters.map((c) => c.members.length).sort()).toEqual([5, 6]);
   });
 
   it("orang jujur yang menghadiri acara sama TIDAK digabung", () => {
@@ -1186,7 +1258,7 @@ export * from "./fingerprint";
 - [ ] **Step 4: Jalankan test, pastikan LULUS**
 
 Jalankan: `pnpm --filter @nearly/trust test`
-Diharapkan: PASS — 38 test
+Diharapkan: PASS — 44 test (35 dari Task 1-3 + 9 baru)
 
 - [ ] **Step 5: Commit**
 
@@ -1301,6 +1373,36 @@ describe("reportGate", () => {
     expect(verdict.independent).toHaveLength(1 + luar.length);
   });
 
+  it("BATAS YANG DIAKUI: rantai kenalan bisa menyumbang tiga suara yang berpasangan asing", () => {
+    // Lima akun membentuk rantai A-B-C-D-E: tiap orang hanya bersebelahan
+    // dengan tetangganya. Gerbang meloloskan {A, C, E} — dan himpunan itu
+    // MEMANG berpasangan tidak bersebelahan, persis yang diminta aturannya.
+    //
+    // Aturan yang lebih ketat ("semua pelapor harus dari komponen terhubung
+    // yang berbeda") TIDAK boleh dipakai sebagai perbaikan: di graf sosial
+    // nyata hampir semua orang berada di satu komponen raksasa, sehingga
+    // gerbang tidak akan pernah lolos dan slashing jadi mustahil selamanya.
+    //
+    // Yang menahan celah ini bukan gerbang sendirian, melainkan tiga lapis:
+    // pelapor harus mencapai tier Terpercaya, klaster operator ikut diperiksa,
+    // dan tidak ada slash yang terjadi tanpa konfirmasi manusia.
+    // Tercatat di spec fase §12.
+    const rantai = [addr(1), addr(2), addr(3), addr(4), addr(5)];
+    const bersebelahan = new Set(["1|2", "2|3", "3|4", "4|5"]);
+    const idx = (a: string) => String(rantai.findIndex((r) => r.toLowerCase() === a) + 1);
+
+    const verdict = reportGate(
+      SUBJECT,
+      reports(rantai),
+      ctx({
+        areConnected: (x, y) =>
+          bersebelahan.has(`${idx(x)}|${idx(y)}`) || bersebelahan.has(`${idx(y)}|${idx(x)}`),
+      }),
+    );
+    expect(verdict.passes).toBe(true);
+    expect(verdict.independent).toHaveLength(3);
+  });
+
   it("laporan ganda dari orang yang sama hanya dihitung sekali", () => {
     const dobel = [...reports([addr(1)]), ...reports([addr(1)]), ...reports([addr(1)])];
     const verdict = reportGate(SUBJECT, dobel, ctx());
@@ -1399,6 +1501,14 @@ export type GateVerdict = {
  * penyerang harus memiliki tiga identitas tepercaya yang tidak saling mengenal.
  *
  * JANGAN melonggarkan syarat ini tanpa mengubah test brigading lebih dulu.
+ *
+ * Dan JANGAN "memperketatnya" menjadi pemeriksaan komponen terhubung. Yang
+ * ditegakkan di sini adalah ketidakbersebelahan BERPASANGAN, dan itu memang
+ * aturannya. Rantai kenalan A-B-C-D-E tetap bisa menyumbang {A, C, E} — sebuah
+ * batas yang diakui dan dikunci sebuah test. Mengganti aturannya menjadi "tiap
+ * pelapor dari komponen terhubung yang berbeda" akan membuat gerbang tidak
+ * pernah lolos sama sekali, karena di graf sosial nyata hampir semua orang
+ * berada di satu komponen raksasa.
  */
 export function reportGate(
   subject: Address,
@@ -1468,7 +1578,7 @@ export * from "./slashing";
 - [ ] **Step 4: Jalankan test, pastikan LULUS**
 
 Jalankan: `pnpm --filter @nearly/trust test`
-Diharapkan: PASS — 51 test
+Diharapkan: PASS — 59 test (44 dari Task 1-4 + 15 baru)
 
 - [ ] **Step 5: Commit**
 
@@ -1538,7 +1648,7 @@ Diharapkan: FAIL — `tierOf is not a function`
 import type { Tier } from "./types";
 
 /**
- * Ambang atas RASIO terhadap skor seed tertinggi, bukan atas skor mentah.
+ * Ambang atas RASIO terhadap skor tertinggi di graf, bukan atas skor mentah.
  *
  * Skor PageRank bersifat relatif — totalnya selalu 1. Ambang absolut pada skor
  * mentah akan menurunkan tier semua peserta serentak begitu populasi bertambah,
@@ -1606,11 +1716,19 @@ describe("computeTrust", () => {
     }
 
     const rows = computeTrust(graph({ edges }));
+
+    // Gumpalan sybil: NOL MUTLAK, bukan sekadar kecil. Tidak ada satu pun
+    // jalur dari mereka ke seed, jadi tidak ada kepercayaan yang bisa masuk.
     for (const s of sybil) {
+      expect(find(rows, s).ratio).toBe(0);
       expect(find(rows, s).tier).toBe(0);
-      expect(find(rows, s).ratio).toBeLessThan(0.01);
     }
-    expect(find(rows, addr(100)).tier).toBeGreaterThan(0);
+
+    // addr(100) baru sekali bersalaman, jadi dia pun tier Baru — dan itu benar,
+    // dia memang baru. Yang membedakannya dari bot bukan tier-nya, melainkan
+    // bahwa skornya BUKAN nol: ada jalur nyata dari dia ke seed.
+    expect(find(rows, addr(100)).ratio).toBeGreaterThan(0.01);
+    expect(find(rows, SEED).tier).toBe(3);
   });
 
   it("GERBANG: tier orang yang sama TIDAK berubah saat populasi naik 20 -> 200", () => {
@@ -1628,10 +1746,23 @@ describe("computeTrust", () => {
     expect(find(setelah, SEED).tier).toBe(find(kecil, SEED).tier);
   });
 
-  it("seed selalu rasio 1 dan tier Inti", () => {
+  it("selalu ada TEPAT SATU alamat di rasio 1, dan dia tier Inti", () => {
     const rows = computeTrust(graph({ edges: honestEdges(SEED, 5, 100) }));
-    expect(find(rows, SEED).ratio).toBeCloseTo(1, 9);
-    expect(find(rows, SEED).tier).toBe(3);
+    const puncak = rows.filter((r) => r.ratio >= 1);
+    expect(puncak).toHaveLength(1);
+    expect(puncak[0]!.tier).toBe(3);
+    // Penyebutnya skor tertinggi, bukan skor seed: PageRank berpersonalisasi
+    // tidak menjamin seed yang tertinggi (spec fase §4.5).
+    for (const r of rows) expect(r.ratio).toBeLessThanOrEqual(1);
+  });
+
+  it("seed tetap berada jauh di atas gumpalan yang tidak terhubung", () => {
+    const edges = [...honestEdges(SEED, 5, 100)];
+    for (let i = 0; i < 20; i++) {
+      edges.push(edge(addr(3000 + i), addr(3000 + ((i + 1) % 20)), "gumpalan", NOW));
+    }
+    const rows = computeTrust(graph({ edges }));
+    expect(find(rows, SEED).ratio).toBeGreaterThan(find(rows, addr(3000)).ratio * 50);
   });
 
   it("vouch menaikkan skor orang yang dijamin", () => {
@@ -1703,8 +1834,10 @@ describe("computeTrust", () => {
       edge(SEED, addr(101), "qqguv1r:2", NOW),
       edge(SEED, addr(102), "w1xyz00:1", NOW),
     ];
+    // Vouch mengarah KE seed, karena bukti vouch menghitung yang DITERIMA —
+    // lihat test berikutnya. Menjamin orang lain bukan bukti tentang dirimu.
     const rows = computeTrust(
-      graph({ edges, vouches: [{ from: SEED, to: addr(100), atMs: NOW }] }),
+      graph({ edges, vouches: [{ from: addr(100), to: SEED, atMs: NOW }] }),
     );
     const seed = find(rows, SEED);
     expect(seed.evidence.connections).toBe(3);
@@ -1816,15 +1949,20 @@ export function computeTrust(graph: TrustGraph, opts: TrustOptions = {}): TrustR
   // Pelaku terkonfirmasi kehilangan skornya sendiri, bukan cuma aliran keluarnya.
   for (const s of graph.slashed) adjusted.set(s.toLowerCase(), 0);
 
-  // 7. Rasio terhadap seed tertinggi -> tier.
-  const seedTop = Math.max(
-    0,
-    ...graph.seeds.map((s) => adjusted.get(s.address.toLowerCase()) ?? 0),
-  );
+  // 7. Rasio terhadap skor TERTINGGI DI GRAF -> tier.
+  //
+  // Penyebutnya bukan skor seed. PageRank berpersonalisasi tidak menjamin seed
+  // memegang skor tertinggi: kepercayaan mengalir keluar dari seed lalu menumpuk
+  // di simpul yang paling banyak tetangganya. Kalau penyebutnya skor seed,
+  // rasio bisa melebihi 1 dan janji rentang 0..1 di spec fase §4.5 jadi bohong.
+  // reduce, bukan Math.max(...spread): spread punya batas jumlah argumen di
+  // mesin JS (~65k di V8), dan API memanggil ini atas SELURUH graf, bukan satu
+  // event. Batas itu akan terlampaui jauh sebelum grafnya terasa besar.
+  const topScore = nodes.reduce((max, n) => Math.max(max, adjusted.get(n) ?? 0), 0);
 
   const rows: TrustResult[] = nodes.map((n) => {
     const score = adjusted.get(n) ?? 0;
-    const ratio = seedTop > 0 ? score / seedTop : 0;
+    const ratio = topScore > 0 ? score / topScore : 0;
     return {
       address: n as Address,
       score,
@@ -1849,7 +1987,7 @@ export * from "./compute";
 - [ ] **Step 7: Jalankan seluruh test paket, pastikan LULUS**
 
 Jalankan: `pnpm --filter @nearly/trust test && pnpm --filter @nearly/trust typecheck`
-Diharapkan: PASS — 67 test, typecheck bersih
+Diharapkan: PASS — 69 test, typecheck bersih
 
 - [ ] **Step 8: Commit**
 
@@ -1929,6 +2067,13 @@ describe("tagsHashOf", () => {
     expect(tagsHashOf(["b", "a"])).toBe(tagsHashOf(["a", "b"]));
   });
 
+  it("GERBANG: tag bermultikata tidak bertabrakan dengan pemisah", () => {
+    // Digabung dengan spasi, keduanya menjadi "a b c" dan hash-nya identik.
+    // Itu membuat satu himpunan tag bisa ditukar diam-diam dengan himpunan
+    // lain yang tetap lolos verifikasi terhadap hash on-chain.
+    expect(tagsHashOf(["a b", "c"])).not.toBe(tagsHashOf(["a", "b c"]));
+  });
+
   it("isi berbeda menghasilkan hash berbeda", () => {
     expect(tagsHashOf(["a"])).not.toBe(tagsHashOf(["b"]));
   });
@@ -2005,7 +2150,9 @@ Diharapkan: FAIL — `normalizeTags is not a function`
 
 `packages/shared/src/vouch.ts`:
 ```ts
-import { keccak256, recoverTypedDataAddress, toHex, type Address, type Hex } from "viem";
+import {
+  encodeAbiParameters, keccak256, recoverTypedDataAddress, type Address, type Hex,
+} from "viem";
 import { NEARLY_CHAIN_ID } from "./handshake";
 
 export const MAX_TAGS = 5;
@@ -2057,9 +2204,16 @@ export function normalizeTags(tags: string[]): string[] {
  * Teks tag hidup di Postgres; hanya hash-nya yang naik on-chain (spec fase §5).
  * Menyimpan array string di BSC mahal tanpa guna, sementara hash sudah cukup
  * membuktikan tag tidak diubah belakangan.
+ *
+ * Array-nya di-ABI-encode, TIDAK digabung dengan spasi. Menggabung dengan
+ * pemisah yang bisa muncul di dalam tag menciptakan tabrakan sungguhan:
+ * ["a b", "c"] dan ["a", "b c"] sama-sama menjadi "a b c" dan menghasilkan hash
+ * identik — yang persis membatalkan jaminan bahwa hash membuktikan tag tidak
+ * diubah. ABI encoding membawa panjang tiap elemen, jadi batas antar tag tidak
+ * bisa dikaburkan.
  */
 export function tagsHashOf(tags: string[]): Hex {
-  return keccak256(toHex(normalizeTags(tags).join(" ")));
+  return keccak256(encodeAbiParameters([{ type: "string[]" }], [normalizeTags(tags)]));
 }
 
 export function vouchTypedData(msg: VouchMessage, verifyingContract: Address) {
@@ -2095,11 +2249,12 @@ export function recoverRevokeSigner(
 
 - [ ] **Step 4: Tambahkan skema Zod**
 
-Periksa dulu isi `packages/shared/src/schema.ts` dengan `sed -n '1,40p' packages/shared/src/schema.ts`. Kalau `AddressSchema` atau `SignatureSchema` sudah ada dari Fase 1, **pakai yang sudah ada**, jangan mendeklarasikan ulang. Kalau belum ada, definisinya:
+Periksa dulu isi `packages/shared/src/schema.ts`. Fase 1 sudah punya validator alamat dan tanda tangan di sana, hanya belum diekspor — kemungkinan bernama `address` dan `signature`. **Ekspor ulang yang sudah ada, jangan mendeklarasikan pasangan kedua dengan regex yang sama.** Dua definisi untuk satu konsep akan menyimpang diam-diam begitu format alamat berubah di salah satunya:
 
 ```ts
-const AddressSchema = z.string().regex(/^0x[0-9a-fA-F]{40}$/, "alamat tidak sah");
-const SignatureSchema = z.string().regex(/^0x[0-9a-fA-F]{130}$/, "tanda tangan tidak sah");
+// Satu definisi per konsep. Nama lama tetap dipakai skema Fase 1.
+export const AddressSchema = address;
+export const SignatureSchema = signature;
 ```
 
 Lalu tambahkan di akhir file:
@@ -2343,6 +2498,58 @@ contract VouchRegistryTest is Test {
         reg.revoke(alice, bob, expiresAt, sigR);
     }
 
+    function test_vouch_TIDAK_bisa_diputar_ulang_setelah_revoke() public {
+        bytes memory sigV = _sign(pkA, _vouchDigest(alice, bob, TAGS, expiresAt));
+        vm.prank(attestor);
+        reg.vouch(alice, bob, TAGS, expiresAt, sigV);
+
+        bytes memory sigR = _sign(pkA, _revokeDigest(alice, bob, expiresAt));
+        vm.prank(attestor);
+        reg.revoke(alice, bob, expiresAt, sigR);
+
+        // Tanda tangan vouch yang SAMA dikirim ulang. Tanpa penjagaan ini,
+        // attestor bisa menghidupkan kembali vouch yang sudah dicabut pengguna
+        // tanpa persetujuan baru dari pengguna itu.
+        vm.expectRevert(VouchRegistry.AlreadyVouched.selector);
+        vm.prank(attestor);
+        reg.vouch(alice, bob, TAGS, expiresAt, sigV);
+    }
+
+    function test_revoke_TIDAK_bisa_diputar_ulang() public {
+        bytes memory sigV = _sign(pkA, _vouchDigest(alice, bob, TAGS, expiresAt));
+        vm.prank(attestor);
+        reg.vouch(alice, bob, TAGS, expiresAt, sigV);
+
+        bytes memory sigR = _sign(pkA, _revokeDigest(alice, bob, expiresAt));
+        vm.prank(attestor);
+        reg.revoke(alice, bob, expiresAt, sigR);
+
+        vm.expectRevert(VouchRegistry.NotVouched.selector);
+        vm.prank(attestor);
+        reg.revoke(alice, bob, expiresAt, sigR);
+    }
+
+    function test_tanda_tangan_high_s_ditolak() public {
+        bytes memory sig = _sign(pkA, _vouchDigest(alice, bob, TAGS, expiresAt));
+        bytes32 r;
+        bytes32 sVal;
+        uint8 v;
+        assembly {
+            r := mload(add(sig, 32))
+            sVal := mload(add(sig, 64))
+            v := byte(0, mload(add(sig, 96)))
+        }
+        // Pasangan malleable: (r, n - s, v terbalik) memulihkan alamat yang sama
+        // di ecrecover polos. Kontrak harus menolaknya.
+        bytes32 sHigh = bytes32(
+            0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364141 - uint256(sVal)
+        );
+        bytes memory malleable = abi.encodePacked(r, sHigh, v == 27 ? uint8(28) : uint8(27));
+        vm.expectRevert(VouchRegistry.BadSignature.selector);
+        vm.prank(attestor);
+        reg.vouch(alice, bob, TAGS, expiresAt, malleable);
+    }
+
     function test_slash_hanya_attestor() public {
         vm.expectRevert(VouchRegistry.NotAttestor.selector);
         reg.slash(bob);
@@ -2398,6 +2605,13 @@ interface IConnectionRegistry {
  *
  * Kunci map BERARAH, tidak seperti ConnectionRegistry yang kanonik —
  * A menjamin B bukan hal yang sama dengan B menjamin A.
+ *
+ * SATU VOUCH PER PASANGAN, SELAMANYA. Catatannya tidak pernah dihapus; revoke
+ * hanya menandai `revokedAt`. Ini menutup pemutaran ulang tanda tangan: tanpa
+ * nonce, `delete` akan membuat tanda tangan vouch lama sah kembali, sehingga
+ * attestor bisa MEMBATALKAN pencabutan yang sudah dilakukan pengguna tanpa
+ * persetujuan baru. Aturan ini juga cerminan "satu koneksi per pasangan orang,
+ * selamanya" (spec induk §9.4).
  */
 contract VouchRegistry {
     error NotAttestor();
@@ -2424,9 +2638,10 @@ contract VouchRegistry {
     struct VouchRecord {
         bytes32 tagsHash;
         uint64 at;
+        uint64 revokedAt;
     }
 
-    /// keccak(from, to) => vouch. BERARAH.
+    /// keccak(from, to) => vouch. BERARAH, dan PERMANEN sekali dibuat.
     mapping(bytes32 => VouchRecord) public vouches;
     mapping(address => bool) public slashed;
 
@@ -2449,7 +2664,8 @@ contract VouchRegistry {
     }
 
     function isVouched(address from, address to) external view returns (bool) {
-        return vouches[vouchKey(from, to)].at != 0;
+        VouchRecord storage v = vouches[vouchKey(from, to)];
+        return v.at != 0 && v.revokedAt == 0;
     }
 
     function vouch(
@@ -2460,6 +2676,9 @@ contract VouchRegistry {
         bytes calldata sig
     ) external {
         if (msg.sender != attestor) revert NotAttestor();
+        // _recover mengembalikan address(0) untuk tanda tangan cacat; tanpa
+        // penjagaan ini, from == address(0) akan lolos dengan sampah.
+        if (from == address(0)) revert BadSignature();
         if (from == to) revert SelfVouch();
         if (block.timestamp > expiresAt) revert Expired();
         if (!connections.isConnected(from, to)) revert NotConnected();
@@ -2471,7 +2690,7 @@ contract VouchRegistry {
         bytes32 key = vouchKey(from, to);
         if (vouches[key].at != 0) revert AlreadyVouched();
 
-        vouches[key] = VouchRecord({tagsHash: tagsHash, at: uint64(block.timestamp)});
+        vouches[key] = VouchRecord({tagsHash: tagsHash, at: uint64(block.timestamp), revokedAt: 0});
         emit Vouched(from, to, tagsHash, uint64(block.timestamp));
     }
 
@@ -2484,8 +2703,11 @@ contract VouchRegistry {
 
         bytes32 key = vouchKey(from, to);
         if (vouches[key].at == 0) revert NotVouched();
+        // Mencabut dua kali ditolak. Bersama catatan yang tidak pernah dihapus,
+        // inilah yang membuat tanda tangan tidak bisa diputar ulang.
+        if (vouches[key].revokedAt != 0) revert NotVouched();
 
-        delete vouches[key];
+        vouches[key].revokedAt = uint64(block.timestamp);
         emit Revoked(from, to, uint64(block.timestamp));
     }
 
@@ -2504,6 +2726,10 @@ contract VouchRegistry {
         return keccak256(abi.encodePacked(hex"1901", DOMAIN_SEPARATOR, structHash));
     }
 
+    /// Setengah orde kurva secp256k1. Di atas ini, tanda tangan malleable.
+    uint256 private constant HALF_N =
+        0x7FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF5D576E7357A4501DDFE92F46681B20A0;
+
     function _recover(bytes32 digest, bytes calldata sig) private pure returns (address) {
         if (sig.length != 65) return address(0);
         bytes32 r;
@@ -2516,6 +2742,10 @@ contract VouchRegistry {
         }
         // Sebagian library menghasilkan v = 0/1, bukan 27/28.
         if (v < 27) v += 27;
+        // Tiap tanda tangan sah punya pasangan malleable (r, n-s, v terbalik)
+        // yang memulihkan alamat sama. Menolak separuh atas membuat satu
+        // persetujuan hanya punya satu bentuk byte.
+        if (uint256(s) > HALF_N) return address(0);
         return ecrecover(digest, v, r, s);
     }
 }
@@ -2524,12 +2754,12 @@ contract VouchRegistry {
 - [ ] **Step 4: Jalankan test, pastikan LULUS**
 
 Jalankan: `cd packages/contracts && forge test --match-contract VouchRegistryTest -vv`
-Diharapkan: PASS — 14 test
+Diharapkan: PASS — 17 test
 
 - [ ] **Step 5: Pastikan test Fase 1 masih hijau**
 
 Jalankan: `cd packages/contracts && forge test`
-Diharapkan: PASS — 13 test `ConnectionRegistryTest` + 14 test baru
+Diharapkan: PASS — 13 test `ConnectionRegistryTest` + 17 test baru
 
 - [ ] **Step 6: Commit**
 
@@ -2708,6 +2938,11 @@ contract TrustAttestorTest is Test {
         assertEq(at, 0);
     }
 
+    function test_konstruktor_menolak_attestor_nol() public {
+        vm.expectRevert(TrustAttestor.ZeroAddress.selector);
+        new TrustAttestor(address(0));
+    }
+
     function test_skala_penuh_diterima() public {
         vm.prank(attestor);
         att.setScore(who, 1_000_000, 3);
@@ -2744,6 +2979,7 @@ contract TrustAttestor {
     error NotAttestor();
     error BadTier();
     error BadScore();
+    error ZeroAddress();
 
     /// Solidity tidak punya desimal: rasio 0.15 disimpan sebagai 150000.
     uint32 public constant SCORE_SCALE = 1_000_000;
@@ -2760,6 +2996,9 @@ contract TrustAttestor {
     event ScoreUpdated(address indexed who, uint32 score, uint8 tier, uint64 at);
 
     constructor(address _attestor) {
+        // attestor immutable: salah ketik saat deploy tidak bisa diperbaiki,
+        // dan address(0) membuat setScore mustahil dipanggil selamanya.
+        if (_attestor == address(0)) revert ZeroAddress();
         attestor = _attestor;
     }
 
@@ -2777,7 +3016,7 @@ contract TrustAttestor {
 - [ ] **Step 4: Jalankan test, pastikan LULUS**
 
 Jalankan: `cd packages/contracts && forge test --match-contract TrustAttestorTest`
-Diharapkan: PASS — 8 test
+Diharapkan: PASS — 9 test
 
 - [ ] **Step 5: Tulis test NearlyResolver yang gagal**
 
@@ -2872,6 +3111,15 @@ contract NearlyResolverTest is Test {
         assertTrue(resolver.isSlashed(bob));
     }
 
+    function test_konstruktor_menolak_alamat_nol() public {
+        vm.expectRevert(NearlyResolver.ZeroAddress.selector);
+        new NearlyResolver(address(0), address(vouch), address(att));
+        vm.expectRevert(NearlyResolver.ZeroAddress.selector);
+        new NearlyResolver(address(conn), address(0), address(att));
+        vm.expectRevert(NearlyResolver.ZeroAddress.selector);
+        new NearlyResolver(address(conn), address(vouch), address(0));
+    }
+
     function test_resolver_bukan_attestor_di_kontrak_mana_pun() public view {
         // Resolver hanya baca. Kalau suatu saat seseorang menambahkan fungsi
         // tulis di sini, panggilannya tetap gagal karena alamat ini bukan
@@ -2912,11 +3160,19 @@ interface IAttestor {
  * HANYA BACA. Tidak ada satu pun fungsi yang mengubah state.
  */
 contract NearlyResolver {
+    error ZeroAddress();
+
     IConnections public immutable connections;
     IVouches public immutable vouches;
     IAttestor public immutable attestor;
 
     constructor(address _connections, address _vouches, address _attestor) {
+        // Ketiganya immutable dan diisi dari variabel env saat deploy. Alamat
+        // nol membuat setiap panggilan revert dan kontraknya mati permanen —
+        // satu-satunya obatnya deploy ulang. Murah dijaga di sini.
+        if (_connections == address(0) || _vouches == address(0) || _attestor == address(0)) {
+            revert ZeroAddress();
+        }
         connections = IConnections(_connections);
         vouches = IVouches(_vouches);
         attestor = IAttestor(_attestor);
@@ -2947,7 +3203,7 @@ contract NearlyResolver {
 - [ ] **Step 7: Jalankan seluruh test kontrak, pastikan LULUS**
 
 Jalankan: `cd packages/contracts && forge test`
-Diharapkan: PASS — 13 (Fase 1) + 14 (VouchRegistry) + 8 (TrustAttestor) + 6 (NearlyResolver) = 41 test
+Diharapkan: PASS — 13 (Fase 1) + 14 (VouchRegistry) + 9 (TrustAttestor) + 7 (NearlyResolver) = 46 test
 
 - [ ] **Step 8: Commit**
 
@@ -3437,13 +3693,16 @@ export function createVouchStore(db: SupabaseClient): VouchStore {
       return count ?? 0;
     },
 
+    // "Pernah vouch", bukan "vouch masih aktif". Kontrak menyimpan catatan
+    // vouch selamanya (satu vouch per pasangan), jadi mencoba vouch ulang
+    // setelah dicabut akan revert AlreadyVouched. Menyaring revoked_at di sini
+    // akan membuat API mengirim transaksi yang pasti gagal.
     async hasVouch(from, to) {
       const { count, error } = await db
         .from("vouches")
         .select("from_addr", { count: "exact", head: true })
         .eq("from_addr", from.toLowerCase())
-        .eq("to_addr", to.toLowerCase())
-        .is("revoked_at", null);
+        .eq("to_addr", to.toLowerCase());
       if (error) throw new Error(`cek vouch gagal: ${error.message}`);
       return (count ?? 0) > 0;
     },
@@ -3922,7 +4181,7 @@ git commit -m "feat: recompute trust + publish on-chain hanya saat tier berubah"
 **Files:**
 - Create: `apps/api/src/vouch-gate.ts`, `apps/api/src/routes/trust.ts`, `apps/api/src/routes/vouch.ts`, `apps/api/src/routes/report.ts`, `apps/api/src/routes/admin.ts`
 - Create: `apps/api/src/vouch-relayer.ts`
-- Modify: `apps/api/src/app.ts`, `apps/api/src/ports.ts`, `apps/api/src/index.ts`, `.env.example`
+- Modify: `apps/api/src/app.ts`, `apps/api/src/index.ts`, `apps/api/src/routes/handshake.ts`, `.env.example`
 - Test: `apps/api/test/vouch-gate.test.ts`, `apps/api/test/trust.route.test.ts`
 
 **Interfaces:**
@@ -4568,19 +4827,19 @@ describe("pemicu recompute", () => {
 });
 
 describe("POST /report", () => {
+  // Test ini WAJIB dibangun lewat createApp, bukan lewat reportRoutes langsung.
+  //
+  // Versi sebelumnya membuat dua vi.fn() lokal dan menegaskan keduanya tidak
+  // terpanggil — padahal keduanya tidak pernah disambungkan ke apa pun, jadi
+  // assertion-nya benar apa pun yang dilakukan route. Test yang tidak bisa
+  // gagal lebih buruk daripada tidak ada test, karena ia terlihat seperti
+  // perlindungan. Spy HARUS spy yang sama yang dipakai jalur recompute
+  // sungguhan, dan test kedua di bawah membuktikan spy itu memang terjangkau.
   it("GERBANG: laporan mencatat, tapi TIDAK menyentuh skor sama sekali", async () => {
-    const recordReport = vi.fn(async () => {});
     const saveSnapshots = vi.fn(async () => {});
-    const setScore = vi.fn(async () => "0xtx");
-
-    const app = reportRoutes({
-      reports: {
-        recordReport,
-        listReports: vi.fn(async () => []),
-        setReportStatus: vi.fn(async () => {}),
-        recordSlash: vi.fn(async () => {}),
-      },
-    } as never);
+    const setScore = vi.fn(async (): Promise<Hex> => "0xtx" as Hex);
+    const recordReport = vi.fn(async () => {});
+    const app = createApp(depsFor({ saveSnapshots, setScore, recordReport }));
 
     const res = await app.request("/report", {
       method: "POST",
@@ -4593,25 +4852,54 @@ describe("POST /report", () => {
     expect(res.status).toBe(200);
     expect(recordReport).toHaveBeenCalledTimes(1);
     // Spec induk §6: laporan TIDAK PERNAH menurunkan trust secara langsung.
-    // Kalau suatu saat seseorang menambahkan onChanged() ke route ini, test
-    // ini yang menangkapnya.
     expect(saveSnapshots).not.toHaveBeenCalled();
     expect(setScore).not.toHaveBeenCalled();
+  });
+
+  it("spy yang sama TERPANGGIL lewat jalur yang memang memicu recompute", async () => {
+    // Tanpa test ini, test di atas bisa lolos hanya karena spy-nya tidak
+    // terjangkau. Ini yang membuktikan spy-nya hidup.
+    const saveSnapshots = vi.fn(async () => {});
+    const setScore = vi.fn(async (): Promise<Hex> => "0xtx" as Hex);
+    const app = createApp(depsFor({ saveSnapshots, setScore }));
+
+    const res = await app.request("/vouch", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(await signedVouchBody()),
+    });
+
+    expect(res.status).toBe(200);
+    expect(saveSnapshots).toHaveBeenCalled();
   });
 });
 ```
 
-Lengkapi berkas test dengan konstanta yang dipakai di atas, di bawah deklarasi `A` yang
+Dua helper yang dipakai blok di atas — `depsFor(overrides)` dan `signedVouchBody()` — kamu
+tulis sendiri di berkas test ini:
+
+- **`depsFor(overrides)`** mengembalikan `TrustDeps` lengkap yang diterima `createApp`, dengan
+  seluruh port distub sebagai `vi.fn()`. Pakai kembali pola `deps()` yang sudah kamu buat di
+  `handshake.route.test.ts`. Yang penting: `trust.saveSnapshots` dan `attestor.setScore` harus
+  memakai spy yang dioper lewat `overrides`, supaya assertion di atas benar-benar mengamati
+  jalur yang sama dengan yang dipakai `onChanged`. `trust.loadGraph` mengembalikan graf minimal
+  berisi satu seed, dan `store.areConnected` mengembalikan `true` supaya jalur vouch bisa lewat.
+- **`signedVouchBody()`** menghasilkan badan permintaan vouch yang tanda tangannya sah, dengan
+  pola yang sama seperti helper `input()` di `vouch-gate.test.ts`: `privateKeyToAccount` +
+  `vouchTypedData`, memakai `vouchContract` yang sama dengan yang dikembalikan `depsFor`.
+
+Lengkapi juga berkas test dengan konstanta yang dipakai di atas, di bawah deklarasi `A` yang
 sudah ada:
 ```ts
 const B = "0x000000000000000000000000000000000000000b" as Address;
 const CONTRACT = "0x00000000000000000000000000000000000c0de0" as Address;
 const NOW = 1_700_000_000_000;
 
-// Badan permintaan vouch yang tanda tangannya SENGAJA tidak sah: kedua test
-// pemicu di atas hanya peduli apakah onChanged dipanggil, dan test yang
-// memvalidasi tanda tangan sudah ada lengkap di vouch-gate.test.ts.
-const VOUCH_BODY = {
+// Badan permintaan vouch yang tanda tangannya SENGAJA tidak sah, dipakai HANYA
+// oleh test "vouch yang DITOLAK tidak memicu recompute". Test pemicu yang
+// positif memakai signedVouchBody(), karena vouch yang ditolak tidak pernah
+// sampai ke onChanged.
+const VOUCH_BODY_INVALID = {
   from: A, to: B, tags: ["zk"],
   expiresAt: String(Math.floor(NOW / 1000) + 3600),
   sig: `0x${"1".repeat(130)}`,
@@ -4866,11 +5154,13 @@ Diharapkan: keluaran menyebut jumlah alamat yang dihitung, dan `dipublikasi` sam
 
 Empat pemeriksaan, semua harus lulus:
 
-1. **Seed berdiri di `Inti`.**
+1. **Seed berdiri tinggi.**
    ```bash
    curl -s "$API_URL/trust/$SEED_ADDRESS" | jq
    ```
-   Diharapkan: `"tier": 3`, `"tierLabel": "Inti"`.
+   Diharapkan: `"tier"` bernilai **2 atau 3** (`Terpercaya` atau `Inti`). Jangan menuntut
+   `Inti`: penyebut rasio adalah skor tertinggi di graf, dan peserta yang paling banyak
+   bersalaman bisa saja melampaui seed. Itu perilaku yang benar, bukan kerusakan.
 
 2. **Alamat asing berdiri di `Baru`.**
    ```bash
@@ -4907,7 +5197,8 @@ git commit -m "feat: deploy tiga kontrak Fase 2 + alat seed dan recompute"
 
 **Files:**
 - Create: `apps/mobile/src/tier.ts`, `apps/mobile/src/trust-api.ts`
-- Modify: `apps/mobile/app/profile/[address].tsx`, `apps/mobile/src/config.ts`
+- Modify: `apps/mobile/app/profile/[address].tsx`, `apps/mobile/src/config.ts`,
+  `apps/mobile/src/signer.ts`, `apps/mobile/src/wallet-signer.ts`, `apps/mobile/package.json`
 - Test: `apps/mobile/test/tier.test.ts`
 
 **Interfaces:**
@@ -5131,7 +5422,7 @@ git commit -m "feat: tampilan tier + bukti, tombol vouch dan lapor di profil"
 pnpm test && pnpm typecheck && (cd packages/contracts && forge test)
 ```
 
-Diharapkan hijau semua: `shared` 65, `trust` 67, `api` 72, `mobile` 21, Solidity 41.
+Diharapkan hijau semua: `shared` 65, `trust` 69, `api` 72, `mobile` 21, Solidity 41.
 Angka-angka ini indikatif — kalau kamu menambahkan test di luar yang tertulis di rencana,
 jumlahnya wajar lebih besar. Yang tidak boleh terjadi adalah **lebih kecil**.
 

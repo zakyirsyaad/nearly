@@ -11,6 +11,10 @@ export const CONFIG = {
     "EXPO_PUBLIC_CONNECTION_REGISTRY",
     process.env.EXPO_PUBLIC_CONNECTION_REGISTRY,
   ) as Address,
+  vouchRegistry: required(
+    "EXPO_PUBLIC_VOUCH_REGISTRY",
+    process.env.EXPO_PUBLIC_VOUCH_REGISTRY,
+  ) as Address,
   /** Hanya dipakai kalau __DEV__. Lihat peringatan di signer.ts. */
   devPrivateKey: process.env.EXPO_PUBLIC_DEV_PRIVATE_KEY as Hex | undefined,
 };

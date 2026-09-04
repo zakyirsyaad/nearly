@@ -1,21 +1,21 @@
 import { describe, expect, it, vi } from "vitest";
 import type { Address } from "viem";
-import { createApp } from "../src/app";
-import type { GateDeps } from "../src/ports";
+import { createApp, type TrustDeps } from "../src/app";
 
 const A = "0x0000000000000000000000000000000000000aaa" as Address;
 const B = "0x0000000000000000000000000000000000000bbb" as Address;
+const TX = `0x${"ab".repeat(32)}`;
 
-function deps(): GateDeps {
+function deps(): TrustDeps {
   return {
     verifyingContract: A,
     nowMs: () => 1_700_000_000_000,
     store: {
       putOffer: async () => {}, getOffer: async () => null, consumeOffer: async () => {},
-      areConnected: async () => false, countConnectionsSince: async () => 0,
+      areConnected: vi.fn(async () => false), countConnectionsSince: async () => 0,
       recordConnection: async () => {},
     },
-    chain: { submitConnect: async () => `0x${"ab".repeat(32)}` },
+    chain: { submitConnect: async () => TX },
     profiles: {
       listConnections: vi.fn(async () => [{ address: B, txHash: `0x${"cd".repeat(32)}`, at: 1 }]),
       countConnections: vi.fn(async () => 1),
@@ -25,7 +25,36 @@ function deps(): GateDeps {
       ensName: vi.fn(async () => "ghost.eth"),
       txCount: vi.fn(async () => 42),
     },
-  } as unknown as GateDeps;
+    // Stub Fase 2: tidak dipakai langsung oleh test profil ini, hanya supaya
+    // bentuk TrustDeps lengkap untuk onChanged() yang dipicu createApp.
+    trust: {
+      loadGraph: async () => ({ edges: [], vouches: [], seeds: [], slashed: [], nowMs: 0 }),
+      saveSnapshots: async () => {},
+      getSnapshot: async () => null,
+      listPublishedTiers: async () => new Map(),
+      markPublished: async () => {},
+    },
+    vouches: {
+      countVouchesSince: async () => 0,
+      hasVouch: async () => false,
+      recordVouch: async () => {},
+      markRevoked: async () => {},
+    },
+    reports: {
+      recordReport: async () => {},
+      listReports: async () => [],
+      setReportStatus: async () => {},
+      recordSlash: async () => {},
+    },
+    attestor: { setScore: async () => TX },
+    vouchChain: {
+      submitVouch: async () => TX,
+      submitRevoke: async () => TX,
+      submitSlash: async () => TX,
+    },
+    vouchContract: A,
+    adminToken: "test-admin-token",
+  } as unknown as TrustDeps;
 }
 
 describe("GET /connections/:address", () => {
@@ -70,5 +99,37 @@ describe("GET /profile/:address", () => {
 
   it("400 untuk alamat yang tidak sah", async () => {
     expect((await createApp(deps()).request("/profile/xyz")).status).toBe(400);
+  });
+});
+
+describe("GET /connected/:a/:b", () => {
+  it("true untuk pasangan yang sudah terkoneksi", async () => {
+    const d = deps();
+    d.store.areConnected = vi.fn(async () => true);
+    const res = await createApp(d).request(`/connected/${A}/${B}`);
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({ connected: true });
+    expect(d.store.areConnected).toHaveBeenCalledWith(
+      A.toLowerCase() as Address, B.toLowerCase() as Address,
+    );
+  });
+
+  it("false untuk pasangan yang belum terkoneksi", async () => {
+    const d = deps();
+    d.store.areConnected = vi.fn(async () => false);
+    const res = await createApp(d).request(`/connected/${A}/${B}`);
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({ connected: false });
+    expect(d.store.areConnected).toHaveBeenCalledWith(
+      A.toLowerCase() as Address, B.toLowerCase() as Address,
+    );
+  });
+
+  it("400 untuk alamat yang tidak sah", async () => {
+    const d = deps();
+    d.store.areConnected = vi.fn(async () => true);
+    const res = await createApp(d).request(`/connected/bukan-alamat/${B}`);
+    expect(res.status).toBe(400);
+    expect(d.store.areConnected).not.toHaveBeenCalled();
   });
 });
