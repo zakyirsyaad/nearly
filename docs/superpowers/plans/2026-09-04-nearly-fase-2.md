@@ -946,7 +946,7 @@ git commit -m "feat: faktor diversitas — entropi occasion, waktu, dan clusteri
 - Test: `packages/trust/test/fingerprint.test.ts`
 
 **Interfaces:**
-- Consumes: `TrustEdge`, `neighborsOf` (Task 1, 3)
+- Consumes: `TrustEdge` (Task 1). Sengaja TIDAK memakai `neighborsOf`: sidik jari butuh WAKTU tiap pertemuan, sedangkan `neighborsOf` membuang informasi itu
 - Produces:
   - `FINGERPRINT_DEFAULTS: { minJaccard: 0.8; minTemporal: 0.6; minConnections: 5; windowMs: 600_000 }`
   - `type OperatorCluster = { id: string; members: string[] }`
@@ -1468,7 +1468,7 @@ export * from "./slashing";
 - [ ] **Step 4: Jalankan test, pastikan LULUS**
 
 Jalankan: `pnpm --filter @nearly/trust test`
-Diharapkan: PASS — 51 test
+Diharapkan: PASS — 52 test
 
 - [ ] **Step 5: Commit**
 
@@ -3922,7 +3922,7 @@ git commit -m "feat: recompute trust + publish on-chain hanya saat tier berubah"
 **Files:**
 - Create: `apps/api/src/vouch-gate.ts`, `apps/api/src/routes/trust.ts`, `apps/api/src/routes/vouch.ts`, `apps/api/src/routes/report.ts`, `apps/api/src/routes/admin.ts`
 - Create: `apps/api/src/vouch-relayer.ts`
-- Modify: `apps/api/src/app.ts`, `apps/api/src/ports.ts`, `apps/api/src/index.ts`, `.env.example`
+- Modify: `apps/api/src/app.ts`, `apps/api/src/index.ts`, `apps/api/src/routes/handshake.ts`, `.env.example`
 - Test: `apps/api/test/vouch-gate.test.ts`, `apps/api/test/trust.route.test.ts`
 
 **Interfaces:**
@@ -4907,7 +4907,8 @@ git commit -m "feat: deploy tiga kontrak Fase 2 + alat seed dan recompute"
 
 **Files:**
 - Create: `apps/mobile/src/tier.ts`, `apps/mobile/src/trust-api.ts`
-- Modify: `apps/mobile/app/profile/[address].tsx`, `apps/mobile/src/config.ts`
+- Modify: `apps/mobile/app/profile/[address].tsx`, `apps/mobile/src/config.ts`,
+  `apps/mobile/src/signer.ts`, `apps/mobile/src/wallet-signer.ts`, `apps/mobile/package.json`
 - Test: `apps/mobile/test/tier.test.ts`
 
 **Interfaces:**
