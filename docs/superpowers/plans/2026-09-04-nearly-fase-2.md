@@ -728,8 +728,25 @@ describe("normalizedEntropy", () => {
     expect(normalizedEntropy([50])).toBe(0);
   });
 
-  it("tersebar merata mendekati 1", () => {
-    expect(normalizedEntropy([10, 10, 10, 10, 10])).toBeCloseTo(1, 6);
+  it("tiap koneksi di ember sendiri memberi 1", () => {
+    expect(normalizedEntropy(Array.from({ length: 50 }, () => 1))).toBeCloseTo(1, 6);
+  });
+
+  it("GERBANG: makin banyak ember makin tinggi, pada jumlah koneksi yang sama", () => {
+    // Ini yang membedakan penyebut ln(TOTAL) dari ln(jumlah ember).
+    // Dengan ln(jumlah ember), ketiganya bernilai 1.0 dan sebaran ke 2 occasion
+    // dinilai sama dengan sebaran ke 10 — membatalkan aturan inti spec §8
+    // ("50 orang di 1 event jauh di bawah 50 orang di 10 event, 5 kota").
+    // JANGAN mengganti penyebutnya menjadi ln(counts.length).
+    const dua = normalizedEntropy([25, 25]);
+    const lima = normalizedEntropy([10, 10, 10, 10, 10]);
+    const sepuluh = normalizedEntropy([5, 5, 5, 5, 5, 5, 5, 5, 5, 5]);
+    expect(dua).toBeLessThan(lima);
+    expect(lima).toBeLessThan(sepuluh);
+  });
+
+  it("mereproduksi angka yang ditulis spec §4.3: 50 koneksi di 10 occasion", () => {
+    expect(normalizedEntropy([5, 5, 5, 5, 5, 5, 5, 5, 5, 5])).toBeCloseTo(0.5886, 4);
   });
 
   it("tersebar timpang berada di antaranya", () => {
@@ -846,7 +863,19 @@ export function regionOf(occasionId: string): string {
   return occasionId.split(":")[0]!.slice(0, REGION_PREFIX);
 }
 
-/** Entropi Shannon dinormalisasi ke 0..1 oleh ln(total pengamatan). */
+/**
+ * Entropi Shannon dinormalisasi oleh ln(TOTAL PENGAMATAN), bukan ln(jumlah ember).
+ *
+ * Bedanya menentukan arti seluruh faktor diversitas. Dengan ln(jumlah ember),
+ * yang terukur adalah KERATAAN saja: 50 koneksi merata di 2 occasion bernilai
+ * 1.0, sama persis dengan 50 koneksi merata di 10 occasion. Dengan ln(total),
+ * yang terukur adalah KELUASAN: 2 occasion memberi 0.177, 10 occasion memberi
+ * 0.589, dan nilai 1.0 hanya tercapai kalau tiap koneksi terjadi di occasion
+ * yang berbeda.
+ *
+ * Aturan inti spec §8 menuntut yang kedua. Angka 0.589 itu pun tertulis di
+ * spec fase §4.3 dan dikunci sebuah test.
+ */
 export function normalizedEntropy(counts: number[]): number {
   const total = counts.reduce((s, c) => s + c, 0);
   if (total <= 1 || counts.length <= 1) return 0;
@@ -939,7 +968,7 @@ export * from "./diversity";
 - [ ] **Step 4: Jalankan test, pastikan LULUS**
 
 Jalankan: `pnpm --filter @nearly/trust test`
-Diharapkan: PASS — 30 test
+Diharapkan: PASS — 35 test (21 dari Task 1-2 + 14 baru)
 
 - [ ] **Step 5: Commit**
 
