@@ -11,6 +11,10 @@ if (!address || !/^0x[0-9a-fA-F]{40}$/.test(address)) {
   console.error("Pakai: tsx tools/seed.ts <alamat> [catatan] [bobot]");
   process.exit(1);
 }
+if (!Number.isFinite(Number(weight)) || Number(weight) <= 0) {
+  console.error("bobot harus angka lebih besar dari 0");
+  process.exit(1);
+}
 
 const db = createSupabase(
   process.env.SUPABASE_URL!,
