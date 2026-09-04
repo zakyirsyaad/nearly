@@ -35,13 +35,22 @@ function need(name: string, v: string | undefined): string {
   return v;
 }
 
+/** Alfabet geohash: tanpa a, i, l, o. */
+const GEOHASH_RE = /^[0-9b-hjkmnp-z]{7}$/;
+
 function cellFrom(at: string): string {
   const preset = KOTA[at.toLowerCase()];
   if (preset) return encodeCell(preset[0], preset[1]);
 
+  // Sel geohash mentah, mis. hasil dari tools/latest-offer.ts — dipakai apa adanya.
+  if (GEOHASH_RE.test(at)) return at;
+
   const [lat, lon] = at.split(",").map(Number);
   if (Number.isNaN(lat) || Number.isNaN(lon)) {
-    throw new Error(`--at tidak dikenali: "${at}". Pakai ${Object.keys(KOTA).join("|")} atau "lat,lon".`);
+    throw new Error(
+      `--at tidak dikenali: "${at}". Pakai ${Object.keys(KOTA).join("|")}, ` +
+      `sel geohash 7 huruf, atau "lat,lon".`,
+    );
   }
   return encodeCell(lat!, lon!);
 }
