@@ -1,5 +1,5 @@
 import type { Address } from "viem";
-import { tagsHashOf, vouchTypedData } from "@nearly/shared";
+import { reasonHashOf, reportTypedData, tagsHashOf, vouchTypedData } from "@nearly/shared";
 import { CONFIG } from "./config";
 import type { NearlySigner } from "./signer";
 import type { TrustEvidenceView } from "./tier";
@@ -45,7 +45,16 @@ export async function sendVouch(
 }
 
 export async function sendReport(
-  reporter: Address, subject: Address, reason: string,
+  signer: NearlySigner, subject: Address, reason: string,
 ): Promise<void> {
-  await post("/report", { reporter, subject, reason });
+  const expiresAt = BigInt(Math.floor(Date.now() / 1000) + 3600);
+  const msg = {
+    reporter: signer.address, subject, reasonHash: reasonHashOf(reason), expiresAt,
+  };
+  const sig = await signer.signTypedData(
+    reportTypedData(msg, CONFIG.vouchRegistry),
+  );
+  await post("/report", {
+    reporter: signer.address, subject, reason, expiresAt: expiresAt.toString(), sig,
+  });
 }

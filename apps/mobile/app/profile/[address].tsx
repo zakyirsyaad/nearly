@@ -94,7 +94,7 @@ export default function ProfileScreen() {
     if (!signer || !reportReason.trim()) return;
     setReportBusy(true);
     try {
-      await sendReport(signer.address, address as Address, reportReason.trim());
+      await sendReport(signer, address as Address, reportReason.trim());
       setShowReportForm(false);
       setReportReason("");
       // Kalimat ini bukan hiasan: ia mencegah pengguna mengira tombol Lapor
@@ -196,10 +196,6 @@ export default function ProfileScreen() {
           {reportMessage && <Text style={s.message}>{reportMessage}</Text>}
         </View>
       )}
-
-      <Text style={s.note}>
-        Trust Score menyusul di Fase 2. Untuk sekarang yang ditampilkan adalah faktanya saja.
-      </Text>
     </View>
   );
 }
@@ -232,5 +228,4 @@ const s = StyleSheet.create({
     borderWidth: 1, borderRadius: 8, padding: 10, fontSize: 14, minHeight: 60,
   },
   message: { fontSize: 14, lineHeight: 20, opacity: 0.8 },
-  note: { marginTop: 24, fontSize: 13, opacity: 0.5, lineHeight: 19 },
 });
