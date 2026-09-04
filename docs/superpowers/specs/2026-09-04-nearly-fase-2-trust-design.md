@@ -282,6 +282,11 @@ mengirim dan membayar gas.
 - **Tag: teks di DB, hash-nya on-chain.** Menyimpan array string di BSC mahal tanpa guna.
   `VouchRegistry` menyimpan `(from, to, at, tagsHash)`; teksnya di Postgres. Hash tetap
   membuktikan tag tidak diubah belakangan.
+- **Satu vouch per pasangan, selamanya.** Catatan vouch tidak pernah dihapus on-chain; revoke
+  hanya menandainya dicabut. Tanpa itu, tanda tangan vouch lama menjadi sah kembali dan
+  attestor bisa membatalkan pencabutan pengguna tanpa persetujuan baru. Aturannya cerminan
+  "satu koneksi per pasangan orang, selamanya" (§9.4 spec induk). Konsekuensinya: mencabut
+  vouch tidak bisa dibatalkan — kamu tidak bisa menjamin orang yang sama untuk kedua kalinya.
 - **Bisa dicabut.** `revoke()` menghapus bobot tambahan dan melepas tanggung jawab ke depan,
   **tapi tidak menghapus slash yang sudah terjadi.** Kalau tidak begitu, orang tinggal
   mencabut vouch begitu tercium ada masalah, dan "skin in the game" (§7.3) jadi kosong.

@@ -2498,6 +2498,58 @@ contract VouchRegistryTest is Test {
         reg.revoke(alice, bob, expiresAt, sigR);
     }
 
+    function test_vouch_TIDAK_bisa_diputar_ulang_setelah_revoke() public {
+        bytes memory sigV = _sign(pkA, _vouchDigest(alice, bob, TAGS, expiresAt));
+        vm.prank(attestor);
+        reg.vouch(alice, bob, TAGS, expiresAt, sigV);
+
+        bytes memory sigR = _sign(pkA, _revokeDigest(alice, bob, expiresAt));
+        vm.prank(attestor);
+        reg.revoke(alice, bob, expiresAt, sigR);
+
+        // Tanda tangan vouch yang SAMA dikirim ulang. Tanpa penjagaan ini,
+        // attestor bisa menghidupkan kembali vouch yang sudah dicabut pengguna
+        // tanpa persetujuan baru dari pengguna itu.
+        vm.expectRevert(VouchRegistry.AlreadyVouched.selector);
+        vm.prank(attestor);
+        reg.vouch(alice, bob, TAGS, expiresAt, sigV);
+    }
+
+    function test_revoke_TIDAK_bisa_diputar_ulang() public {
+        bytes memory sigV = _sign(pkA, _vouchDigest(alice, bob, TAGS, expiresAt));
+        vm.prank(attestor);
+        reg.vouch(alice, bob, TAGS, expiresAt, sigV);
+
+        bytes memory sigR = _sign(pkA, _revokeDigest(alice, bob, expiresAt));
+        vm.prank(attestor);
+        reg.revoke(alice, bob, expiresAt, sigR);
+
+        vm.expectRevert(VouchRegistry.NotVouched.selector);
+        vm.prank(attestor);
+        reg.revoke(alice, bob, expiresAt, sigR);
+    }
+
+    function test_tanda_tangan_high_s_ditolak() public {
+        bytes memory sig = _sign(pkA, _vouchDigest(alice, bob, TAGS, expiresAt));
+        bytes32 r;
+        bytes32 sVal;
+        uint8 v;
+        assembly {
+            r := mload(add(sig, 32))
+            sVal := mload(add(sig, 64))
+            v := byte(0, mload(add(sig, 96)))
+        }
+        // Pasangan malleable: (r, n - s, v terbalik) memulihkan alamat yang sama
+        // di ecrecover polos. Kontrak harus menolaknya.
+        bytes32 sHigh = bytes32(
+            0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364141 - uint256(sVal)
+        );
+        bytes memory malleable = abi.encodePacked(r, sHigh, v == 27 ? uint8(28) : uint8(27));
+        vm.expectRevert(VouchRegistry.BadSignature.selector);
+        vm.prank(attestor);
+        reg.vouch(alice, bob, TAGS, expiresAt, malleable);
+    }
+
     function test_slash_hanya_attestor() public {
         vm.expectRevert(VouchRegistry.NotAttestor.selector);
         reg.slash(bob);
@@ -2553,6 +2605,13 @@ interface IConnectionRegistry {
  *
  * Kunci map BERARAH, tidak seperti ConnectionRegistry yang kanonik —
  * A menjamin B bukan hal yang sama dengan B menjamin A.
+ *
+ * SATU VOUCH PER PASANGAN, SELAMANYA. Catatannya tidak pernah dihapus; revoke
+ * hanya menandai `revokedAt`. Ini menutup pemutaran ulang tanda tangan: tanpa
+ * nonce, `delete` akan membuat tanda tangan vouch lama sah kembali, sehingga
+ * attestor bisa MEMBATALKAN pencabutan yang sudah dilakukan pengguna tanpa
+ * persetujuan baru. Aturan ini juga cerminan "satu koneksi per pasangan orang,
+ * selamanya" (spec induk §9.4).
  */
 contract VouchRegistry {
     error NotAttestor();
@@ -2579,9 +2638,10 @@ contract VouchRegistry {
     struct VouchRecord {
         bytes32 tagsHash;
         uint64 at;
+        uint64 revokedAt;
     }
 
-    /// keccak(from, to) => vouch. BERARAH.
+    /// keccak(from, to) => vouch. BERARAH, dan PERMANEN sekali dibuat.
     mapping(bytes32 => VouchRecord) public vouches;
     mapping(address => bool) public slashed;
 
@@ -2604,7 +2664,8 @@ contract VouchRegistry {
     }
 
     function isVouched(address from, address to) external view returns (bool) {
-        return vouches[vouchKey(from, to)].at != 0;
+        VouchRecord storage v = vouches[vouchKey(from, to)];
+        return v.at != 0 && v.revokedAt == 0;
     }
 
     function vouch(
@@ -2615,6 +2676,9 @@ contract VouchRegistry {
         bytes calldata sig
     ) external {
         if (msg.sender != attestor) revert NotAttestor();
+        // _recover mengembalikan address(0) untuk tanda tangan cacat; tanpa
+        // penjagaan ini, from == address(0) akan lolos dengan sampah.
+        if (from == address(0)) revert BadSignature();
         if (from == to) revert SelfVouch();
         if (block.timestamp > expiresAt) revert Expired();
         if (!connections.isConnected(from, to)) revert NotConnected();
@@ -2626,7 +2690,7 @@ contract VouchRegistry {
         bytes32 key = vouchKey(from, to);
         if (vouches[key].at != 0) revert AlreadyVouched();
 
-        vouches[key] = VouchRecord({tagsHash: tagsHash, at: uint64(block.timestamp)});
+        vouches[key] = VouchRecord({tagsHash: tagsHash, at: uint64(block.timestamp), revokedAt: 0});
         emit Vouched(from, to, tagsHash, uint64(block.timestamp));
     }
 
@@ -2639,8 +2703,11 @@ contract VouchRegistry {
 
         bytes32 key = vouchKey(from, to);
         if (vouches[key].at == 0) revert NotVouched();
+        // Mencabut dua kali ditolak. Bersama catatan yang tidak pernah dihapus,
+        // inilah yang membuat tanda tangan tidak bisa diputar ulang.
+        if (vouches[key].revokedAt != 0) revert NotVouched();
 
-        delete vouches[key];
+        vouches[key].revokedAt = uint64(block.timestamp);
         emit Revoked(from, to, uint64(block.timestamp));
     }
 
@@ -2659,6 +2726,10 @@ contract VouchRegistry {
         return keccak256(abi.encodePacked(hex"1901", DOMAIN_SEPARATOR, structHash));
     }
 
+    /// Setengah orde kurva secp256k1. Di atas ini, tanda tangan malleable.
+    uint256 private constant HALF_N =
+        0x7FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF5D576E7357A4501DDFE92F46681B20A0;
+
     function _recover(bytes32 digest, bytes calldata sig) private pure returns (address) {
         if (sig.length != 65) return address(0);
         bytes32 r;
@@ -2671,6 +2742,10 @@ contract VouchRegistry {
         }
         // Sebagian library menghasilkan v = 0/1, bukan 27/28.
         if (v < 27) v += 27;
+        // Tiap tanda tangan sah punya pasangan malleable (r, n-s, v terbalik)
+        // yang memulihkan alamat sama. Menolak separuh atas membuat satu
+        // persetujuan hanya punya satu bentuk byte.
+        if (uint256(s) > HALF_N) return address(0);
         return ecrecover(digest, v, r, s);
     }
 }
@@ -2679,12 +2754,12 @@ contract VouchRegistry {
 - [ ] **Step 4: Jalankan test, pastikan LULUS**
 
 Jalankan: `cd packages/contracts && forge test --match-contract VouchRegistryTest -vv`
-Diharapkan: PASS — 14 test
+Diharapkan: PASS — 17 test
 
 - [ ] **Step 5: Pastikan test Fase 1 masih hijau**
 
 Jalankan: `cd packages/contracts && forge test`
-Diharapkan: PASS — 13 test `ConnectionRegistryTest` + 14 test baru
+Diharapkan: PASS — 13 test `ConnectionRegistryTest` + 17 test baru
 
 - [ ] **Step 6: Commit**
 
@@ -3592,13 +3667,16 @@ export function createVouchStore(db: SupabaseClient): VouchStore {
       return count ?? 0;
     },
 
+    // "Pernah vouch", bukan "vouch masih aktif". Kontrak menyimpan catatan
+    // vouch selamanya (satu vouch per pasangan), jadi mencoba vouch ulang
+    // setelah dicabut akan revert AlreadyVouched. Menyaring revoked_at di sini
+    // akan membuat API mengirim transaksi yang pasti gagal.
     async hasVouch(from, to) {
       const { count, error } = await db
         .from("vouches")
         .select("from_addr", { count: "exact", head: true })
         .eq("from_addr", from.toLowerCase())
-        .eq("to_addr", to.toLowerCase())
-        .is("revoked_at", null);
+        .eq("to_addr", to.toLowerCase());
       if (error) throw new Error(`cek vouch gagal: ${error.message}`);
       return (count ?? 0) > 0;
     },
