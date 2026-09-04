@@ -5,6 +5,7 @@ import {
 } from "react-native";
 import type { Address } from "viem";
 import { CONFIG } from "../../src/config";
+import { pesanGagal } from "../../src/errors";
 import { createDevSigner } from "../../src/signer";
 import { SUGGESTED_TAGS, tierView } from "../../src/tier";
 import { fetchTrust, sendReport, sendVouch, type TrustResponse } from "../../src/trust-api";
@@ -13,12 +14,6 @@ type Profile = {
   address: string; displayName: string; ens: string | null;
   txCount: number; connectionCount: number;
 };
-
-// API tidak (dan sengaja tidak) mengekspos kuota tersisa — spec §11.1 butir 8
-// hanya menegakkannya lewat kode "quota_exceeded". Nilai ini sekadar cermin
-// dari DAILY_VOUCH_QUOTA di apps/api/src/vouch-gate.ts, untuk tampilan lokal
-// per sesi; kuota SEBENARNYA selalu ditegakkan di server.
-const DAILY_VOUCH_QUOTA_LOCAL = 3;
 
 export default function ProfileScreen() {
   const { address } = useLocalSearchParams<{ address: string }>();
@@ -42,7 +37,6 @@ export default function ProfileScreen() {
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [vouchBusy, setVouchBusy] = useState(false);
   const [vouchMessage, setVouchMessage] = useState<string | null>(null);
-  const [vouchesSentToday, setVouchesSentToday] = useState(0);
 
   const [showReportForm, setShowReportForm] = useState(false);
   const [reportReason, setReportReason] = useState("");
@@ -60,12 +54,12 @@ export default function ProfileScreen() {
 
   useEffect(() => {
     if (!signer || !address || isOwnProfile) { setConnected(null); return; }
-    fetch(`${CONFIG.apiUrl}/connections/${signer.address}`)
+    // Endpoint khusus ya/tidak, BUKAN menarik daftar koneksi — daftar itu
+    // dibatasi 100 terbaru dan akan salah untuk pasangan yang koneksinya
+    // lebih lama dari itu (lihat GET /connected/:a/:b di apps/api).
+    fetch(`${CONFIG.apiUrl}/connected/${signer.address}/${address}`)
       .then((r) => r.json())
-      .then((j: { connections?: { address: string }[] }) => {
-        const rows = j.connections ?? [];
-        setConnected(rows.some((row) => row.address.toLowerCase() === address.toLowerCase()));
-      })
+      .then((j: { connected?: boolean }) => setConnected(!!j.connected))
       .catch(() => setConnected(false));
   }, [signer, address, isOwnProfile]);
 
@@ -81,21 +75,16 @@ export default function ProfileScreen() {
     setVouchMessage(null);
     try {
       await sendVouch(signer, address as Address, selectedTags);
-      setVouchesSentToday((n) => n + 1);
       setSelectedTags([]);
       setShowVouchPicker(false);
       setVouchMessage("Vouch terkirim.");
       // Muat ulang bukti — tier atau evidenceLine bisa langsung berubah.
       fetchTrust(address as Address).then(setTrust).catch(() => {});
     } catch (e) {
-      // "quota_exceeded" adalah kode mentah dari server — pengguna butuh
-      // kalimat manusiawi, bukan nama field internal.
-      if (e instanceof Error && e.message === "quota_exceeded") {
-        setVouchesSentToday(DAILY_VOUCH_QUOTA_LOCAL);
-        setVouchMessage("Jatah vouch hari ini sudah habis");
-      } else {
-        setVouchMessage(e instanceof Error ? e.message : "Vouch gagal terkirim.");
-      }
+      // Kode kegagalan mentah dari server tidak pernah tampil apa adanya —
+      // pesanGagal menerjemahkannya ke kalimat Indonesia yang bisa
+      // ditindaklanjuti (termasuk quota_exceeded, already_vouched, dll).
+      setVouchMessage(e instanceof Error ? pesanGagal(e.message) : pesanGagal(""));
     } finally {
       setVouchBusy(false);
     }
@@ -114,7 +103,7 @@ export default function ProfileScreen() {
         "Laporan diterima. Laporan tidak menurunkan skor siapa pun — ia memicu peninjauan.",
       );
     } catch (e) {
-      setReportMessage(e instanceof Error ? e.message : "Laporan gagal terkirim.");
+      setReportMessage(e instanceof Error ? pesanGagal(e.message) : pesanGagal(""));
     } finally {
       setReportBusy(false);
     }
@@ -152,10 +141,10 @@ export default function ProfileScreen() {
             <Pressable onPress={() => setShowVouchPicker((v) => !v)}>
               <Text style={s.button}>Vouch</Text>
             </Pressable>
-            {/* Jatah yang tidak terlihat tidak terasa berharga. */}
-            <Text style={s.quota}>
-              Sisa kuota hari ini: {Math.max(0, DAILY_VOUCH_QUOTA_LOCAL - vouchesSentToday)}
-            </Text>
+            {/* Server-lah satu-satunya yang benar-benar tahu sisa kuota;
+                menampilkan angka yang bisa basi (mis. setelah pindah ke profil
+                lain) lebih buruk daripada tidak menampilkan angka sama sekali. */}
+            <Text style={s.quota}>Maksimal 3 vouch per hari.</Text>
           </View>
 
           {showVouchPicker && (
