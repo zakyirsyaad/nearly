@@ -4827,19 +4827,19 @@ describe("pemicu recompute", () => {
 });
 
 describe("POST /report", () => {
+  // Test ini WAJIB dibangun lewat createApp, bukan lewat reportRoutes langsung.
+  //
+  // Versi sebelumnya membuat dua vi.fn() lokal dan menegaskan keduanya tidak
+  // terpanggil — padahal keduanya tidak pernah disambungkan ke apa pun, jadi
+  // assertion-nya benar apa pun yang dilakukan route. Test yang tidak bisa
+  // gagal lebih buruk daripada tidak ada test, karena ia terlihat seperti
+  // perlindungan. Spy HARUS spy yang sama yang dipakai jalur recompute
+  // sungguhan, dan test kedua di bawah membuktikan spy itu memang terjangkau.
   it("GERBANG: laporan mencatat, tapi TIDAK menyentuh skor sama sekali", async () => {
-    const recordReport = vi.fn(async () => {});
     const saveSnapshots = vi.fn(async () => {});
-    const setScore = vi.fn(async () => "0xtx");
-
-    const app = reportRoutes({
-      reports: {
-        recordReport,
-        listReports: vi.fn(async () => []),
-        setReportStatus: vi.fn(async () => {}),
-        recordSlash: vi.fn(async () => {}),
-      },
-    } as never);
+    const setScore = vi.fn(async (): Promise<Hex> => "0xtx" as Hex);
+    const recordReport = vi.fn(async () => {});
+    const app = createApp(depsFor({ saveSnapshots, setScore, recordReport }));
 
     const res = await app.request("/report", {
       method: "POST",
@@ -4852,25 +4852,54 @@ describe("POST /report", () => {
     expect(res.status).toBe(200);
     expect(recordReport).toHaveBeenCalledTimes(1);
     // Spec induk §6: laporan TIDAK PERNAH menurunkan trust secara langsung.
-    // Kalau suatu saat seseorang menambahkan onChanged() ke route ini, test
-    // ini yang menangkapnya.
     expect(saveSnapshots).not.toHaveBeenCalled();
     expect(setScore).not.toHaveBeenCalled();
+  });
+
+  it("spy yang sama TERPANGGIL lewat jalur yang memang memicu recompute", async () => {
+    // Tanpa test ini, test di atas bisa lolos hanya karena spy-nya tidak
+    // terjangkau. Ini yang membuktikan spy-nya hidup.
+    const saveSnapshots = vi.fn(async () => {});
+    const setScore = vi.fn(async (): Promise<Hex> => "0xtx" as Hex);
+    const app = createApp(depsFor({ saveSnapshots, setScore }));
+
+    const res = await app.request("/vouch", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(await signedVouchBody()),
+    });
+
+    expect(res.status).toBe(200);
+    expect(saveSnapshots).toHaveBeenCalled();
   });
 });
 ```
 
-Lengkapi berkas test dengan konstanta yang dipakai di atas, di bawah deklarasi `A` yang
+Dua helper yang dipakai blok di atas — `depsFor(overrides)` dan `signedVouchBody()` — kamu
+tulis sendiri di berkas test ini:
+
+- **`depsFor(overrides)`** mengembalikan `TrustDeps` lengkap yang diterima `createApp`, dengan
+  seluruh port distub sebagai `vi.fn()`. Pakai kembali pola `deps()` yang sudah kamu buat di
+  `handshake.route.test.ts`. Yang penting: `trust.saveSnapshots` dan `attestor.setScore` harus
+  memakai spy yang dioper lewat `overrides`, supaya assertion di atas benar-benar mengamati
+  jalur yang sama dengan yang dipakai `onChanged`. `trust.loadGraph` mengembalikan graf minimal
+  berisi satu seed, dan `store.areConnected` mengembalikan `true` supaya jalur vouch bisa lewat.
+- **`signedVouchBody()`** menghasilkan badan permintaan vouch yang tanda tangannya sah, dengan
+  pola yang sama seperti helper `input()` di `vouch-gate.test.ts`: `privateKeyToAccount` +
+  `vouchTypedData`, memakai `vouchContract` yang sama dengan yang dikembalikan `depsFor`.
+
+Lengkapi juga berkas test dengan konstanta yang dipakai di atas, di bawah deklarasi `A` yang
 sudah ada:
 ```ts
 const B = "0x000000000000000000000000000000000000000b" as Address;
 const CONTRACT = "0x00000000000000000000000000000000000c0de0" as Address;
 const NOW = 1_700_000_000_000;
 
-// Badan permintaan vouch yang tanda tangannya SENGAJA tidak sah: kedua test
-// pemicu di atas hanya peduli apakah onChanged dipanggil, dan test yang
-// memvalidasi tanda tangan sudah ada lengkap di vouch-gate.test.ts.
-const VOUCH_BODY = {
+// Badan permintaan vouch yang tanda tangannya SENGAJA tidak sah, dipakai HANYA
+// oleh test "vouch yang DITOLAK tidak memicu recompute". Test pemicu yang
+// positif memakai signedVouchBody(), karena vouch yang ditolak tidak pernah
+// sampai ke onChanged.
+const VOUCH_BODY_INVALID = {
   from: A, to: B, tags: ["zk"],
   expiresAt: String(Math.floor(NOW / 1000) + 3600),
   sig: `0x${"1".repeat(130)}`,
