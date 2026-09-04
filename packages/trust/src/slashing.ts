@@ -32,6 +32,14 @@ export type GateVerdict = {
  * penyerang harus memiliki tiga identitas tepercaya yang tidak saling mengenal.
  *
  * JANGAN melonggarkan syarat ini tanpa mengubah test brigading lebih dulu.
+ *
+ * Dan JANGAN "memperketatnya" menjadi pemeriksaan komponen terhubung. Yang
+ * ditegakkan di sini adalah ketidakbersebelahan BERPASANGAN, dan itu memang
+ * aturannya. Rantai kenalan A-B-C-D-E tetap bisa menyumbang {A, C, E} — sebuah
+ * batas yang diakui dan dikunci sebuah test. Mengganti aturannya menjadi "tiap
+ * pelapor dari komponen terhubung yang berbeda" akan membuat gerbang tidak
+ * pernah lolos sama sekali, karena di graf sosial nyata hampir semua orang
+ * berada di satu komponen raksasa.
  */
 export function reportGate(
   subject: Address,
