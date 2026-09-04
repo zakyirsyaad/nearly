@@ -53,6 +53,14 @@ contract NearlyResolver {
         return tier;
     }
 
+    /// Unix timestamp kapan skor terakhir ditulis. 0 berarti belum pernah.
+    /// Sinyal kesegaran untuk dApp lain yang membaca `getTrust`/`getTier` —
+    /// tanpa ini tidak ada cara tahu apakah angkanya baru atau sudah basi.
+    function getUpdatedAt(address who) external view returns (uint64) {
+        (,, uint64 at) = attestor.scores(who);
+        return at;
+    }
+
     function isSlashed(address who) external view returns (bool) {
         return vouches.slashed(who);
     }

@@ -31,6 +31,7 @@ contract VouchRegistry {
     error BadSignature();
     error AlreadyVouched();
     error NotVouched();
+    error ZeroAddress();
 
     // WAJIB identik dengan VOUCH_TYPES di packages/shared/src/vouch.ts (dijaga Task 9).
     bytes32 private constant VOUCH_TYPEHASH =
@@ -60,6 +61,11 @@ contract VouchRegistry {
     event Slashed(address indexed subject, uint64 at);
 
     constructor(address _attestor, address _connections) {
+        // attestor & connections immutable: alamat nol di salah satunya
+        // membrik kontrak permanen (vouch mustahil dipanggil, atau
+        // isConnected() selalu revert), dengan redeploy sebagai satu-satunya
+        // obat — sama seperti penjagaan di TrustAttestor & NearlyResolver.
+        if (_attestor == address(0) || _connections == address(0)) revert ZeroAddress();
         attestor = _attestor;
         connections = IConnectionRegistry(_connections);
         DOMAIN_SEPARATOR = keccak256(

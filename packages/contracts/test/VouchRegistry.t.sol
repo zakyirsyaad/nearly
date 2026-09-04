@@ -251,4 +251,11 @@ contract VouchRegistryTest is Test {
         // terjadi tetap berdiri — kalau tidak, "skin in the game" jadi kosong.
         assertTrue(reg.slashed(bob));
     }
+
+    function test_konstruktor_menolak_alamat_nol() public {
+        vm.expectRevert(VouchRegistry.ZeroAddress.selector);
+        new VouchRegistry(address(0), address(conn));
+        vm.expectRevert(VouchRegistry.ZeroAddress.selector);
+        new VouchRegistry(attestor, address(0));
+    }
 }

@@ -64,6 +64,17 @@ contract NearlyResolverTest is Test {
         assertEq(resolver.getTier(alice), 3);
     }
 
+    function test_getUpdatedAt_membaca_dari_attestor() public {
+        vm.warp(block.timestamp + 1000);
+        vm.prank(attestor);
+        att.setScore(alice, 450_000, 3);
+        assertEq(resolver.getUpdatedAt(alice), uint64(block.timestamp));
+    }
+
+    function test_getUpdatedAt_alamat_yang_belum_pernah_ditulis_bernilai_nol() public view {
+        assertEq(resolver.getUpdatedAt(address(0xDEAD)), 0);
+    }
+
     function test_alamat_asing_bernilai_nol_dan_tier_Baru() public view {
         assertEq(resolver.getTrust(address(0xDEAD)), 0);
         assertEq(resolver.getTier(address(0xDEAD)), 0);

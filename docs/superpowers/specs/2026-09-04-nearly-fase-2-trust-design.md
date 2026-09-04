@@ -337,7 +337,7 @@ Jaringan: **BSC testnet, chainId 97** — mengikuti keputusan Fase 1 (catatan pe
 |---|---|
 | `VouchRegistry` | `vouch(from, to, tagsHash, expiresAt, sig)`, `revoke(...)`, `slash(subject)` |
 | `TrustAttestor` | `setScore(who, score, tier)` + event `ScoreUpdated` |
-| `NearlyResolver` | `getTrust()`, `getTier()`, `isSlashed()`, `isConnected()` — hanya baca |
+| `NearlyResolver` | `getTrust()`, `getTier()`, `isSlashed()`, `isConnected()`, `getUpdatedAt()` — hanya baca |
 
 **`VouchRegistry`.** Semua fungsi `onlyAttestor` dan memverifikasi tanda tangan pengguna,
 sama seperti `ConnectionRegistry` di Fase 1. Kunci map-nya **berarah** (`keccak(from, to)`),
