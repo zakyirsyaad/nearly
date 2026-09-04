@@ -2938,6 +2938,11 @@ contract TrustAttestorTest is Test {
         assertEq(at, 0);
     }
 
+    function test_konstruktor_menolak_attestor_nol() public {
+        vm.expectRevert(TrustAttestor.ZeroAddress.selector);
+        new TrustAttestor(address(0));
+    }
+
     function test_skala_penuh_diterima() public {
         vm.prank(attestor);
         att.setScore(who, 1_000_000, 3);
@@ -2974,6 +2979,7 @@ contract TrustAttestor {
     error NotAttestor();
     error BadTier();
     error BadScore();
+    error ZeroAddress();
 
     /// Solidity tidak punya desimal: rasio 0.15 disimpan sebagai 150000.
     uint32 public constant SCORE_SCALE = 1_000_000;
@@ -2990,6 +2996,9 @@ contract TrustAttestor {
     event ScoreUpdated(address indexed who, uint32 score, uint8 tier, uint64 at);
 
     constructor(address _attestor) {
+        // attestor immutable: salah ketik saat deploy tidak bisa diperbaiki,
+        // dan address(0) membuat setScore mustahil dipanggil selamanya.
+        if (_attestor == address(0)) revert ZeroAddress();
         attestor = _attestor;
     }
 
@@ -3007,7 +3016,7 @@ contract TrustAttestor {
 - [ ] **Step 4: Jalankan test, pastikan LULUS**
 
 Jalankan: `cd packages/contracts && forge test --match-contract TrustAttestorTest`
-Diharapkan: PASS — 8 test
+Diharapkan: PASS — 9 test
 
 - [ ] **Step 5: Tulis test NearlyResolver yang gagal**
 
@@ -3102,6 +3111,15 @@ contract NearlyResolverTest is Test {
         assertTrue(resolver.isSlashed(bob));
     }
 
+    function test_konstruktor_menolak_alamat_nol() public {
+        vm.expectRevert(NearlyResolver.ZeroAddress.selector);
+        new NearlyResolver(address(0), address(vouch), address(att));
+        vm.expectRevert(NearlyResolver.ZeroAddress.selector);
+        new NearlyResolver(address(conn), address(0), address(att));
+        vm.expectRevert(NearlyResolver.ZeroAddress.selector);
+        new NearlyResolver(address(conn), address(vouch), address(0));
+    }
+
     function test_resolver_bukan_attestor_di_kontrak_mana_pun() public view {
         // Resolver hanya baca. Kalau suatu saat seseorang menambahkan fungsi
         // tulis di sini, panggilannya tetap gagal karena alamat ini bukan
@@ -3142,11 +3160,19 @@ interface IAttestor {
  * HANYA BACA. Tidak ada satu pun fungsi yang mengubah state.
  */
 contract NearlyResolver {
+    error ZeroAddress();
+
     IConnections public immutable connections;
     IVouches public immutable vouches;
     IAttestor public immutable attestor;
 
     constructor(address _connections, address _vouches, address _attestor) {
+        // Ketiganya immutable dan diisi dari variabel env saat deploy. Alamat
+        // nol membuat setiap panggilan revert dan kontraknya mati permanen —
+        // satu-satunya obatnya deploy ulang. Murah dijaga di sini.
+        if (_connections == address(0) || _vouches == address(0) || _attestor == address(0)) {
+            revert ZeroAddress();
+        }
         connections = IConnections(_connections);
         vouches = IVouches(_vouches);
         attestor = IAttestor(_attestor);
@@ -3177,7 +3203,7 @@ contract NearlyResolver {
 - [ ] **Step 7: Jalankan seluruh test kontrak, pastikan LULUS**
 
 Jalankan: `cd packages/contracts && forge test`
-Diharapkan: PASS — 13 (Fase 1) + 14 (VouchRegistry) + 8 (TrustAttestor) + 6 (NearlyResolver) = 41 test
+Diharapkan: PASS — 13 (Fase 1) + 14 (VouchRegistry) + 9 (TrustAttestor) + 7 (NearlyResolver) = 46 test
 
 - [ ] **Step 8: Commit**
 
