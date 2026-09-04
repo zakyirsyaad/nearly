@@ -20,6 +20,9 @@ importers:
       '@nearly/shared':
         specifier: workspace:*
         version: link:../../packages/shared
+      '@nearly/trust':
+        specifier: workspace:*
+        version: link:../../packages/trust
       '@supabase/supabase-js':
         specifier: ^2.45.0
         version: 2.114.0

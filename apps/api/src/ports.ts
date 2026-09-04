@@ -19,7 +19,7 @@ export type HandshakeStore = {
   areConnected(a: Address, b: Address): Promise<boolean>;
   countConnectionsSince(addr: Address, sinceMs: number): Promise<number>;
   recordConnection(row: {
-    a: Address; b: Address; nonce: Hex; txHash: Hex; atMs: number;
+    a: Address; b: Address; nonce: Hex; txHash: Hex; atMs: number; cell: string;
   }): Promise<void>;
 };
 
@@ -51,4 +51,51 @@ export type IdentityPort = {
   /** ENS hidup di Ethereum mainnet, BUKAN di opBNB. */
   ensName(addr: Address): Promise<string | null>;
   txCount(addr: Address): Promise<number>;
+};
+
+import type { TrustGraph, TrustResult } from "@nearly/trust";
+
+export type TrustStore = {
+  loadGraph(nowMs: number): Promise<TrustGraph>;
+  saveSnapshots(rows: TrustResult[], computedAt: number): Promise<void>;
+  getSnapshot(addr: Address): Promise<TrustResult | null>;
+  /** address -> tier yang terakhir benar-benar ditulis on-chain. */
+  listPublishedTiers(): Promise<Map<string, number>>;
+  markPublished(
+    rows: { address: Address; tier: number; score: number; txHash: Hex }[],
+  ): Promise<void>;
+};
+
+export type VouchStore = {
+  countVouchesSince(from: Address, sinceMs: number): Promise<number>;
+  hasVouch(from: Address, to: Address): Promise<boolean>;
+  recordVouch(row: {
+    from: Address; to: Address; tags: string[]; tagsHash: Hex; txHash: Hex;
+  }): Promise<void>;
+  markRevoked(from: Address, to: Address): Promise<void>;
+};
+
+export type ReportRow = { reporter: Address; subject: Address; atMs: number };
+
+export type ReportStore = {
+  recordReport(row: {
+    reporter: Address; subject: Address; reason: string; evidence?: string;
+  }): Promise<void>;
+  listReports(subject: Address): Promise<ReportRow[]>;
+  setReportStatus(subject: Address, status: string): Promise<void>;
+  recordSlash(subject: Address, txHash: Hex): Promise<void>;
+};
+
+export type AttestorPort = {
+  setScore(who: Address, score: number, tier: number): Promise<Hex>;
+};
+
+export type VouchChainPort = {
+  submitVouch(args: {
+    from: Address; to: Address; tagsHash: Hex; expiresAt: bigint; sig: Hex;
+  }): Promise<Hex>;
+  submitRevoke(args: {
+    from: Address; to: Address; expiresAt: bigint; sig: Hex;
+  }): Promise<Hex>;
+  submitSlash(subject: Address): Promise<Hex>;
 };

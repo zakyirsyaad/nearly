@@ -110,7 +110,7 @@ export async function acceptHandshake(
   await deps.store.consumeOffer(input.nonce);
   await deps.store.recordConnection({
     a: offer.initiator, b: input.counterparty,
-    nonce: input.nonce, txHash, atMs: deps.nowMs(),
+    nonce: input.nonce, txHash, atMs: deps.nowMs(), cell: offer.cell,
   });
   return { ok: true, value: { txHash } };
 }
