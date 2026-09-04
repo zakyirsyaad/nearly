@@ -18,7 +18,19 @@ export function regionOf(occasionId: string): string {
   return occasionId.split(":")[0]!.slice(0, REGION_PREFIX);
 }
 
-/** Entropi Shannon dinormalisasi ke 0..1 oleh ln(jumlah kategori). */
+/**
+ * Entropi Shannon dinormalisasi oleh ln(TOTAL PENGAMATAN), bukan ln(jumlah ember).
+ *
+ * Bedanya menentukan arti seluruh faktor diversitas. Dengan ln(jumlah ember),
+ * yang terukur adalah KERATAAN saja: 50 koneksi merata di 2 occasion bernilai
+ * 1.0, sama persis dengan 50 koneksi merata di 10 occasion. Dengan ln(total),
+ * yang terukur adalah KELUASAN: 2 occasion memberi 0.177, 10 occasion memberi
+ * 0.589, dan nilai 1.0 hanya tercapai kalau tiap koneksi terjadi di occasion
+ * yang berbeda.
+ *
+ * Aturan inti spec §8 menuntut yang kedua. Angka 0.589 itu pun tertulis di
+ * spec fase §4.3 dan dikunci sebuah test.
+ */
 export function normalizedEntropy(counts: number[]): number {
   const total = counts.reduce((s, c) => s + c, 0);
   if (total <= 1 || counts.length <= 1) return 0;
@@ -29,7 +41,7 @@ export function normalizedEntropy(counts: number[]): number {
     const p = c / total;
     h -= p * Math.log(p);
   }
-  return Math.min(1, h / Math.log(counts.length));
+  return Math.min(1, h / Math.log(total));
 }
 
 export function neighborsOf(edges: TrustEdge[]): Map<string, Set<string>> {

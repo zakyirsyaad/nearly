@@ -21,8 +21,25 @@ describe("normalizedEntropy", () => {
     expect(normalizedEntropy([50])).toBe(0);
   });
 
-  it("tersebar merata mendekati 1", () => {
-    expect(normalizedEntropy([10, 10, 10, 10, 10])).toBeCloseTo(1, 6);
+  it("tiap koneksi di ember sendiri memberi 1", () => {
+    expect(normalizedEntropy(Array.from({ length: 50 }, () => 1))).toBeCloseTo(1, 6);
+  });
+
+  it("GERBANG: makin banyak ember makin tinggi, pada jumlah koneksi yang sama", () => {
+    // Ini yang membedakan penyebut ln(TOTAL) dari ln(jumlah ember).
+    // Dengan ln(jumlah ember), ketiganya bernilai 1.0 dan sebaran ke 2 occasion
+    // dinilai sama dengan sebaran ke 10 — membatalkan aturan inti spec §8
+    // ("50 orang di 1 event jauh di bawah 50 orang di 10 event, 5 kota").
+    // JANGAN mengganti penyebutnya menjadi ln(counts.length).
+    const dua = normalizedEntropy([25, 25]);
+    const lima = normalizedEntropy([10, 10, 10, 10, 10]);
+    const sepuluh = normalizedEntropy([5, 5, 5, 5, 5, 5, 5, 5, 5, 5]);
+    expect(dua).toBeLessThan(lima);
+    expect(lima).toBeLessThan(sepuluh);
+  });
+
+  it("mereproduksi angka yang ditulis spec §4.3: 50 koneksi di 10 occasion", () => {
+    expect(normalizedEntropy([5, 5, 5, 5, 5, 5, 5, 5, 5, 5])).toBeCloseTo(0.5886, 4);
   });
 
   it("tersebar timpang berada di antaranya", () => {
