@@ -47,7 +47,9 @@ function cellFrom(at: string): string {
 }
 
 async function main() {
-  const apiUrl = need("API_URL", process.env.API_URL);
+  // Terima keduanya: API_URL untuk pemakaian dari terminal, EXPO_PUBLIC_API_URL
+  // supaya satu .env yang sama bisa dipakai aplikasi mobile dan alat ini.
+  const apiUrl = need("API_URL", process.env.API_URL ?? process.env.EXPO_PUBLIC_API_URL);
   const registry = need("CONNECTION_REGISTRY_ADDRESS", process.env.CONNECTION_REGISTRY_ADDRESS) as Address;
   const account = privateKeyToAccount(need("PEER_PRIVATE_KEY", process.env.PEER_PRIVATE_KEY) as Hex);
 
