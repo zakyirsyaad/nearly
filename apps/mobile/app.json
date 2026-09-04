@@ -29,6 +29,17 @@
       "expo-location",
       "expo-asset",
       "expo-font"
-    ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "7289a831-fc9c-45c5-82bd-6d2b49c1b611"
+      }
+    },
+    "updates": {
+      "url": "https://u.expo.dev/7289a831-fc9c-45c5-82bd-6d2b49c1b611"
+    },
+    "runtimeVersion": {
+      "policy": "appVersion"
+    }
   }
 }
