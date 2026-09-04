@@ -3,8 +3,8 @@ import { privateKeyToAccount } from "viem/accounts";
 import type { Address, Hex } from "viem";
 import { TIER_LABELS } from "@nearly/trust";
 import { tagsHashOf, vouchTypedData } from "@nearly/shared";
+import { createApp, type TrustDeps } from "../src/app";
 import { trustRoutes } from "../src/routes/trust";
-import { reportRoutes } from "../src/routes/report";
 import { vouchRoutes } from "../src/routes/vouch";
 
 const A = "0x000000000000000000000000000000000000000a" as Address;
@@ -17,6 +17,16 @@ const NOW = 1_700_000_000_000;
 const PK = "0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d" as Hex;
 const account = privateKeyToAccount(PK);
 
+// Badan permintaan vouch yang tanda tangannya SENGAJA tidak sah, dipakai HANYA
+// oleh test "vouch yang DITOLAK tidak memicu recompute". Test pemicu yang
+// positif memakai signedVouchBody(), karena vouch yang ditolak tidak pernah
+// sampai ke onChanged.
+const VOUCH_BODY_INVALID = {
+  from: A, to: B, tags: ["zk"],
+  expiresAt: String(Math.floor(NOW / 1000) + 3600),
+  sig: `0x${"1".repeat(130)}`,
+};
+
 async function signedVouchBody() {
   const expiresAt = BigInt(Math.floor(NOW / 1000) + 3600);
   const tags = ["zk"];
@@ -27,6 +37,75 @@ async function signedVouchBody() {
     tags,
     expiresAt: String(Math.floor(NOW / 1000) + 3600),
     sig: await account.signTypedData(vouchTypedData(msg, CONTRACT)),
+  };
+}
+
+/**
+ * TrustDeps lengkap untuk createApp, seluruh port distub sebagai vi.fn().
+ *
+ * `overrides.saveSnapshots` dan `overrides.setScore` menggantikan spy default
+ * trust.saveSnapshots / attestor.setScore, supaya test bisa mengamati jalur
+ * recompute SUNGGUHAN (lewat onChanged di app.ts), bukan spy lokal yang tidak
+ * tersambung ke apa pun.
+ */
+function depsFor(overrides: {
+  saveSnapshots?: ReturnType<typeof vi.fn>;
+  setScore?: ReturnType<typeof vi.fn>;
+  recordReport?: ReturnType<typeof vi.fn>;
+} = {}): TrustDeps {
+  return {
+    verifyingContract: CONTRACT,
+    nowMs: () => NOW,
+    store: {
+      putOffer: vi.fn(async () => {}),
+      getOffer: vi.fn(async () => null),
+      consumeOffer: vi.fn(async () => {}),
+      // true supaya jalur vouch (submitVouch -> areConnected) bisa lewat.
+      areConnected: vi.fn(async () => true),
+      countConnectionsSince: vi.fn(async () => 0),
+      recordConnection: vi.fn(async () => {}),
+    },
+    chain: { submitConnect: vi.fn(async (): Promise<Hex> => "0xtx" as Hex) },
+    profiles: {
+      listConnections: vi.fn(async () => []),
+      countConnections: vi.fn(async () => 0),
+      getDisplayName: vi.fn(async () => ""),
+    },
+    identity: {
+      ensName: vi.fn(async () => null),
+      txCount: vi.fn(async () => 0),
+    },
+    trust: {
+      // Graf minimal berisi satu seed, cukup untuk computeTrust menghasilkan
+      // satu baris tanpa melempar.
+      loadGraph: vi.fn(async () => ({
+        edges: [], vouches: [], seeds: [{ address: A, weight: 1 }], slashed: [], nowMs: NOW,
+      })),
+      saveSnapshots: overrides.saveSnapshots ?? vi.fn(async () => {}),
+      getSnapshot: vi.fn(async () => null),
+      listPublishedTiers: vi.fn(async () => new Map()),
+      markPublished: vi.fn(async () => {}),
+    },
+    vouches: {
+      countVouchesSince: vi.fn(async () => 0),
+      hasVouch: vi.fn(async () => false),
+      recordVouch: vi.fn(async () => {}),
+      markRevoked: vi.fn(async () => {}),
+    },
+    reports: {
+      recordReport: overrides.recordReport ?? vi.fn(async () => {}),
+      listReports: vi.fn(async () => []),
+      setReportStatus: vi.fn(async () => {}),
+      recordSlash: vi.fn(async () => {}),
+    },
+    attestor: { setScore: overrides.setScore ?? vi.fn(async (): Promise<Hex> => "0xtx" as Hex) },
+    vouchChain: {
+      submitVouch: vi.fn(async (): Promise<Hex> => "0xtx" as Hex),
+      submitRevoke: vi.fn(async (): Promise<Hex> => "0xtx" as Hex),
+      submitSlash: vi.fn(async (): Promise<Hex> => "0xtx" as Hex),
+    },
+    vouchContract: CONTRACT,
+    adminToken: "test-admin-token",
   };
 }
 
@@ -124,26 +203,26 @@ describe("pemicu recompute", () => {
     await app.request("/vouch", {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify(await signedVouchBody()),
+      body: JSON.stringify(VOUCH_BODY_INVALID),
     });
     expect(onChanged).not.toHaveBeenCalled();
   });
 });
 
 describe("POST /report", () => {
+  // Test ini WAJIB dibangun lewat createApp, bukan lewat reportRoutes langsung.
+  //
+  // Versi sebelumnya membuat dua vi.fn() lokal dan menegaskan keduanya tidak
+  // terpanggil — padahal keduanya tidak pernah disambungkan ke apa pun, jadi
+  // assertion-nya benar apa pun yang dilakukan route. Test yang tidak bisa
+  // gagal lebih buruk daripada tidak ada test, karena ia terlihat seperti
+  // perlindungan. Spy HARUS spy yang sama yang dipakai jalur recompute
+  // sungguhan, dan test kedua di bawah membuktikan spy itu memang terjangkau.
   it("GERBANG: laporan mencatat, tapi TIDAK menyentuh skor sama sekali", async () => {
-    const recordReport = vi.fn(async () => {});
     const saveSnapshots = vi.fn(async () => {});
-    const setScore = vi.fn(async () => "0xtx");
-
-    const app = reportRoutes({
-      reports: {
-        recordReport,
-        listReports: vi.fn(async () => []),
-        setReportStatus: vi.fn(async () => {}),
-        recordSlash: vi.fn(async () => {}),
-      },
-    } as never);
+    const setScore = vi.fn(async (): Promise<Hex> => "0xtx" as Hex);
+    const recordReport = vi.fn(async () => {});
+    const app = createApp(depsFor({ saveSnapshots, setScore, recordReport }));
 
     const res = await app.request("/report", {
       method: "POST",
@@ -156,9 +235,24 @@ describe("POST /report", () => {
     expect(res.status).toBe(200);
     expect(recordReport).toHaveBeenCalledTimes(1);
     // Spec induk §6: laporan TIDAK PERNAH menurunkan trust secara langsung.
-    // Kalau suatu saat seseorang menambahkan onChanged() ke route ini, test
-    // ini yang menangkapnya.
     expect(saveSnapshots).not.toHaveBeenCalled();
     expect(setScore).not.toHaveBeenCalled();
+  });
+
+  it("spy yang sama TERPANGGIL lewat jalur yang memang memicu recompute", async () => {
+    // Tanpa test ini, test di atas bisa lolos hanya karena spy-nya tidak
+    // terjangkau. Ini yang membuktikan spy-nya hidup.
+    const saveSnapshots = vi.fn(async () => {});
+    const setScore = vi.fn(async (): Promise<Hex> => "0xtx" as Hex);
+    const app = createApp(depsFor({ saveSnapshots, setScore }));
+
+    const res = await app.request("/vouch", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(await signedVouchBody()),
+    });
+
+    expect(res.status).toBe(200);
+    expect(saveSnapshots).toHaveBeenCalled();
   });
 });
