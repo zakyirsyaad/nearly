@@ -1,0 +1,44 @@
+{
+  "expo": {
+    "name": "Nearly",
+    "slug": "nearly",
+    "scheme": "nearly",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "automatic",
+    "ios": {
+      "bundleIdentifier": "app.nearly.mobile",
+      "supportsTablet": false,
+      "infoPlist": {
+        "NSCameraUsageDescription": "Nearly memakai kamera hanya untuk memindai QR orang yang kamu temui.",
+        "NSLocationWhenInUseUsageDescription": "Nearly memakai lokasi kasar (~150 m) hanya saat handshake, untuk memastikan kalian benar-benar berada di tempat yang sama."
+      }
+    },
+    "android": {
+      "package": "app.nearly.mobile",
+      "permissions": [
+        "CAMERA",
+        "ACCESS_COARSE_LOCATION",
+        "ACCESS_FINE_LOCATION"
+      ]
+    },
+    "plugins": [
+      "expo-router",
+      "expo-camera",
+      "expo-location",
+      "expo-asset",
+      "expo-font"
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "7289a831-fc9c-45c5-82bd-6d2b49c1b611"
+      }
+    },
+    "updates": {
+      "url": "https://u.expo.dev/7289a831-fc9c-45c5-82bd-6d2b49c1b611"
+    },
+    "runtimeVersion": {
+      "policy": "appVersion"
+    }
+  }
+}

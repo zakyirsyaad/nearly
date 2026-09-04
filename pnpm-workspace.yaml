@@ -1,0 +1,9 @@
+packages:
+  - "packages/*"
+  - "apps/*"
+
+allowBuilds:
+  # esbuild dipakai vitest dan perlu menautkan binary sesuai platform.
+  esbuild: true
+  # Profiling opsional milik logger eas-cli. Tidak dipakai, jadi ditolak.
+  dtrace-provider: false
