@@ -112,13 +112,20 @@ type TrustEdge = {
   a: Address; b: Address;   // urutan kanonik, a < b
   occasionId: string;       // Fase 2: (cell, jendela 3 jam); Fase 3: id event
   atMs: number;
-  vouchWeight: number;      // 1 = koneksi biasa; lebih besar kalau ada vouch
   blocked: boolean;         // Fase 4; sudah ada di tipe, selalu false sekarang
 };
 
+type Vouch = { from: Address; to: Address; atMs: number };   // BERARAH
+
 type Seed = { address: Address; weight: number };
 
-type TrustGraph = { edges: TrustEdge[]; seeds: Seed[]; nowMs: number };
+type TrustGraph = {
+  edges: TrustEdge[];
+  vouches: Vouch[];
+  seeds: Seed[];
+  slashed: Address[];       // pelaku yang sudah dikonfirmasi manusia
+  nowMs: number;
+};
 
 type TrustResult = {
   address: Address;
@@ -149,6 +156,11 @@ benar secara matematis.
 `decay()` dibangun lengkap dan diuji, tapi **mengembalikan 1 di Fase 2** sesuai §11.1 butir 7:
 dalam rentang waktu demo tidak ada koneksi yang cukup tua untuk meluruh, jadi mengaktifkannya
 tidak terlihat sama sekali.
+
+**Vouch disimpan terpisah dari edge, bukan sebagai `vouchWeight` di dalamnya.** Edge adalah
+pertemuan fisik dan bersifat dua arah — ia kanonik (`a < b`). Vouch bersifat **berarah** (§5),
+jadi satu angka pada edge kanonik tidak bisa menyatakan siapa menjamin siapa. Bobot arah
+dirakit di `graph.ts` saat graf berarah dibangun.
 
 ### 4.3 Diversitas
 
