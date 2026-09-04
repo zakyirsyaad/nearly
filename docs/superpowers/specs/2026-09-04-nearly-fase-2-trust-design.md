@@ -475,9 +475,17 @@ Sampaikan jujur, jangan diklaim lebih:
    praktik ini jarang, karena orang sungguhan di ruangan sungguhan juga menyalami orang lain
    yang berbeda-beda; justru keragaman kecil itulah sinyalnya. Ditemukan lewat test dan
    dikunci sebuah test yang sengaja menyatakan batas ini.
-5. **Sybil multi-device dideteksi, belum dicegah** (§14 spec induk). Pencegahnya device
+5. **"Independen" di gerbang laporan berarti tidak bersebelahan berpasangan, bukan lebih.**
+   Rantai kenalan A-B-C-D-E bisa menyumbang {A, C, E} — ketiganya memang tidak saling
+   terkoneksi langsung, tapi mereka satu lingkaran sosial. Aturan yang lebih ketat tidak
+   tersedia secara praktis: menuntut pelapor dari komponen terhubung yang berbeda akan
+   membuat gerbang tidak pernah lolos, karena di graf sosial nyata hampir semua orang berada
+   di satu komponen raksasa. Yang menahan celah ini adalah tiga lapis lain — pelapor harus
+   mencapai tier Terpercaya, klaster operator ikut diperiksa, dan **tidak ada slash yang
+   terjadi tanpa konfirmasi manusia.** Dikunci sebuah test yang sengaja menyatakan batas ini.
+6. **Sybil multi-device dideteksi, belum dicegah** (§14 spec induk). Pencegahnya device
    attestation, ditunda pasca-hackathon.
-6. **Nearly membuktikan seseorang manusia nyata yang hadir — bukan bahwa dia orang baik.**
+7. **Nearly membuktikan seseorang manusia nyata yang hadir — bukan bahwa dia orang baik.**
    Mengklaim lebih dari ini berbahaya.
 
 ## 13. Yang Sengaja TIDAK Ada di Fase Ini

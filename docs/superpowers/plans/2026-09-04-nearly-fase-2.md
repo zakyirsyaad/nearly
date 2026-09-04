@@ -1373,6 +1373,36 @@ describe("reportGate", () => {
     expect(verdict.independent).toHaveLength(1 + luar.length);
   });
 
+  it("BATAS YANG DIAKUI: rantai kenalan bisa menyumbang tiga suara yang berpasangan asing", () => {
+    // Lima akun membentuk rantai A-B-C-D-E: tiap orang hanya bersebelahan
+    // dengan tetangganya. Gerbang meloloskan {A, C, E} — dan himpunan itu
+    // MEMANG berpasangan tidak bersebelahan, persis yang diminta aturannya.
+    //
+    // Aturan yang lebih ketat ("semua pelapor harus dari komponen terhubung
+    // yang berbeda") TIDAK boleh dipakai sebagai perbaikan: di graf sosial
+    // nyata hampir semua orang berada di satu komponen raksasa, sehingga
+    // gerbang tidak akan pernah lolos dan slashing jadi mustahil selamanya.
+    //
+    // Yang menahan celah ini bukan gerbang sendirian, melainkan tiga lapis:
+    // pelapor harus mencapai tier Terpercaya, klaster operator ikut diperiksa,
+    // dan tidak ada slash yang terjadi tanpa konfirmasi manusia.
+    // Tercatat di spec fase §12.
+    const rantai = [addr(1), addr(2), addr(3), addr(4), addr(5)];
+    const bersebelahan = new Set(["1|2", "2|3", "3|4", "4|5"]);
+    const idx = (a: string) => String(rantai.findIndex((r) => r.toLowerCase() === a) + 1);
+
+    const verdict = reportGate(
+      SUBJECT,
+      reports(rantai),
+      ctx({
+        areConnected: (x, y) =>
+          bersebelahan.has(`${idx(x)}|${idx(y)}`) || bersebelahan.has(`${idx(y)}|${idx(x)}`),
+      }),
+    );
+    expect(verdict.passes).toBe(true);
+    expect(verdict.independent).toHaveLength(3);
+  });
+
   it("laporan ganda dari orang yang sama hanya dihitung sekali", () => {
     const dobel = [...reports([addr(1)]), ...reports([addr(1)]), ...reports([addr(1)])];
     const verdict = reportGate(SUBJECT, dobel, ctx());
@@ -1471,6 +1501,14 @@ export type GateVerdict = {
  * penyerang harus memiliki tiga identitas tepercaya yang tidak saling mengenal.
  *
  * JANGAN melonggarkan syarat ini tanpa mengubah test brigading lebih dulu.
+ *
+ * Dan JANGAN "memperketatnya" menjadi pemeriksaan komponen terhubung. Yang
+ * ditegakkan di sini adalah ketidakbersebelahan BERPASANGAN, dan itu memang
+ * aturannya. Rantai kenalan A-B-C-D-E tetap bisa menyumbang {A, C, E} — sebuah
+ * batas yang diakui dan dikunci sebuah test. Mengganti aturannya menjadi "tiap
+ * pelapor dari komponen terhubung yang berbeda" akan membuat gerbang tidak
+ * pernah lolos sama sekali, karena di graf sosial nyata hampir semua orang
+ * berada di satu komponen raksasa.
  */
 export function reportGate(
   subject: Address,
@@ -1540,7 +1578,7 @@ export * from "./slashing";
 - [ ] **Step 4: Jalankan test, pastikan LULUS**
 
 Jalankan: `pnpm --filter @nearly/trust test`
-Diharapkan: PASS — 52 test
+Diharapkan: PASS — 59 test (44 dari Task 1-4 + 15 baru)
 
 - [ ] **Step 5: Commit**
 
