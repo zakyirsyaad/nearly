@@ -3,6 +3,7 @@ import type { Address } from "viem";
 import type { TrustResult } from "@nearly/trust";
 import type { ReportStore, TrustStore, VouchStore } from "../ports";
 import { rowsToGraph } from "./load-graph";
+import type { ConnRow, SeedRow, SlashRow, VouchRow } from "./load-graph";
 
 type Res<T> = { data: T | null; error: { message: string } | null };
 
@@ -11,24 +12,77 @@ function unwrap<T>(res: Res<T[]>, what: string): T[] {
   return res.data ?? [];
 }
 
+/**
+ * Besar satu halaman. Disamakan dengan batas baris bawaan PostgREST supaya
+ * halaman kita tidak pernah lebih besar dari yang mau dilayani server.
+ */
+export const PAGE_SIZE = 1000;
+
+/**
+ * Mengambil SELURUH baris sebuah tabel, per halaman.
+ *
+ * Tanpa ini, `select()` polos bergantung pada batas baris server — Supabase
+ * umumnya memotong di 1000. Pemotongan itu TIDAK menghasilkan error: ia
+ * mengembalikan sebagian data yang terlihat sah, graf trust jadi tidak lengkap,
+ * dan SETIAP skor diam-diam salah. Di ruangan 500 orang, jumlah koneksi
+ * melewati batas itu jauh sebelum grafnya terasa besar.
+ *
+ * Berhenti saat sebuah halaman mengembalikan kurang dari yang diminta — satu-
+ * satunya tanda yang bisa dipercaya bahwa data sudah habis, karena jumlah total
+ * bisa berubah di antara dua permintaan.
+ */
+export async function fetchAllPages<T>(
+  fetchPage: (from: number, to: number) => Promise<Res<T[]>>,
+  what: string,
+  pageSize = PAGE_SIZE,
+): Promise<T[]> {
+  const semua: T[] = [];
+  for (let from = 0; ; from += pageSize) {
+    const res = await fetchPage(from, from + pageSize - 1);
+    // Gagal di tengah TIDAK boleh mengembalikan sebagian: itu kegagalan senyap
+    // yang sama dengan pemotongan, tapi lebih sulit dilacak.
+    if (res.error) throw new Error(`${what} gagal: ${res.error.message}`);
+
+    const halaman = res.data ?? [];
+    semua.push(...halaman);
+    if (halaman.length < pageSize) return semua;
+  }
+}
+
 export function createTrustStore(db: SupabaseClient): TrustStore {
   return {
     async loadGraph(nowMs) {
+      // Diurutkan eksplisit: paginasi hanya benar kalau urutannya stabil antar
+      // permintaan. Tanpa order by, PostgREST tidak menjamin apa pun dan sebuah
+      // baris bisa terlewat atau terhitung dua kali di batas halaman.
       const [connections, vouches, seeds, slashes] = await Promise.all([
-        db.from("connections").select("addr_a, addr_b, cell, created_at"),
-        db.from("vouches").select("from_addr, to_addr, created_at, revoked_at"),
-        db.from("trust_seeds").select("address, weight"),
-        db.from("slashes").select("subject"),
+        fetchAllPages<ConnRow>(
+          (f, t) =>
+            db.from("connections").select("addr_a, addr_b, cell, created_at")
+              .order("id", { ascending: true }).range(f, t) as never,
+          "baca koneksi",
+        ),
+        fetchAllPages<VouchRow>(
+          (f, t) =>
+            db.from("vouches").select("from_addr, to_addr, created_at, revoked_at")
+              .order("from_addr", { ascending: true }).order("to_addr", { ascending: true })
+              .range(f, t) as never,
+          "baca vouch",
+        ),
+        fetchAllPages<SeedRow>(
+          (f, t) =>
+            db.from("trust_seeds").select("address, weight")
+              .order("address", { ascending: true }).range(f, t) as never,
+          "baca seed",
+        ),
+        fetchAllPages<SlashRow>(
+          (f, t) =>
+            db.from("slashes").select("subject")
+              .order("subject", { ascending: true }).range(f, t) as never,
+          "baca slash",
+        ),
       ]);
-      return rowsToGraph(
-        {
-          connections: unwrap(connections as never, "baca koneksi"),
-          vouches: unwrap(vouches as never, "baca vouch"),
-          seeds: unwrap(seeds as never, "baca seed"),
-          slashes: unwrap(slashes as never, "baca slash"),
-        },
-        nowMs,
-      );
+      return rowsToGraph({ connections, vouches, seeds, slashes }, nowMs);
     },
 
     async saveSnapshots(rows, computedAt) {
