@@ -106,3 +106,71 @@ export type VouchChainPort = {
   }): Promise<Hex>;
   submitSlash(subject: Address): Promise<Hex>;
 };
+
+export type EventRecord = {
+  eventId: Hex;
+  host: Address;
+  title: string;
+  venueLabel: string;
+  centerCell: string;
+  /** unix DETIK */
+  startsAt: bigint;
+  /** unix DETIK */
+  endsAt: bigint;
+  txHash: Hex;
+};
+
+export type PendingCheckInOffer = {
+  nonce: Hex;
+  eventId: Hex;
+  host: Address;
+  expiresAt: bigint;
+  sigHost: Hex;
+  /** Sel geohash7 yang dikirim HOST sendiri. */
+  cell: string;
+  /** MILIDETIK. */
+  atMs: number;
+  consumed: boolean;
+};
+
+/** Satu baris kartu di halaman discovery. */
+export type DiscoveryRow = EventRecord & { hostScore: number; rsvpCount: number };
+
+export type EventStore = {
+  recordEvent(row: EventRecord): Promise<void>;
+  getEvent(eventId: Hex): Promise<EventRecord | null>;
+  /** Sudah tersaring dan terurut (spec §8). `nowSec` unix DETIK. */
+  listDiscovery(nowSec: number, limit: number): Promise<DiscoveryRow[]>;
+  hasRsvp(eventId: Hex, who: Address): Promise<boolean>;
+  recordRsvp(eventId: Hex, who: Address): Promise<void>;
+  putCheckInOffer(offer: Omit<PendingCheckInOffer, "consumed">): Promise<void>;
+  getCheckInOffer(nonce: Hex): Promise<PendingCheckInOffer | null>;
+  consumeCheckInOffer(nonce: Hex): Promise<void>;
+  hasCheckIn(eventId: Hex, who: Address): Promise<boolean>;
+  recordCheckIn(row: {
+    eventId: Hex; who: Address; nonce: Hex; cell: string; atMs: number; txHash: Hex;
+  }): Promise<void>;
+  attendanceSummary(eventId: Hex): Promise<{
+    rsvps: number; checkins: number; rsvpBelumHadir: number;
+  }>;
+};
+
+export type AttendanceChainPort = {
+  submitCreateEvent(a: {
+    eventId: Hex; host: Address; startsAt: bigint; endsAt: bigint;
+    centerCell: Hex; expiresAt: bigint; sigHost: Hex;
+  }): Promise<Hex>;
+  submitCheckIn(a: {
+    eventId: Hex; attendee: Address; nonce: Hex; expiresAt: bigint;
+    sigHost: Hex; sigAttendee: Hex;
+  }): Promise<Hex>;
+};
+
+export type EventDeps = {
+  events: EventStore;
+  attendance: AttendanceChainPort;
+  profiles: ProfileStore;
+  /** Alamat AttendanceRegistry — domain EIP-712 terikat padanya. */
+  attendanceContract: Address;
+  nowMs: () => number;
+};
