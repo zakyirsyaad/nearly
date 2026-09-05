@@ -122,6 +122,50 @@ contract AttendanceRegistryTest is Test {
         reg.createEvent(id, host, endsAt, startsAt, CELL, expiresAt, _sign(pkHost, digest));
     }
 
+    // Sebelum ini, penjagaan attestor pada createEvent tidak diuji sama
+    // sekali — bisa dihapus dan 15 test lama tetap hijau. Tidak ada
+    // vm.prank, jadi msg.sender adalah kontrak test sendiri, bukan attestor.
+    function test_buatEventBukanAttestorDitolak() public {
+        vm.expectRevert(AttendanceRegistry.NotAttestor.selector);
+        reg.createEvent(
+            keccak256("event-bukan-attestor"), host, startsAt, endsAt, CELL, expiresAt, hex"00"
+        );
+    }
+
+    // Ini SATU-SATUNYA test yang menegakkan otorisasi host pada createEvent:
+    // digest ditandatangani pkGuest, bukan pkHost, jadi _recover mengembalikan
+    // alamat tamu, bukan host, dan createEvent wajib menolaknya.
+    function test_buatEventTandaTanganPalsuDitolak() public {
+        bytes32 id = keccak256("event-tandatangan-palsu");
+        bytes32 digest = _eip712(keccak256(abi.encode(
+            keccak256(
+                "CreateEvent(bytes32 eventId,address host,uint64 startsAt,uint64 endsAt,bytes32 centerCell,uint64 expiresAt)"
+            ),
+            id, host, startsAt, endsAt, CELL, expiresAt
+        )));
+        // Tanda tangan dihitung sebelum vm.prank — lihat catatan di _createEvent().
+        bytes memory sig = _sign(pkGuest, digest);
+        vm.prank(attestor);
+        vm.expectRevert(AttendanceRegistry.BadSignature.selector);
+        reg.createEvent(id, host, startsAt, endsAt, CELL, expiresAt, sig);
+    }
+
+    function test_buatEventKedaluwarsaDitolak() public {
+        bytes32 id = keccak256("event-kedaluwarsa");
+        bytes32 digest = _eip712(keccak256(abi.encode(
+            keccak256(
+                "CreateEvent(bytes32 eventId,address host,uint64 startsAt,uint64 endsAt,bytes32 centerCell,uint64 expiresAt)"
+            ),
+            id, host, startsAt, endsAt, CELL, expiresAt
+        )));
+        // Tanda tangan dihitung sebelum warp dan prank, sama seperti pola lain.
+        bytes memory sig = _sign(pkHost, digest);
+        vm.warp(expiresAt + 1);
+        vm.prank(attestor);
+        vm.expectRevert(AttendanceRegistry.Expired.selector);
+        reg.createEvent(id, host, startsAt, endsAt, CELL, expiresAt, sig);
+    }
+
     function test_checkInKeEventTakDikenalDitolak() public {
         bytes memory sigHost = _sign(pkHost, _offerDigest(NONCE));
         bytes memory sigGuest = _sign(pkGuest, _acceptDigest(NONCE, guest));
@@ -233,5 +277,39 @@ contract AttendanceRegistryTest is Test {
     function test_attestorNolDitolak() public {
         vm.expectRevert(AttendanceRegistry.ZeroAddress.selector);
         new AttendanceRegistry(address(0));
+    }
+
+    // Tanpa guard `attendee == address(0)`, tanda tangan tamu yang rusak
+    // (panjang bukan 65 byte) membuat _recover mengembalikan address(0) —
+    // dan kalau attendee juga address(0), pencocokan itu LOLOS, bukan
+    // ditolak, sehingga kehadiran palsu untuk address(0) tercatat. sigHost
+    // sengaja dibuat SAH supaya jalur ini benar-benar tercapai kalau guard
+    // dicabut; guard attendee == address(0) yang wajib menangkapnya lebih
+    // dulu, sebelum tanda tangan sempat diperiksa.
+    function test_checkInAlamatNolDenganTandaTanganRusakDitolak() public {
+        bytes memory sigHost = _sign(pkHost, _offerDigest(NONCE));
+        vm.prank(attestor);
+        vm.expectRevert(AttendanceRegistry.BadSignature.selector);
+        reg.checkIn(EVENT_ID, address(0), NONCE, expiresAt, sigHost, hex"00");
+    }
+
+    // Setiap test lain menurunkan digestnya dari reg.DOMAIN_SEPARATOR() itu
+    // sendiri, jadi domain EIP-712 yang salah pun tetap lolos semua test.
+    // Test ini menghitung separator secara independen dan membandingkannya —
+    // kalau nama, versi, chainId, atau verifyingContract di kontrak berubah
+    // diam-diam, ini satu-satunya test yang akan menangkapnya.
+    function test_domainSeparatorDihitungBenar() public view {
+        bytes32 expected = keccak256(
+            abi.encode(
+                keccak256(
+                    "EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)"
+                ),
+                keccak256("Nearly"),
+                keccak256("1"),
+                block.chainid,
+                address(reg)
+            )
+        );
+        assertEq(reg.DOMAIN_SEPARATOR(), expected);
     }
 }
