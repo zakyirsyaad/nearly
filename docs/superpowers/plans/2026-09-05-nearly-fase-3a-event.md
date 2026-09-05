@@ -545,7 +545,7 @@ export * from "./event";
 pnpm --filter @nearly/shared test event
 ```
 
-Diharapkan: PASS, 12 test.
+Diharapkan: PASS, 13 test.
 
 - [ ] **Step 6: Commit**
 
