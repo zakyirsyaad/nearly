@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useLocalSearchParams } from "expo-router";
 import {
   Button, InputAccessoryView, Keyboard, KeyboardAvoidingView, Platform,
@@ -21,6 +21,20 @@ type Profile = {
 
 export default function ProfileScreen() {
   const { address } = useLocalSearchParams<{ address: string }>();
+  const scrollRef = useRef<ScrollView>(null);
+
+  /**
+   * Menggulirkan isian ke atas keyboard.
+   *
+   * Tanpa ini, membuka form laporan meninggalkan kotak isiannya di belakang
+   * keyboard dan tidak ada yang memindahkannya — pengguna mengetik ke sesuatu
+   * yang tidak bisa dilihatnya. Jeda 150 ms menunggu animasi keyboard selesai;
+   * dipanggil lebih awal, viewport belum menyusut dan gulirannya berhenti di
+   * posisi lama.
+   */
+  const gulirKeIsian = () => {
+    setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 150);
+  };
   const [p, setP] = useState<Profile | null>(null);
   const [trust, setTrust] = useState<TrustResponse | null>(null);
 
@@ -128,6 +142,7 @@ export default function ProfileScreen() {
       behavior={Platform.OS === "ios" ? "padding" : undefined}
     >
       <ScrollView
+        ref={scrollRef}
         contentContainerStyle={s.root}
         keyboardDismissMode="on-drag"
         keyboardShouldPersistTaps="handled"
@@ -191,30 +206,35 @@ export default function ProfileScreen() {
 
       {signer && !isOwnProfile && (
         <View style={s.section}>
-          <Pressable onPress={() => setShowReportForm((v) => !v)}>
+          <Pressable
+            onPress={() => {
+              setShowReportForm((v) => !v);
+              gulirKeIsian();
+            }}
+          >
             <Text style={s.button}>Lapor</Text>
           </Pressable>
 
           {showReportForm && (
             <View style={s.reportForm}>
-              <Text style={s.inputLabel}>Alasan laporan</Text>
+              {/* "Selesai" duduk DI ATAS isian, bukan di bawahnya: yang di
+                  bawah akan tertutup keyboard, persis masalah yang mau
+                  diselesaikan. iOS juga mendapat batang menempel keyboard. */}
+              <View style={s.inputHeader}>
+                <Text style={s.inputLabel}>Alasan laporan</Text>
+                <Pressable onPress={() => Keyboard.dismiss()} hitSlop={12}>
+                  <Text style={s.done}>Selesai</Text>
+                </Pressable>
+              </View>
               <TextInput
                 style={s.input}
                 placeholder="Ceritakan apa yang terjadi"
                 value={reportReason}
                 onChangeText={setReportReason}
+                onFocus={gulirKeIsian}
                 multiline
                 inputAccessoryViewID={Platform.OS === "ios" ? ACCESSORY_ID : undefined}
               />
-              {/* Android menutup keyboard lewat tombol back sistem; iOS tidak
-                  punya padanannya untuk input multiline, jadi tombolnya harus
-                  disediakan sendiri dan HARUS menempel di keyboard — kalau
-                  ditaruh di dalam form, keyboard sendiri yang menutupinya. */}
-              {Platform.OS !== "ios" && (
-                <Pressable onPress={() => Keyboard.dismiss()} hitSlop={12}>
-                  <Text style={s.done}>Selesai</Text>
-                </Pressable>
-              )}
               <Button
                 title={reportBusy ? "Mengirim…" : "Kirim Laporan"}
                 disabled={reportBusy || !reportReason.trim()}
@@ -244,6 +264,9 @@ export default function ProfileScreen() {
 const s = StyleSheet.create({
   flex: { flex: 1 },
   root: { padding: 24, paddingBottom: 48, gap: 8 },
+  inputHeader: {
+    flexDirection: "row", justifyContent: "space-between", alignItems: "center",
+  },
   inputLabel: { fontSize: 14, opacity: 0.7 },
   done: { fontSize: 17, fontWeight: "600" },
   accessory: {
