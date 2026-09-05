@@ -6,3 +6,4 @@ export * from "./schema";
 export * from "./eip712-types";
 export * from "./qr";
 export * from "./vouch";
+export * from "./event";
