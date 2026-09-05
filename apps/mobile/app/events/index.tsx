@@ -2,6 +2,8 @@ import { useCallback, useState } from "react";
 import { Link, useFocusEffect } from "expo-router";
 import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, View } from "react-native";
 import { getDiscovery, type EventSummary } from "../../src/events-api";
+import { ApiError } from "../../src/api";
+import { eventErrorMessage } from "../../src/messages";
 
 function waktuSingkat(unixSec: string): string {
   return new Date(Number(unixSec) * 1000).toLocaleString("id-ID", {
@@ -19,7 +21,11 @@ export default function EventsScreen() {
       setEvents(rows);
       setError(null);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Gagal memuat acara.");
+      setError(
+        e instanceof ApiError
+          ? eventErrorMessage(e.code, e.reason)
+          : e instanceof Error ? e.message : "Gagal memuat acara.",
+      );
     }
   }, []);
 
