@@ -68,3 +68,60 @@ export const ReportRequestSchema = z.object({
   expiresAt: z.string().regex(/^\d+$/),
   sig: SignatureSchema,
 });
+
+const unixSeconds = z.string().regex(/^\d+$/);
+
+export const CreateEventRequestSchema = z
+  .object({
+    eventId: bytes32,
+    host: address,
+    title: z.string().min(1).max(120),
+    venueLabel: z.string().max(160).default(""),
+    cell,
+    startsAt: unixSeconds,
+    endsAt: unixSeconds,
+    expiresAt: unixSeconds,
+    sigHost: signature,
+  })
+  .refine((v) => {
+    try {
+      return BigInt(v.endsAt) > BigInt(v.startsAt);
+    } catch {
+      return true; // Biarkan error BigInt ini ditangani level validasi field
+    }
+  }, {
+    message: "waktu selesai harus setelah waktu mulai",
+    path: ["endsAt"],
+  });
+
+export const RsvpRequestSchema = z.object({
+  eventId: bytes32,
+  who: address,
+  expiresAt: unixSeconds,
+  sig: signature,
+});
+
+export const CheckInOfferRequestSchema = z.object({
+  eventId: bytes32,
+  nonce: bytes32,
+  host: address,
+  expiresAt: unixSeconds,
+  sigHost: signature,
+  cell,
+  atMs: z.number().int().positive(),
+});
+
+export const CheckInRequestSchema = z.object({
+  eventId: bytes32,
+  nonce: bytes32,
+  attendee: address,
+  expiresAt: unixSeconds,
+  sigAttendee: signature,
+  cell,
+  atMs: z.number().int().positive(),
+});
+
+export type CreateEventRequest = z.infer<typeof CreateEventRequestSchema>;
+export type RsvpRequest = z.infer<typeof RsvpRequestSchema>;
+export type CheckInOfferRequest = z.infer<typeof CheckInOfferRequestSchema>;
+export type CheckInRequest = z.infer<typeof CheckInRequestSchema>;
