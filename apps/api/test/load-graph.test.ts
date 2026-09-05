@@ -1,11 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { occasionIdOf, OCCASION_WINDOW_MS, rowsToGraph } from "../src/trust/load-graph";
+import { eventOccasionIdOf, occasionIdOf, OCCASION_WINDOW_MS, rowsToGraph } from "../src/trust/load-graph";
 import type { GraphRows } from "../src/trust/load-graph";
+import { regionOf } from "@nearly/trust";
 
 const NOW = 1_700_000_000_000;
 
 function rows(over: Partial<GraphRows> = {}): GraphRows {
-  return { connections: [], vouches: [], seeds: [], slashes: [], ...over };
+  return { connections: [], vouches: [], seeds: [], slashes: [], checkins: [], events: [], ...over };
 }
 
 describe("occasionIdOf", () => {
@@ -84,5 +85,123 @@ describe("rowsToGraph", () => {
 
   it("nowMs diteruskan ke graf", () => {
     expect(rowsToGraph(rows(), NOW).nowMs).toBe(NOW);
+  });
+});
+
+const EVENT_A = `0x${"a".repeat(64)}`;
+const CELL = "qqguv1r";
+
+function eventRow(over: Record<string, unknown> = {}) {
+  return {
+    event_id: EVENT_A,
+    center_cell: CELL,
+    starts_at: String(Math.floor(NOW / 1000) - 600),
+    ends_at: String(Math.floor(NOW / 1000) + 3600),
+    ...over,
+  };
+}
+
+describe("occasion dari check-in terverifikasi", () => {
+  it("koneksi dicap ke event kalau KEDUA pihak check-in di situ", () => {
+    const g = rowsToGraph(
+      rows({
+        connections: [
+          { addr_a: "0x0a", addr_b: "0x0b", cell: CELL, created_at: new Date(NOW).toISOString() },
+        ],
+        checkins: [
+          { event_id: EVENT_A, address: "0x0a" },
+          { event_id: EVENT_A, address: "0x0b" },
+        ],
+        events: [eventRow()],
+      }),
+      NOW,
+    );
+    expect(g.edges[0]!.occasionId).toBe(eventOccasionIdOf(CELL, EVENT_A));
+  });
+
+  it("kalau hanya satu pihak check-in, jatuh ke tebakan geohash", () => {
+    const g = rowsToGraph(
+      rows({
+        connections: [
+          { addr_a: "0x0a", addr_b: "0x0b", cell: CELL, created_at: new Date(NOW).toISOString() },
+        ],
+        checkins: [{ event_id: EVENT_A, address: "0x0a" }],
+        events: [eventRow()],
+      }),
+      NOW,
+    );
+    expect(g.edges[0]!.occasionId).toBe(occasionIdOf(CELL, NOW));
+  });
+
+  it("salaman di luar jendela event jatuh ke tebakan geohash", () => {
+    const g = rowsToGraph(
+      rows({
+        connections: [
+          { addr_a: "0x0a", addr_b: "0x0b", cell: CELL, created_at: new Date(NOW).toISOString() },
+        ],
+        checkins: [
+          { event_id: EVENT_A, address: "0x0a" },
+          { event_id: EVENT_A, address: "0x0b" },
+        ],
+        events: [eventRow({
+          starts_at: String(Math.floor(NOW / 1000) + 7200),
+          ends_at: String(Math.floor(NOW / 1000) + 10800),
+        })],
+      }),
+      NOW,
+    );
+    expect(g.edges[0]!.occasionId).toBe(occasionIdOf(CELL, NOW));
+  });
+
+  // INI test yang menahan bug paling mahal di fase ini. Kalau occasionId event
+  // tidak diawali sel geohash, regionOf mengembalikan hal yang sama untuk SEMUA
+  // event dan seluruh wilayah runtuh jadi satu.
+  it("wilayah tetap terbaca dari occasion event, bukan runtuh jadi satu", () => {
+    const jakarta = eventOccasionIdOf("qqguv1r", EVENT_A);
+    const bandung = eventOccasionIdOf("qqgw2xy", `0x${"b".repeat(64)}`);
+    expect(regionOf(jakarta)).toBe("qqgu");
+    expect(regionOf(bandung)).toBe("qqgw");
+    expect(regionOf(jakarta)).not.toBe(regionOf(bandung));
+  });
+
+  it("dua event tumpang tindih menghasilkan pilihan yang sama tiap kali", () => {
+    const EVENT_B = `0x${"b".repeat(64)}`;
+    const build = () =>
+      rowsToGraph(
+        rows({
+          connections: [
+            { addr_a: "0x0a", addr_b: "0x0b", cell: CELL, created_at: new Date(NOW).toISOString() },
+          ],
+          checkins: [
+            { event_id: EVENT_B, address: "0x0a" },
+            { event_id: EVENT_B, address: "0x0b" },
+            { event_id: EVENT_A, address: "0x0a" },
+            { event_id: EVENT_A, address: "0x0b" },
+          ],
+          events: [eventRow(), eventRow({ event_id: EVENT_B })],
+        }),
+        NOW,
+      );
+    expect(build().edges[0]!.occasionId).toBe(build().edges[0]!.occasionId);
+    expect(build().edges[0]!.occasionId).toBe(eventOccasionIdOf(CELL, EVENT_A));
+  });
+
+  it("koneksi Fase 1 tanpa sel tetap seperti sebelumnya", () => {
+    const g = rowsToGraph(
+      rows({
+        connections: [
+          { addr_a: "0x0a", addr_b: "0x0b", cell: null, created_at: new Date(NOW).toISOString() },
+        ],
+        checkins: [
+          { event_id: EVENT_A, address: "0x0a" },
+          { event_id: EVENT_A, address: "0x0b" },
+        ],
+        events: [eventRow()],
+      }),
+      NOW,
+    );
+    // Check-in ADA, jadi event menang. Sel tidak dibutuhkan untuk itu — yang
+    // dipakai adalah center_cell milik event.
+    expect(g.edges[0]!.occasionId).toBe(eventOccasionIdOf(CELL, EVENT_A));
   });
 });

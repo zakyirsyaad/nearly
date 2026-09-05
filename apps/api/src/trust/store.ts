@@ -3,7 +3,7 @@ import type { Address } from "viem";
 import type { TrustResult } from "@nearly/trust";
 import type { ReportStore, TrustStore, VouchStore } from "../ports";
 import { rowsToGraph } from "./load-graph";
-import type { ConnRow, SeedRow, SlashRow, VouchRow } from "./load-graph";
+import type { CheckInRow, ConnRow, EventWindowRow, SeedRow, SlashRow, VouchRow } from "./load-graph";
 
 type Res<T> = { data: T | null; error: { message: string } | null };
 
@@ -55,7 +55,7 @@ export function createTrustStore(db: SupabaseClient): TrustStore {
       // Diurutkan eksplisit: paginasi hanya benar kalau urutannya stabil antar
       // permintaan. Tanpa order by, PostgREST tidak menjamin apa pun dan sebuah
       // baris bisa terlewat atau terhitung dua kali di batas halaman.
-      const [connections, vouches, seeds, slashes] = await Promise.all([
+      const [connections, vouches, seeds, slashes, checkins, events] = await Promise.all([
         fetchAllPages<ConnRow>(
           (f, t) =>
             db.from("connections").select("addr_a, addr_b, cell, created_at")
@@ -81,8 +81,21 @@ export function createTrustStore(db: SupabaseClient): TrustStore {
               .order("subject", { ascending: true }).range(f, t) as never,
           "baca slash",
         ),
+        fetchAllPages<CheckInRow>(
+          (f, t) =>
+            db.from("checkins").select("event_id, address")
+              .order("event_id", { ascending: true }).order("address", { ascending: true })
+              .range(f, t) as never,
+          "baca check-in",
+        ),
+        fetchAllPages<EventWindowRow>(
+          (f, t) =>
+            db.from("events").select("event_id, center_cell, starts_at, ends_at")
+              .order("event_id", { ascending: true }).range(f, t) as never,
+          "baca event",
+        ),
       ]);
-      return rowsToGraph({ connections, vouches, seeds, slashes }, nowMs);
+      return rowsToGraph({ connections, vouches, seeds, slashes, checkins, events }, nowMs);
     },
 
     async saveSnapshots(rows, computedAt) {
