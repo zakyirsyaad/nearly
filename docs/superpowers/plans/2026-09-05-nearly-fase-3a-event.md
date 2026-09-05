@@ -824,6 +824,17 @@ contract AttendanceRegistryTest is Test {
 }
 ```
 
+> **KOREKSI PASCA-EKSEKUSI.** Kode test di Step 1 memuat bug: `vm.prank` hanya berlaku
+> untuk satu panggilan berikutnya, dan helper `_eip712()` memanggil `reg.DOMAIN_SEPARATOR()`
+> — sebuah staticcall — sehingga prank habis terpakai di situ dan panggilan yang diuji
+> datang dari kontrak test, bukan attestor. **Hitung setiap tanda tangan ke variabel lokal
+> SEBELUM `vm.prank`**, seperti yang dilakukan `VouchRegistry.t.sol` di seluruh berkasnya.
+> Selain itu Step 1 melewatkan enam test yang ternyata perlu: empat penjagaan `createEvent`
+> (attestor, host nol, kedaluwarsa, tanda tangan host), satu penjagaan alamat nol di
+> `checkIn`, dan satu test yang menghitung DOMAIN_SEPARATOR secara independen. Tanpa
+> keenamnya, penjagaan yang bersangkutan bisa dihapus dari kontrak tanpa satu test pun
+> gagal. Suite akhir: 21 test.
+
 - [ ] **Step 2: Jalankan test, pastikan gagal**
 
 ```bash
