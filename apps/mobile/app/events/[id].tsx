@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useLocalSearchParams } from "expo-router";
 import { ActivityIndicator, Button, StyleSheet, Text, View } from "react-native";
 import type { Hex } from "viem";
-import { isEventLive, rsvpTypedData } from "@nearly/shared";
+import { isEventLive, lihatEventTypedData, rsvpTypedData } from "@nearly/shared";
 import { CONFIG } from "../../src/config";
 import { createDevSigner } from "../../src/signer";
 import { ApiError } from "../../src/api";
@@ -29,10 +29,14 @@ export default function EventDetailScreen() {
     try {
       // Bendera sudahRsvp/sudahCheckIn hanya keluar untuk pemanggil yang
       // MEMBUKTIKAN dirinya alamat itu — tanpa tanda tangan, `?who=` akan
-      // jadi oracle yang bisa ditanya siapa pun tentang siapa pun.
+      // jadi oracle yang bisa ditanya siapa pun tentang siapa pun. Tipe
+      // LihatEvent dipakai di sini, BUKAN Rsvp: proof baca ini dikirim lewat
+      // query string di setiap pembukaan layar, jadi kalau tipenya sama
+      // dengan yang diterima POST /events/:id/rsvp, siapa pun yang membaca
+      // URL itu (log, proxy) bisa memutarnya ulang sebagai RSVP sungguhan.
       const expiresAt = BigInt(Math.floor(Date.now() / 1000) + 600);
       const sig = await signer.signTypedData(
-        rsvpTypedData(
+        lihatEventTypedData(
           { eventId: id as Hex, who: signer.address, expiresAt },
           CONFIG.attendanceRegistry,
         ),

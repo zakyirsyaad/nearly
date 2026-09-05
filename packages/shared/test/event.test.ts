@@ -3,8 +3,9 @@ import { privateKeyToAccount } from "viem/accounts";
 import type { Address, Hex } from "viem";
 import {
   bytes32ToCell, cellToBytes32, checkInAcceptTypedData, checkInOfferTypedData,
-  createEventTypedData, makeEventId, recoverCheckInAcceptSigner,
-  recoverCheckInOfferSigner, recoverCreateEventSigner, recoverRsvpSigner, rsvpTypedData,
+  createEventTypedData, lihatEventTypedData, makeEventId, recoverCheckInAcceptSigner,
+  recoverCheckInOfferSigner, recoverCreateEventSigner, recoverLihatEventSigner,
+  recoverRsvpSigner, rsvpTypedData,
 } from "../src/event";
 
 const PK = "0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d" as Hex;
@@ -109,5 +110,30 @@ describe("tanda tangan Rsvp", () => {
   it("pulih ke penandatangan", async () => {
     const sig = await account.signTypedData(rsvpTypedData(msg, CONTRACT));
     expect(await recoverRsvpSigner(msg, sig, CONTRACT)).toBe(account.address);
+  });
+});
+
+describe("tanda tangan LihatEvent", () => {
+  const msg = { eventId: EVENT_ID, who: account.address, expiresAt: EXPIRES };
+
+  it("pulih ke penandatangan", async () => {
+    const sig = await account.signTypedData(lihatEventTypedData(msg, CONTRACT));
+    expect(await recoverLihatEventSigner(msg, sig, CONTRACT)).toBe(account.address);
+  });
+
+  // Properti inti dari seluruh perbaikan ini: LihatEvent dan Rsvp punya
+  // field yang identik, tapi nama tipe EIP-712 yang berbeda membuat digest-nya
+  // berbeda. Kalau keduanya interchangeable, tanda tangan bukti-baca yang
+  // bocor lewat query string GET /events/:id bisa diputar ulang sebagai RSVP
+  // sungguhan lewat POST /events/:id/rsvp — persis eskalasi yang perbaikan
+  // ini menutup.
+  it("tanda tangan LihatEvent tidak pulih ke penandatangan kalau diperiksa sebagai Rsvp", async () => {
+    const sig = await account.signTypedData(lihatEventTypedData(msg, CONTRACT));
+    expect(await recoverRsvpSigner(msg, sig, CONTRACT)).not.toBe(account.address);
+  });
+
+  it("tanda tangan Rsvp tidak pulih ke penandatangan kalau diperiksa sebagai LihatEvent", async () => {
+    const sig = await account.signTypedData(rsvpTypedData(msg, CONTRACT));
+    expect(await recoverLihatEventSigner(msg, sig, CONTRACT)).not.toBe(account.address);
   });
 });

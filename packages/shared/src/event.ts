@@ -28,6 +28,21 @@ export type CheckInAcceptMessage = {
  */
 export type RsvpMessage = { eventId: Hex; who: Address; expiresAt: bigint };
 
+/**
+ * Bukti baca yang MENGAKU sebagai `who`, dipakai HANYA untuk membuka
+ * bendera sudahRsvp/sudahCheckIn di GET /events/:id. Bentuk fieldnya sama
+ * persis dengan `Rsvp` ({eventId, who, expiresAt}), tapi nama tipe EIP-712
+ * berbeda membuat digest-nya berbeda — tanda tangan `LihatEvent` TIDAK sah
+ * sebagai `Rsvp` dan sebaliknya. Itu penting karena `Rsvp` juga diterima
+ * POST /events/:id/rsvp sebagai perintah tulis: kalau proof baca ini memakai
+ * tipe yang sama, tanda tangan yang bocor lewat query string (log akses,
+ * proxy, siapa pun yang membaca URL dalam masa berlakunya) bisa diputar
+ * ulang sebagai RSVP sungguhan atas nama orang itu. Seperti `Rsvp`, tipe ini
+ * TIDAK PERNAH naik on-chain dan tidak boleh punya pasangan typehash di
+ * Solidity — ia murni bukti baca.
+ */
+export type LihatEventMessage = { eventId: Hex; who: Address; expiresAt: bigint };
+
 // TIGA yang pertama WAJIB identik kata-per-kata dengan typehash di
 // packages/contracts/src/AttendanceRegistry.sol. Dijaga test kunci di Task 3.
 const TYPES = {
@@ -51,6 +66,11 @@ const TYPES = {
     { name: "expiresAt", type: "uint64" },
   ],
   Rsvp: [
+    { name: "eventId", type: "bytes32" },
+    { name: "who", type: "address" },
+    { name: "expiresAt", type: "uint64" },
+  ],
+  LihatEvent: [
     { name: "eventId", type: "bytes32" },
     { name: "who", type: "address" },
     { name: "expiresAt", type: "uint64" },
@@ -120,6 +140,15 @@ export function rsvpTypedData(msg: RsvpMessage, verifyingContract: Address) {
   } as const;
 }
 
+export function lihatEventTypedData(msg: LihatEventMessage, verifyingContract: Address) {
+  return {
+    domain: domain(verifyingContract),
+    types: { LihatEvent: TYPES.LihatEvent },
+    primaryType: "LihatEvent",
+    message: msg,
+  } as const;
+}
+
 export function recoverCreateEventSigner(
   msg: CreateEventMessage, signature: Hex, verifyingContract: Address,
 ): Promise<Address> {
@@ -142,6 +171,12 @@ export function recoverRsvpSigner(
   msg: RsvpMessage, signature: Hex, verifyingContract: Address,
 ): Promise<Address> {
   return recoverTypedDataAddress({ ...rsvpTypedData(msg, verifyingContract), signature });
+}
+
+export function recoverLihatEventSigner(
+  msg: LihatEventMessage, signature: Hex, verifyingContract: Address,
+): Promise<Address> {
+  return recoverTypedDataAddress({ ...lihatEventTypedData(msg, verifyingContract), signature });
 }
 
 /**

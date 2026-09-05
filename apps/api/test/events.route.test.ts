@@ -1,7 +1,9 @@
 import { describe, expect, it, vi } from "vitest";
 import { privateKeyToAccount } from "viem/accounts";
 import type { Address, Hex } from "viem";
-import { cellToBytes32, createEventTypedData, rsvpTypedData } from "@nearly/shared";
+import {
+  cellToBytes32, createEventTypedData, lihatEventTypedData, rsvpTypedData,
+} from "@nearly/shared";
 import { eventRoutes } from "../src/routes/events";
 
 const NOW = 1_700_000_000_000;
@@ -81,10 +83,10 @@ function eventsWithFlags() {
   };
 }
 
-/** Query string berisi bukti Rsvp yang sah milik `host`. */
+/** Query string berisi bukti LihatEvent yang sah milik `host`. */
 async function buktiQuery(expiresAt = NOW_SEC + 600n) {
   const sig = await host.signTypedData(
-    rsvpTypedData({ eventId: EVENT_ID, who: host.address, expiresAt }, CONTRACT),
+    lihatEventTypedData({ eventId: EVENT_ID, who: host.address, expiresAt }, CONTRACT),
   );
   return `who=${host.address}&expiresAt=${expiresAt}&sig=${sig}`;
 }
@@ -173,7 +175,7 @@ describe("GET /events/:id", () => {
     const expiresAt = NOW_SEC + 600n;
     // Ditandatangani orangLain, tapi mengaku sebagai host.
     const sig = await orangLain.signTypedData(
-      rsvpTypedData(
+      lihatEventTypedData(
         { eventId: EVENT_ID, who: host.address, expiresAt },
         CONTRACT,
       ),
@@ -185,6 +187,27 @@ describe("GET /events/:id", () => {
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body).toMatchObject({ title: "Meetup BNB" });
+    expect(body).not.toHaveProperty("sudahRsvp");
+    expect(body).not.toHaveProperty("sudahCheckIn");
+  });
+
+  // Penjaga regresi utama perbaikan ini: proof baca GET memakai tipe
+  // LihatEvent, BUKAN Rsvp. Tanda tangan Rsvp yang SAH milik `host` (mis.
+  // yang dikirim tamu ke POST /events/:id/rsvp, lalu bocor lewat log akses)
+  // tidak boleh bisa dipakai ulang untuk membuka bendera sudahRsvp/
+  // sudahCheckIn di sini — kalau bisa, itu berarti dua tipe itu kembali
+  // interchangeable dan celah oracle-nya kembali terbuka.
+  it("mengabaikan tanda tangan Rsvp yang sah — bukan LihatEvent — pada bukti GET", async () => {
+    const expiresAt = NOW_SEC + 600n;
+    const sig = await host.signTypedData(
+      rsvpTypedData({ eventId: EVENT_ID, who: host.address, expiresAt }, CONTRACT),
+    );
+    const a = app({ events: eventsWithFlags() });
+    const res = await a.request(
+      `/events/${EVENT_ID}?who=${host.address}&expiresAt=${expiresAt}&sig=${sig}`,
+    );
+    expect(res.status).toBe(200);
+    const body = await res.json();
     expect(body).not.toHaveProperty("sudahRsvp");
     expect(body).not.toHaveProperty("sudahCheckIn");
   });

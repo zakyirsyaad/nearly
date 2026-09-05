@@ -2,7 +2,7 @@ import { Hono } from "hono";
 import { isAddress, type Address, type Hex } from "viem";
 import {
   CheckInOfferRequestSchema, CheckInRequestSchema,
-  CreateEventRequestSchema, recoverRsvpSigner, RsvpRequestSchema,
+  CreateEventRequestSchema, recoverLihatEventSigner, RsvpRequestSchema,
 } from "@nearly/shared";
 import { acceptCheckIn, createEvent, rsvp, submitCheckInOffer } from "../event-gate";
 import type { EventDeps, EventRecord } from "../ports";
@@ -35,12 +35,17 @@ function eventToJson(e: EventRecord) {
 
 /**
  * Mengembalikan alamat pemanggil HANYA kalau `who`, `expiresAt`, dan `sig`
- * lengkap, belum kedaluwarsa, dan tanda tangan Rsvp-nya memang milik `who`.
- * Selain itu null — termasuk kalau tidak ada satu pun parameter yang dikirim.
+ * lengkap, belum kedaluwarsa, dan tanda tangan LihatEvent-nya memang milik
+ * `who`. Selain itu null — termasuk kalau tidak ada satu pun parameter yang
+ * dikirim.
  *
- * Tipe Rsvp dipakai ulang apa adanya: bentuknya sudah persis {eventId, who,
- * expiresAt}, dan menandatanganinya untuk membaca status RSVP sendiri tidak
- * menimbulkan efek samping apa pun.
+ * Tipe LihatEvent, BUKAN Rsvp: bentuk fieldnya sama ({eventId, who,
+ * expiresAt}), tapi POST /events/:id/rsvp menerima Rsvp sebagai perintah
+ * TULIS. Kalau proof baca ini memakai tipe yang sama, tanda tangan yang
+ * bocor lewat query string (log akses, proxy, siapa pun yang membaca URL
+ * dalam masa berlakunya) bisa diputar ulang sebagai RSVP sungguhan.
+ * LihatEvent adalah tipe terpisah justru supaya digest-nya berbeda dan
+ * tanda tangan ini tidak valid di jalur tulis.
  */
 async function pemanggilTerbukti(
   q: Record<string, string>, eventId: Hex, deps: EventDeps,
@@ -52,7 +57,7 @@ async function pemanggilTerbukti(
   if (deps.nowMs() > Number(expiresAt) * 1000) return null;
 
   try {
-    const signer = await recoverRsvpSigner(
+    const signer = await recoverLihatEventSigner(
       { eventId, who: who as Address, expiresAt: BigInt(expiresAt) },
       sig as Hex,
       deps.attendanceContract,
@@ -108,7 +113,7 @@ export function eventRoutes(deps: EventDeps & { onChanged: () => Promise<void> }
   // parameter ini ada — bukan galat.
   //
   // Dua bendera pribadi hanya keluar kalau pemanggil MEMBUKTIKAN dirinya
-  // `who` lewat tanda tangan Rsvp. Tanpa bukti itu, `?who=` jadi oracle
+  // `who` lewat tanda tangan LihatEvent. Tanpa bukti itu, `?who=` jadi oracle
   // tanpa autentikasi: siapa pun bisa menanyakan satu alamat dan tahu orang
   // itu berniat berada di tempat dan waktu tertentu. Justru sinyal yang
   // dilindungi spec induk §10.2 — "tidak ada peta dengan pin orang".

@@ -51,4 +51,13 @@ describe("kunci EIP-712 TS <-> Solidity untuk event", () => {
   it("Rsvp tidak punya typehash di kontrak", () => {
     expect(sol).not.toContain("Rsvp(");
   });
+
+  // LihatEvent adalah bukti baca (GET /events/:id), bukan perintah tulis.
+  // Sama seperti Rsvp, ia TIDAK PERNAH naik on-chain dan tidak boleh punya
+  // pasangan typehash di Solidity — kalau ditambahkan "demi konsistensi",
+  // itu berarti seseorang salah paham dan mengira ini perlu diverifikasi
+  // kontrak, padahal justru keterpisahannya dari Rsvp itulah intinya.
+  it("LihatEvent tidak punya typehash di kontrak", () => {
+    expect(sol).not.toContain("LihatEvent(");
+  });
 });

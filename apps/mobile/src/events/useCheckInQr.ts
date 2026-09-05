@@ -59,6 +59,13 @@ export function useCheckInQr(signer: NearlySigner, eventId: Hex) {
     }
   }, [signer, eventId]);
 
+  // Reset saat eventId berganti — kalau tidak, kegagalan permanen di event
+  // SEBELUMNYA akan tetap menghentikan rotasi untuk event yang baru, seolah
+  // hook ini tidak pernah dipakai ulang lintas id.
+  useEffect(() => {
+    setBerhenti(false);
+  }, [eventId]);
+
   useEffect(() => {
     if (berhenti) return;
     void refresh();
@@ -70,5 +77,10 @@ export function useCheckInQr(signer: NearlySigner, eventId: Hex) {
     };
   }, [refresh, berhenti]);
 
-  return { value, secondsLeft, error, refresh };
+  // `refresh` TIDAK diekspor: memanggilnya manual akan mereset `berhenti`
+  // ke false, yang memicu ulang efek di atas dan langsung memanggil
+  // `refresh` kedua kalinya — tawaran check-in ganda terkirim. Tidak ada
+  // pemanggil yang butuh ini (host-qr.tsx hanya memakai value, secondsLeft,
+  // error).
+  return { value, secondsLeft, error };
 }
