@@ -6,6 +6,7 @@ import {ConnectionRegistry} from "../src/ConnectionRegistry.sol";
 import {NearlyResolver} from "../src/NearlyResolver.sol";
 import {TrustAttestor} from "../src/TrustAttestor.sol";
 import {VouchRegistry} from "../src/VouchRegistry.sol";
+import {AttendanceRegistry} from "../src/AttendanceRegistry.sol";
 
 /**
  * ConnectionRegistry sudah ter-deploy sejak Fase 1 dan TIDAK boleh di-deploy
@@ -24,6 +25,20 @@ contract DeployPhase2 is Script {
         vouch = new VouchRegistry(attestor, connections);
         attestorContract = new TrustAttestor(attestor);
         resolver = new NearlyResolver(connections, address(vouch), address(attestorContract));
+        vm.stopBroadcast();
+    }
+}
+
+/**
+ * Fase 3a. Berdiri sendiri: AttendanceRegistry tidak bergantung pada kontrak
+ * lain mana pun, jadi men-deploy-nya tidak menyentuh graf koneksi maupun vouch
+ * yang sudah ada.
+ */
+contract DeployPhase3a is Script {
+    function run() external returns (AttendanceRegistry attendance) {
+        address attestor = vm.envAddress("ATTESTOR_ADDRESS");
+        vm.startBroadcast();
+        attendance = new AttendanceRegistry(attestor);
         vm.stopBroadcast();
     }
 }
