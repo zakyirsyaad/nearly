@@ -70,6 +70,24 @@ function deps(over: { saveSnapshots?: ReturnType<typeof vi.fn> } = {}): TrustDep
     },
     vouchContract: VC,
     adminToken: "test-admin-token",
+    events: {
+      recordEvent: async () => {},
+      getEvent: async () => null,
+      listDiscovery: async () => [],
+      hasRsvp: async () => false,
+      recordRsvp: async () => {},
+      putCheckInOffer: async () => {},
+      getCheckInOffer: async () => null,
+      consumeCheckInOffer: async () => {},
+      hasCheckIn: async () => false,
+      recordCheckIn: async () => {},
+      attendanceSummary: async () => ({ rsvps: 0, checkins: 0, rsvpBelumHadir: 0 }),
+    },
+    attendance: {
+      submitCreateEvent: async () => TX,
+      submitCheckIn: async () => TX,
+    },
+    attendanceContract: VC,
   };
 }
 

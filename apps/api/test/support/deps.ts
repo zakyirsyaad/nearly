@@ -94,5 +94,23 @@ export function depsFor(overrides: {
     },
     vouchContract: CONTRACT,
     adminToken: overrides.adminToken ?? "test-admin-token",
+    events: {
+      recordEvent: vi.fn(async () => {}),
+      getEvent: vi.fn(async () => null),
+      listDiscovery: vi.fn(async () => []),
+      hasRsvp: vi.fn(async () => false),
+      recordRsvp: vi.fn(async () => {}),
+      putCheckInOffer: vi.fn(async () => {}),
+      getCheckInOffer: vi.fn(async () => null),
+      consumeCheckInOffer: vi.fn(async () => {}),
+      hasCheckIn: vi.fn(async () => false),
+      recordCheckIn: vi.fn(async () => {}),
+      attendanceSummary: vi.fn(async () => ({ rsvps: 0, checkins: 0, rsvpBelumHadir: 0 })),
+    },
+    attendance: {
+      submitCreateEvent: vi.fn(async (): Promise<Hex> => "0xtx" as Hex),
+      submitCheckIn: vi.fn(async (): Promise<Hex> => "0xtx" as Hex),
+    },
+    attendanceContract: CONTRACT,
   };
 }

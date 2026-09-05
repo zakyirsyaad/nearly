@@ -5,8 +5,12 @@ import { trustRoutes } from "./routes/trust";
 import { vouchRoutes } from "./routes/vouch";
 import { reportRoutes } from "./routes/report";
 import { adminRoutes } from "./routes/admin";
+import { eventRoutes } from "./routes/events";
 import { recomputeTrust } from "./trust/recompute";
-import type { GateDeps, TrustStore, VouchStore, ReportStore, AttestorPort, VouchChainPort } from "./ports";
+import type {
+  GateDeps, TrustStore, VouchStore, ReportStore, AttestorPort, VouchChainPort,
+  EventStore, AttendanceChainPort,
+} from "./ports";
 import type { Address } from "viem";
 
 export type TrustDeps = GateDeps & {
@@ -17,6 +21,9 @@ export type TrustDeps = GateDeps & {
   vouchChain: VouchChainPort;
   vouchContract: Address;
   adminToken: string;
+  events: EventStore;
+  attendance: AttendanceChainPort;
+  attendanceContract: Address;
 };
 
 // Modul-level, dengan sengaja (Task 8): relayer yang sama menandatangani
@@ -57,6 +64,7 @@ export function createApp(deps: TrustDeps) {
   app.route("/", trustRoutes(deps));
   app.route("/", vouchRoutes({ ...deps, onChanged }));
   app.route("/", reportRoutes(deps));
+  app.route("/", eventRoutes({ ...deps, onChanged }));
   app.route("/", adminRoutes({ ...deps, onChanged }));
   return app;
 }
