@@ -1,0 +1,14 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "nearly-api",
+      "runtimeExecutable": "sh",
+      "runtimeArgs": [
+        "-c",
+        "set -a; . ./.env; set +a; exec pnpm --filter @nearly/api dev"
+      ],
+      "port": 8787
+    }
+  ]
+}

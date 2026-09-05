@@ -1,7 +1,11 @@
 node_modules/
 dist/
+# Cocokkan SEMUA varian, bukan hanya nama persisnya. Cadangan seperti
+# .env.bak memuat private key relayer dan service role key; tanpa pola ini
+# satu `git add -A` cukup untuk memasukkannya ke riwayat permanen.
 .env
-.env.local
+.env.*
+!.env.example
 packages/contracts/out/
 packages/contracts/cache/
 apps/mobile/.expo/
