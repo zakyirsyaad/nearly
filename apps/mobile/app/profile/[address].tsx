@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { useLocalSearchParams } from "expo-router";
 import {
-  Button, Pressable, StyleSheet, Text, TextInput, View,
+  Button, Keyboard, KeyboardAvoidingView, Platform, Pressable,
+  ScrollView, StyleSheet, Text, TextInput, View,
 } from "react-native";
 import type { Address } from "viem";
 import { CONFIG } from "../../src/config";
@@ -95,6 +96,7 @@ export default function ProfileScreen() {
     setReportBusy(true);
     try {
       await sendReport(signer, address as Address, reportReason.trim());
+      Keyboard.dismiss();
       setShowReportForm(false);
       setReportReason("");
       // Kalimat ini bukan hiasan: ia mencegah pengguna mengira tombol Lapor
@@ -109,10 +111,24 @@ export default function ProfileScreen() {
     }
   }
 
-  if (!p) return <View style={s.root}><Text>Memuat…</Text></View>;
+  if (!p) return <View style={[s.flex, s.root]}><Text>Memuat…</Text></View>;
 
   return (
-    <View style={s.root}>
+    // Alasan laporan itu multiline, jadi tombol return menyisipkan baris baru
+    // dan TIDAK menutup keyboard. Tanpa dua hal di bawah, pengguna terjebak:
+    // keyboard menutupi tombol kirim dan tidak ada cara membuangnya.
+    //   - keyboardDismissMode="on-drag": usap layar untuk menutup keyboard
+    //   - keyboardShouldPersistTaps="handled": tombol tetap bisa ditekan
+    //     sekali sentuh saat keyboard terbuka, bukan tersedot jadi dismiss
+    <KeyboardAvoidingView
+      style={s.flex}
+      behavior={Platform.OS === "ios" ? "padding" : undefined}
+    >
+      <ScrollView
+        contentContainerStyle={s.root}
+        keyboardDismissMode="on-drag"
+        keyboardShouldPersistTaps="handled"
+      >
       {/* Nama boleh apa saja dan TIDAK unik. Alamat SELALU tampil di bawahnya —
           nama bukan identitas, alamat-lah identitasnya (spec §9.2). */}
       <Text style={s.name}>{p.displayName || "Tanpa nama"}</Text>
@@ -178,9 +194,15 @@ export default function ProfileScreen() {
 
           {showReportForm && (
             <View style={s.reportForm}>
+              <View style={s.inputHeader}>
+                <Text style={s.inputLabel}>Alasan laporan</Text>
+                <Pressable onPress={() => Keyboard.dismiss()} hitSlop={12}>
+                  <Text style={s.done}>Selesai</Text>
+                </Pressable>
+              </View>
               <TextInput
                 style={s.input}
-                placeholder="Alasan laporan"
+                placeholder="Ceritakan apa yang terjadi"
                 value={reportReason}
                 onChangeText={setReportReason}
                 multiline
@@ -196,12 +218,17 @@ export default function ProfileScreen() {
           {reportMessage && <Text style={s.message}>{reportMessage}</Text>}
         </View>
       )}
-    </View>
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
 
 const s = StyleSheet.create({
-  root: { flex: 1, padding: 24, gap: 8 },
+  flex: { flex: 1 },
+  root: { padding: 24, paddingBottom: 48, gap: 8 },
+  inputHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
+  inputLabel: { fontSize: 14, opacity: 0.7 },
+  done: { fontSize: 16, fontWeight: "600" },
   name: { fontSize: 26, fontWeight: "700" },
   addr: { fontFamily: "Courier", fontSize: 12, opacity: 0.6 },
   facts: { marginTop: 20, gap: 6 },
