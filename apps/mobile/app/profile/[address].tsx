@@ -1,8 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useLocalSearchParams } from "expo-router";
 import {
-  Button, InputAccessoryView, Keyboard, KeyboardAvoidingView, Platform,
-  Pressable, ScrollView, StyleSheet, Text, TextInput, View,
+  Button, Keyboard, Pressable, ScrollView, StyleSheet, Text, TextInput, View,
 } from "react-native";
 import type { Address } from "viem";
 import { CONFIG } from "../../src/config";
@@ -10,9 +9,6 @@ import { pesanGagal } from "../../src/errors";
 import { createDevSigner } from "../../src/signer";
 import { SUGGESTED_TAGS, tierView } from "../../src/tier";
 import { fetchTrust, sendReport, sendVouch, type TrustResponse } from "../../src/trust-api";
-
-/** id batang di atas keyboard. iOS butuh id eksplisit untuk menautkannya. */
-const ACCESSORY_ID = "laporan-accessory";
 
 type Profile = {
   address: string; displayName: string; ens: string | null;
@@ -132,21 +128,23 @@ export default function ProfileScreen() {
 
   return (
     // Alasan laporan itu multiline, jadi tombol return menyisipkan baris baru
-    // dan TIDAK menutup keyboard. Tanpa dua hal di bawah, pengguna terjebak:
-    // keyboard menutupi tombol kirim dan tidak ada cara membuangnya.
-    //   - keyboardDismissMode="on-drag": usap layar untuk menutup keyboard
-    //   - keyboardShouldPersistTaps="handled": tombol tetap bisa ditekan
-    //     sekali sentuh saat keyboard terbuka, bukan tersedot jadi dismiss
-    <KeyboardAvoidingView
+    // dan TIDAK menutup keyboard. iOS juga TIDAK mendukung inputAccessoryViewID
+    // pada TextInput multiline (bug RN yang masih terbuka), jadi batang menempel
+    // keyboard bukan pilihan. Yang menggantikannya tiga hal:
+    //   - automaticallyAdjustKeyboardInsets: konten menyusut, isian tidak tertutup
+    //   - gulirKeIsian(): isian dibawa ke tampilan saat form dibuka & difokuskan
+    //   - tombol "Selesai" DI ATAS isian, tempat yang tidak tertutup keyboard
+    <ScrollView
+      ref={scrollRef}
       style={s.flex}
-      behavior={Platform.OS === "ios" ? "padding" : undefined}
+      contentContainerStyle={s.root}
+      keyboardDismissMode="on-drag"
+      keyboardShouldPersistTaps="handled"
+      // iOS menyesuaikan sendiri inset konten terhadap keyboard. Ini
+      // menggantikan KeyboardAvoidingView, yang butuh keyboardVerticalOffset
+      // setinggi header stack — angka yang harus ditebak dan gampang meleset.
+      automaticallyAdjustKeyboardInsets
     >
-      <ScrollView
-        ref={scrollRef}
-        contentContainerStyle={s.root}
-        keyboardDismissMode="on-drag"
-        keyboardShouldPersistTaps="handled"
-      >
       {/* Nama boleh apa saja dan TIDAK unik. Alamat SELALU tampil di bawahnya —
           nama bukan identitas, alamat-lah identitasnya (spec §9.2). */}
       <Text style={s.name}>{p.displayName || "Tanpa nama"}</Text>
@@ -233,7 +231,6 @@ export default function ProfileScreen() {
                 onChangeText={setReportReason}
                 onFocus={gulirKeIsian}
                 multiline
-                inputAccessoryViewID={Platform.OS === "ios" ? ACCESSORY_ID : undefined}
               />
               <Button
                 title={reportBusy ? "Mengirim…" : "Kirim Laporan"}
@@ -247,17 +244,6 @@ export default function ProfileScreen() {
         </View>
       )}
       </ScrollView>
-
-      {Platform.OS === "ios" && (
-        <InputAccessoryView nativeID={ACCESSORY_ID}>
-          <View style={s.accessory}>
-            <Pressable onPress={() => Keyboard.dismiss()} hitSlop={12}>
-              <Text style={s.done}>Selesai</Text>
-            </Pressable>
-          </View>
-        </InputAccessoryView>
-      )}
-    </KeyboardAvoidingView>
   );
 }
 
@@ -269,14 +255,6 @@ const s = StyleSheet.create({
   },
   inputLabel: { fontSize: 14, opacity: 0.7 },
   done: { fontSize: 17, fontWeight: "600" },
-  accessory: {
-    alignItems: "flex-end",
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    backgroundColor: "#f2f2f7",
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: "#c6c6c8",
-  },
   name: { fontSize: 26, fontWeight: "700" },
   addr: { fontFamily: "Courier", fontSize: 12, opacity: 0.6 },
   facts: { marginTop: 20, gap: 6 },
