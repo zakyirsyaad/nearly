@@ -162,8 +162,14 @@ export type CheckInInput = {
 };
 
 /**
- * Tamu melangkah masuk. Sembilan penjagaan, urutannya sengaja: yang termurah
- * dan paling sering gagal lebih dulu, pemanggilan chain paling akhir.
+ * Tamu melangkah masuk. Sembilan penjagaan, urutannya sengaja: tawaran diperiksa
+ * dulu (ditemukan, belum terpakai, cocok eventId, belum kedaluwarsa), lalu event
+ * (ada, sedang berlangsung), lalu status tamu (RSVP, belum check-in), lalu dua
+ * pemeriksaan lokasi — tapi ini bukan urutan murah-ke-mahal yang ketat: dua
+ * pemeriksaan status tamu adalah round-trip ke store, sedangkan dua pemeriksaan
+ * lokasi murni komputasi di memori. Yang justru dijaga ketat adalah bagian akhir:
+ * verifikasi tanda tangan dan pemanggilan chain SELALU paling terakhir, setelah
+ * semua penjagaan murah dan gratis (dari sisi chain) lolos.
  *
  * Dua pemeriksaan lokasi menjawab pertanyaan yang BERBEDA dan dua-duanya perlu:
  * geofence menjawab "apakah dia di venue yang diumumkan", ko-lokasi menjawab

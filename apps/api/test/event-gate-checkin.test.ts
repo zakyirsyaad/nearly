@@ -109,9 +109,15 @@ describe("submitCheckInOffer", () => {
 
 describe("acceptCheckIn", () => {
   it("check-in yang sah diteruskan ke chain dan dicatat", async () => {
-    const d = deps();
+    const events = eventsStore();
+    const d = deps({ events });
     const r = await acceptCheckIn(await checkInInput(), d);
     expect(r).toMatchObject({ ok: true, value: { txHash: "0xtxcheckin" } });
+    // Pin argumen: harus mengecek RSVP dan riwayat check-in TAMU, bukan host
+    // atau siapa pun lain. Mock yang mengabaikan argumennya tidak akan
+    // menangkap bug "cek RSVP host padahal yang check-in tamu".
+    expect(events.hasRsvp).toHaveBeenCalledWith(EVENT_ID, guest.address);
+    expect(events.hasCheckIn).toHaveBeenCalledWith(EVENT_ID, guest.address);
   });
 
   it("menolak kalau tamu belum RSVP", async () => {
@@ -189,6 +195,29 @@ describe("acceptCheckIn", () => {
   it("menolak tanda tangan tamu yang bukan miliknya", async () => {
     const r = await acceptCheckIn(await checkInInput({ attendee: host.address }), deps());
     expect(r).toMatchObject({ ok: false, failure: { code: "bad_signature" } });
+  });
+
+  // Regresi untuk invarian kritis: rekonstruksi tanda tangan tamu HARUS
+  // memakai offer.expiresAt (tawaran tersimpan), BUKAN input.expiresAt (badan
+  // permintaan). Tawaran tersimpan tetap NOW_SEC + 30n, tapi tamu menandatangani
+  // DAN mengirim expiresAt karangannya sendiri (NOW_SEC + 900n). Kalau server
+  // memakai input.expiresAt untuk memulihkan tanda tangan, penandatanganan ini
+  // cocok dan lolos ke chain — padahal kontrak akan revert karena memvalidasi
+  // terhadap tawaran asli, dan penyebab kegagalannya jadi tidak terlihat dari
+  // sisi server. Ganti `offer.expiresAt` -> `input.expiresAt` pada pemanggilan
+  // recoverCheckInAcceptSigner di event-gate.ts akan membuat test ini GAGAL.
+  it("menolak expiresAt karangan tamu walau tanda tangannya valid untuk nilai itu", async () => {
+    const forgedExpiresAt = NOW_SEC + 900n;
+    const msg = {
+      eventId: EVENT_ID, nonce: NONCE, attendee: guest.address, expiresAt: forgedExpiresAt,
+    };
+    const input = {
+      eventId: EVENT_ID, nonce: NONCE, attendee: guest.address, expiresAt: forgedExpiresAt,
+      sigAttendee: await guest.signTypedData(checkInAcceptTypedData(msg, CONTRACT)),
+      cell: CELL, atMs: NOW,
+    } as never;
+    const r = await acceptCheckIn(input, deps());
+    expect(r).toMatchObject({ ok: false, failure: { code: "bad_signature", httpStatus: 401 } });
   });
 
   // Tawaran TIDAK ditandai terpakai kalau transaksi gagal, supaya tamu bisa
