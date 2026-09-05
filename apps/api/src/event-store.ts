@@ -40,8 +40,20 @@ export function rowToCheckInOffer(row: OfferDbRow): PendingCheckInOffer {
 }
 
 export function createEventStore(db: SupabaseClient): EventStore {
+  async function ensureProfile(address: Address): Promise<void> {
+    const { error } = await db
+      .from("profiles")
+      .upsert({ address: address.toLowerCase() }, { onConflict: "address", ignoreDuplicates: true });
+    if (error) throw new Error(`upsert profile gagal: ${error.message}`);
+  }
+
   return {
     async recordEvent(row) {
+      // events.host adalah foreign key ke profiles(address). Host yang belum
+      // pernah handshake (belum tersentuh putOffer/recordConnection) belum
+      // punya baris profiles, jadi pastikan dulu supaya insert tidak gagal
+      // dengan pelanggaran foreign key mentah dari Postgres.
+      await ensureProfile(row.host);
       const { error } = await db.from("events").insert({
         event_id: row.eventId.toLowerCase(),
         host: row.host.toLowerCase(),

@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { rowToCheckInOffer, rowToEvent } from "../src/event-store";
+import type { SupabaseClient } from "@supabase/supabase-js";
+import type { Address, Hex } from "viem";
+import { createEventStore, rowToCheckInOffer, rowToEvent } from "../src/event-store";
 
 describe("rowToEvent", () => {
   const row = {
@@ -53,5 +55,57 @@ describe("rowToCheckInOffer", () => {
 
   it("atMs kembali sebagai number milidetik", () => {
     expect(rowToCheckInOffer(row).atMs).toBe(1_700_000_000_000);
+  });
+});
+
+describe("recordEvent memastikan profil host", () => {
+  // events.host adalah foreign key ke profiles(address). Fake ini sengaja
+  // dangkal: hanya meniru `.from(table).insert(payload)` dan
+  // `.from(table).upsert(payload, options)`, cukup untuk membuktikan urutan
+  // dan tujuan panggilan tanpa mensimulasikan Postgres sungguhan.
+  function fakeSupabase() {
+    const panggilan: Array<{ table: string; method: "upsert" | "insert"; payload: unknown; options?: unknown }> = [];
+    const db = {
+      from(table: string) {
+        return {
+          upsert(payload: unknown, options?: unknown) {
+            panggilan.push({ table, method: "upsert", payload, options });
+            return Promise.resolve({ error: null });
+          },
+          insert(payload: unknown) {
+            panggilan.push({ table, method: "insert", payload });
+            return Promise.resolve({ error: null });
+          },
+        };
+      },
+    } as unknown as SupabaseClient;
+    return { db, panggilan };
+  }
+
+  const HOST = "0x000000000000000000000000000000000000AAAA" as Address;
+
+  it("upsert ke profiles terjadi sebelum insert ke events", async () => {
+    const { db, panggilan } = fakeSupabase();
+    const store = createEventStore(db);
+
+    await store.recordEvent({
+      eventId: `0x${"1".repeat(64)}` as Hex,
+      host: HOST,
+      title: "Meetup BNB",
+      venueLabel: "Kalibata",
+      centerCell: "qqguv1r",
+      startsAt: 1_700_000_000n,
+      endsAt: 1_700_003_600n,
+      txHash: "0xtx" as Hex,
+    });
+
+    expect(panggilan).toHaveLength(2);
+    expect(panggilan[0]).toMatchObject({
+      table: "profiles",
+      method: "upsert",
+      payload: { address: HOST.toLowerCase() },
+      options: { onConflict: "address", ignoreDuplicates: true },
+    });
+    expect(panggilan[1]).toMatchObject({ table: "events", method: "insert" });
   });
 });
