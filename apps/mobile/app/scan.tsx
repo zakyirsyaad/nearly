@@ -1,12 +1,13 @@
 import { useState } from "react";
 import { CameraView, useCameraPermissions } from "expo-camera";
 import { Button, StyleSheet, Text, View } from "react-native";
-import { decodeQr, isQrExpired } from "@nearly/shared";
+import { checkInAcceptTypedData, decodeCheckInQr, decodeQr, isQrExpired } from "@nearly/shared";
 import { CONFIG } from "../src/config";
 import { createDevSigner } from "../src/signer";
 import { getCurrentCell } from "../src/location";
 import { ApiError, postAccept } from "../src/api";
-import { handshakeErrorMessage } from "../src/messages";
+import { eventErrorMessage, handshakeErrorMessage } from "../src/messages";
+import { postCheckIn } from "../src/events-api";
 
 export default function ScanScreen() {
   const [permission, requestPermission] = useCameraPermissions();
@@ -26,6 +27,42 @@ export default function ScanScreen() {
     if (busy) return;
     setBusy(true);
     try {
+      // QR check-in dicoba LEBIH DULU. Keduanya JSON, dan hanya yang ini
+      // membawa penanda k:"checkin" — jadi urutannya tidak ambigu, tapi
+      // menaruhnya belakangan akan membuat alur yang salah berjalan duluan.
+      const checkin = decodeCheckInQr(data);
+      if (checkin) {
+        try {
+          if (Date.now() > Number(checkin.expiresAt) * 1000) {
+            setResult(eventErrorMessage("expired"));
+            return;
+          }
+          const signer = createDevSigner(CONFIG.devPrivateKey!, CONFIG.attendanceRegistry);
+          const { cell, atMs } = await getCurrentCell();
+          const sigAttendee = await signer.signTypedData(
+            checkInAcceptTypedData(
+              {
+                eventId: checkin.eventId, nonce: checkin.nonce,
+                attendee: signer.address, expiresAt: checkin.expiresAt,
+              },
+              CONFIG.attendanceRegistry,
+            ),
+          );
+          const { txHash } = await postCheckIn(checkin.eventId, {
+            eventId: checkin.eventId, nonce: checkin.nonce, attendee: signer.address,
+            expiresAt: checkin.expiresAt.toString(), sigAttendee, cell, atMs,
+          });
+          setResult(`Check-in berhasil. ${txHash.slice(0, 10)}…`);
+        } catch (e) {
+          setResult(
+            e instanceof ApiError
+              ? eventErrorMessage(e.code, e.reason)
+              : e instanceof Error ? e.message : "Check-in gagal.",
+          );
+        }
+        return;
+      }
+
       const payload = decodeQr(data);
       if (!payload) {
         setResult("QR ini bukan QR Nearly.");

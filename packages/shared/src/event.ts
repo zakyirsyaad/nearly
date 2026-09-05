@@ -143,3 +143,56 @@ export function recoverRsvpSigner(
 ): Promise<Address> {
   return recoverTypedDataAddress({ ...rsvpTypedData(msg, verifyingContract), signature });
 }
+
+/**
+ * Payload QR yang ditampilkan HOST di layar check-in.
+ *
+ * `k: "checkin"` adalah penandanya. Dua jenis QR hidup berdampingan di satu
+ * pemindai, dan kalau salah satunya bisa dibaca sebagai yang lain, pemindai
+ * akan menjalankan alur yang salah — koneksi baru, misalnya, alih-alih
+ * kehadiran. Dikunci sebuah test.
+ */
+export type CheckInQrPayload = {
+  v: 1;
+  k: "checkin";
+  eventId: Hex;
+  nonce: Hex;
+  expiresAt: bigint;
+  sigHost: Hex;
+};
+
+const BYTES32_RE = /^0x[0-9a-fA-F]{64}$/;
+const SIG_RE = /^0x[0-9a-fA-F]{130}$/;
+
+export function encodeCheckInQr(p: CheckInQrPayload): string {
+  return JSON.stringify({
+    v: p.v, k: p.k, ev: p.eventId, n: p.nonce, e: p.expiresAt.toString(), s: p.sigHost,
+  });
+}
+
+/** Mengembalikan null untuk apa pun yang tidak sah. QR bisa berisi apa saja. */
+export function decodeCheckInQr(s: string): CheckInQrPayload | null {
+  let raw: unknown;
+  try {
+    raw = JSON.parse(s);
+  } catch {
+    return null;
+  }
+  if (typeof raw !== "object" || raw === null) return null;
+
+  const o = raw as Record<string, unknown>;
+  if (o.v !== 1 || o.k !== "checkin") return null;
+  if (typeof o.ev !== "string" || !BYTES32_RE.test(o.ev)) return null;
+  if (typeof o.n !== "string" || !BYTES32_RE.test(o.n)) return null;
+  if (typeof o.s !== "string" || !SIG_RE.test(o.s)) return null;
+  if (typeof o.e !== "string" || !/^\d+$/.test(o.e)) return null;
+
+  return {
+    v: 1,
+    k: "checkin",
+    eventId: o.ev as Hex,
+    nonce: o.n as Hex,
+    expiresAt: BigInt(o.e),
+    sigHost: o.s as Hex,
+  };
+}
