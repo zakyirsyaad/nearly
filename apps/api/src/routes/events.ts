@@ -2,7 +2,7 @@ import { Hono } from "hono";
 import { isAddress, type Address, type Hex } from "viem";
 import {
   CheckInOfferRequestSchema, CheckInRequestSchema,
-  CreateEventRequestSchema, RsvpRequestSchema,
+  CreateEventRequestSchema, recoverRsvpSigner, RsvpRequestSchema,
 } from "@nearly/shared";
 import { acceptCheckIn, createEvent, rsvp, submitCheckInOffer } from "../event-gate";
 import type { EventDeps, EventRecord } from "../ports";
@@ -31,6 +31,39 @@ function eventToJson(e: EventRecord) {
     endsAt: e.endsAt.toString(),
     txHash: e.txHash,
   };
+}
+
+/**
+ * Mengembalikan alamat pemanggil HANYA kalau `who`, `expiresAt`, dan `sig`
+ * lengkap, belum kedaluwarsa, dan tanda tangan Rsvp-nya memang milik `who`.
+ * Selain itu null — termasuk kalau tidak ada satu pun parameter yang dikirim.
+ *
+ * Tipe Rsvp dipakai ulang apa adanya: bentuknya sudah persis {eventId, who,
+ * expiresAt}, dan menandatanganinya untuk membaca status RSVP sendiri tidak
+ * menimbulkan efek samping apa pun.
+ */
+async function pemanggilTerbukti(
+  q: Record<string, string>, eventId: Hex, deps: EventDeps,
+): Promise<Address | null> {
+  const { who, expiresAt, sig } = q;
+  if (!who || !expiresAt || !sig) return null;
+  if (!isAddress(who)) return null;
+  if (!/^\d+$/.test(expiresAt)) return null;
+  if (deps.nowMs() > Number(expiresAt) * 1000) return null;
+
+  try {
+    const signer = await recoverRsvpSigner(
+      { eventId, who: who as Address, expiresAt: BigInt(expiresAt) },
+      sig as Hex,
+      deps.attendanceContract,
+    );
+    if (signer.toLowerCase() !== who.toLowerCase()) return null;
+    return who.toLowerCase() as Address;
+  } catch {
+    // Tanda tangan cacat bentuknya membuat viem melempar. Itu tetap "tidak
+    // terbukti", bukan 500.
+    return null;
+  }
 }
 
 export function eventRoutes(deps: EventDeps & { onChanged: () => Promise<void> }) {
@@ -73,14 +106,24 @@ export function eventRoutes(deps: EventDeps & { onChanged: () => Promise<void> }
   // OPSIONAL: tautan yang dibagikan ke orang lain tidak pernah membawanya,
   // dan itu harus tetap menghasilkan respons yang sama seperti sebelum
   // parameter ini ada — bukan galat.
+  //
+  // Dua bendera pribadi hanya keluar kalau pemanggil MEMBUKTIKAN dirinya
+  // `who` lewat tanda tangan Rsvp. Tanpa bukti itu, `?who=` jadi oracle
+  // tanpa autentikasi: siapa pun bisa menanyakan satu alamat dan tahu orang
+  // itu berniat berada di tempat dan waktu tertentu. Justru sinyal yang
+  // dilindungi spec induk §10.2 — "tidak ada peta dengan pin orang".
+  // `sudahCheckIn` sendiri sudah publik on-chain, tapi ia ikut dijaga supaya
+  // hanya ada satu aturan, bukan dua.
+  //
+  // Tanda tangan yang salah BUKAN galat: rute ini tidak boleh gagal untuk
+  // orang asing yang membuka link. Yang terjadi hanya bendera tidak keluar.
   r.get("/events/:id", async (c) => {
     const ev = await deps.events.getEvent(c.req.param("id") as Hex);
     if (!ev) return c.json({ code: "event_not_found" }, 404);
     const summary = await deps.events.attendanceSummary(ev.eventId);
 
-    const who = c.req.query("who");
-    if (who && isAddress(who)) {
-      const addr = who.toLowerCase() as Address;
+    const addr = await pemanggilTerbukti(c.req.query(), ev.eventId, deps);
+    if (addr) {
       const [sudahRsvp, sudahCheckIn] = await Promise.all([
         deps.events.hasRsvp(ev.eventId, addr),
         deps.events.hasCheckIn(ev.eventId, addr),

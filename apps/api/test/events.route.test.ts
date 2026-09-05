@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { privateKeyToAccount } from "viem/accounts";
 import type { Address, Hex } from "viem";
-import { cellToBytes32, createEventTypedData } from "@nearly/shared";
+import { cellToBytes32, createEventTypedData, rsvpTypedData } from "@nearly/shared";
 import { eventRoutes } from "../src/routes/events";
 
 const NOW = 1_700_000_000_000;
@@ -67,6 +67,28 @@ function post(a: ReturnType<typeof app>, path: string, body: unknown) {
   });
 }
 
+/** Store yang akan mengembalikan kedua bendera KALAU rute memutuskan boleh. */
+function eventsWithFlags() {
+  return {
+    getEvent: vi.fn(async () => ({
+      eventId: EVENT_ID, host: host.address, title: "Meetup BNB",
+      venueLabel: "Kalibata", centerCell: "qqguv1r",
+      startsAt: NOW_SEC, endsAt: NOW_SEC + 3600n, txHash: "0xtx" as Hex,
+    })),
+    attendanceSummary: vi.fn(async () => ({ rsvps: 1, checkins: 1, rsvpBelumHadir: 0 })),
+    hasRsvp: vi.fn(async () => true),
+    hasCheckIn: vi.fn(async () => true),
+  };
+}
+
+/** Query string berisi bukti Rsvp yang sah milik `host`. */
+async function buktiQuery(expiresAt = NOW_SEC + 600n) {
+  const sig = await host.signTypedData(
+    rsvpTypedData({ eventId: EVENT_ID, who: host.address, expiresAt }, CONTRACT),
+  );
+  return `who=${host.address}&expiresAt=${expiresAt}&sig=${sig}`;
+}
+
 describe("POST /events", () => {
   it("membuat event dan mengembalikan txHash", async () => {
     const res = await post(app(), "/events", await createBody());
@@ -130,25 +152,61 @@ describe("GET /events/:id", () => {
     expect(await res.json()).toMatchObject({ title: "Meetup BNB", startsAt: NOW_SEC.toString() });
   });
 
-  // `who` opsional membawa dua bendera tambahan — status RSVP dan check-in
-  // pemanggil sendiri — supaya layar detail tidak perlu menebak-nebak dari
-  // state lokal yang bisa basi begitu sesi ditutup lalu dibuka lagi.
-  it("menyertakan sudahRsvp dan sudahCheckIn ketika who diberikan", async () => {
-    const a = app({
-      events: {
-        getEvent: vi.fn(async () => ({
-          eventId: EVENT_ID, host: host.address, title: "Meetup BNB",
-          venueLabel: "Kalibata", centerCell: "qqguv1r",
-          startsAt: NOW_SEC, endsAt: NOW_SEC + 3600n, txHash: "0xtx" as Hex,
-        })),
-        attendanceSummary: vi.fn(async () => ({ rsvps: 1, checkins: 1, rsvpBelumHadir: 0 })),
-        hasRsvp: vi.fn(async () => true),
-        hasCheckIn: vi.fn(async () => true),
-      },
-    });
-    const res = await a.request(`/events/${EVENT_ID}?who=${host.address}`);
+  // `who` membawa dua bendera tambahan — status RSVP dan check-in pemanggil
+  // sendiri — supaya layar detail tidak perlu menebak-nebak dari state lokal
+  // yang bisa basi begitu sesi ditutup lalu dibuka lagi. Tapi hanya untuk
+  // pemanggil yang MEMBUKTIKAN dirinya `who`: tanpa bukti, rute ini jadi
+  // oracle yang bisa ditanya siapa pun tentang siapa pun (spec induk §10.2).
+  it("menyertakan sudahRsvp dan sudahCheckIn ketika bukti tanda tangan sah", async () => {
+    const a = app({ events: eventsWithFlags() });
+    const res = await a.request(`/events/${EVENT_ID}?${await buktiQuery()}`);
     expect(res.status).toBe(200);
     expect(await res.json()).toMatchObject({ sudahRsvp: true, sudahCheckIn: true });
+  });
+
+  // Tanda tangan yang tidak cocok BUKAN galat — rute ini tidak boleh pernah
+  // gagal untuk orang asing yang membuka link. Yang terjadi: bendera hilang.
+  it("mengembalikan event polos ketika tanda tangan bukan milik who", async () => {
+    const orangLain = privateKeyToAccount(
+      "0x5de4111afa1a4b94908f83103eb1f1706367c2e68ca870fc3fb9a804cdab365a" as Hex,
+    );
+    const expiresAt = NOW_SEC + 600n;
+    // Ditandatangani orangLain, tapi mengaku sebagai host.
+    const sig = await orangLain.signTypedData(
+      rsvpTypedData(
+        { eventId: EVENT_ID, who: host.address, expiresAt },
+        CONTRACT,
+      ),
+    );
+    const a = app({ events: eventsWithFlags() });
+    const res = await a.request(
+      `/events/${EVENT_ID}?who=${host.address}&expiresAt=${expiresAt}&sig=${sig}`,
+    );
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body).toMatchObject({ title: "Meetup BNB" });
+    expect(body).not.toHaveProperty("sudahRsvp");
+    expect(body).not.toHaveProperty("sudahCheckIn");
+  });
+
+  // `who` sendirian (tanpa expiresAt dan sig) adalah bentuk lama rute ini.
+  // Ia tidak boleh lagi membocorkan apa pun.
+  it("mengabaikan who yang datang tanpa bukti tanda tangan", async () => {
+    const a = app({ events: eventsWithFlags() });
+    const res = await a.request(`/events/${EVENT_ID}?who=${host.address}`);
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body).not.toHaveProperty("sudahRsvp");
+    expect(body).not.toHaveProperty("sudahCheckIn");
+  });
+
+  it("mengabaikan bukti yang sudah kedaluwarsa", async () => {
+    const a = app({ events: eventsWithFlags() });
+    const res = await a.request(`/events/${EVENT_ID}?${await buktiQuery(NOW_SEC - 1n)}`);
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body).not.toHaveProperty("sudahRsvp");
+    expect(body).not.toHaveProperty("sudahCheckIn");
   });
 
   // Tanpa who (tautan yang dibagikan ke orang lain, misalnya), respons harus
@@ -176,17 +234,10 @@ describe("GET /events/:id", () => {
   // ada — rute ini harus tetap bisa dibuka siapa pun lewat link apa adanya,
   // jadi query yang jelek TIDAK BOLEH berubah jadi galat.
   it("mengabaikan who yang bukan alamat sah, bukan menjadikannya galat", async () => {
-    const a = app({
-      events: {
-        getEvent: vi.fn(async () => ({
-          eventId: EVENT_ID, host: host.address, title: "Meetup BNB",
-          venueLabel: "Kalibata", centerCell: "qqguv1r",
-          startsAt: NOW_SEC, endsAt: NOW_SEC + 3600n, txHash: "0xtx" as Hex,
-        })),
-        attendanceSummary: vi.fn(async () => ({ rsvps: 1, checkins: 1, rsvpBelumHadir: 0 })),
-      },
-    });
-    const res = await a.request(`/events/${EVENT_ID}?who=bukan-alamat`);
+    const a = app({ events: eventsWithFlags() });
+    const res = await a.request(
+      `/events/${EVENT_ID}?who=bukan-alamat&expiresAt=${NOW_SEC + 600n}&sig=0xzz`,
+    );
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body).not.toHaveProperty("sudahRsvp");

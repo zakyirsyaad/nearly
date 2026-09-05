@@ -186,7 +186,7 @@ describe("occasion dari check-in terverifikasi", () => {
     expect(build().edges[0]!.occasionId).toBe(eventOccasionIdOf(CELL, EVENT_A));
   });
 
-  it("koneksi Fase 1 tanpa sel tetap seperti sebelumnya", () => {
+  it("koneksi tanpa sel tetap dicap ke event kalau kedua pihak check-in", () => {
     const g = rowsToGraph(
       rows({
         connections: [

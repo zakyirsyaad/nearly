@@ -44,8 +44,23 @@ const postJson = (path: string, body: unknown) =>
 
 export const getDiscovery = () => req<{ events: EventSummary[] }>("/events");
 
-export const getEvent = (id: string, who?: string) =>
-  req<EventSummary>(`/events/${id}${who ? `?who=${who.toLowerCase()}` : ""}`);
+/**
+ * Bukti bahwa pemanggil memang `who`: tanda tangan Rsvp berumur pendek.
+ * Tanpa ini server tidak mengembalikan bendera sudahRsvp/sudahCheckIn —
+ * status RSVP orang lain bukan urusan siapa pun yang menebak alamat.
+ */
+export type BuktiRsvp = { expiresAt: string; sig: string };
+
+export const getEvent = (id: string, who?: string, bukti?: BuktiRsvp) => {
+  const q = new URLSearchParams();
+  if (who && bukti) {
+    q.set("who", who.toLowerCase());
+    q.set("expiresAt", bukti.expiresAt);
+    q.set("sig", bukti.sig);
+  }
+  const s = q.toString();
+  return req<EventSummary>(`/events/${id}${s ? `?${s}` : ""}`);
+};
 
 export const postCreateEvent = (b: Record<string, unknown>) =>
   postJson("/events", b) as Promise<{ txHash: Hex }>;

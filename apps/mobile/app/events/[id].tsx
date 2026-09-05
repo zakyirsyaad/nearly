@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useLocalSearchParams } from "expo-router";
 import { ActivityIndicator, Button, StyleSheet, Text, View } from "react-native";
+import type { Hex } from "viem";
 import { isEventLive, rsvpTypedData } from "@nearly/shared";
 import { CONFIG } from "../../src/config";
 import { createDevSigner } from "../../src/signer";
@@ -26,14 +27,26 @@ export default function EventDetailScreen() {
 
   const load = useCallback(async () => {
     try {
-      const data = await getEvent(id, signer.address);
+      // Bendera sudahRsvp/sudahCheckIn hanya keluar untuk pemanggil yang
+      // MEMBUKTIKAN dirinya alamat itu — tanpa tanda tangan, `?who=` akan
+      // jadi oracle yang bisa ditanya siapa pun tentang siapa pun.
+      const expiresAt = BigInt(Math.floor(Date.now() / 1000) + 600);
+      const sig = await signer.signTypedData(
+        rsvpTypedData(
+          { eventId: id as Hex, who: signer.address, expiresAt },
+          CONFIG.attendanceRegistry,
+        ),
+      );
+      const data = await getEvent(id, signer.address, {
+        expiresAt: expiresAt.toString(), sig,
+      });
       setEv(data);
       setSudahRsvp(data.sudahRsvp === true);
       setSudahCheckIn(data.sudahCheckIn === true);
     } catch (e) {
       setPesan(e instanceof ApiError ? eventErrorMessage(e.code) : "Gagal memuat acara.");
     }
-  }, [id, signer.address]);
+  }, [id, signer]);
 
   useEffect(() => { void load(); }, [load]);
 

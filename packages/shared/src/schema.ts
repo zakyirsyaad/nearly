@@ -69,7 +69,26 @@ export const ReportRequestSchema = z.object({
   sig: SignatureSchema,
 });
 
-const unixSeconds = z.string().regex(/^\d+$/);
+const DIGIT_RE = /^\d+$/;
+const unixSeconds = z.string().regex(DIGIT_RE);
+
+/**
+ * Zod TETAP menjalankan .refine walau validasi field sudah gagal — statusnya
+ * "dirty", bukan "aborted" — jadi nilai yang sampai ke sini bisa saja "besok"
+ * dan BigInt() akan melempar. Yang benar bukan menelan galatnya diam-diam,
+ * melainkan tidak ikut berpendapat: pesan untuk "bukan angka" sudah
+ * dikeluarkan `unixSeconds` sendiri, dan refine tidak punya apa pun untuk
+ * ditambahkan.
+ */
+function waktuTakTerbaca(...nilai: string[]): boolean {
+  return nilai.some((s) => !DIGIT_RE.test(s));
+}
+
+/** Jendela acara paling lama satu hari. Lihat alasannya di bawah. */
+const MAKS_DURASI_DETIK = 24n * 60n * 60n;
+
+/** Seberapa jauh `startsAt` boleh berada di belakang `expiresAt`. */
+const MAKS_MUNDUR_DETIK = 60n * 60n;
 
 export const CreateEventRequestSchema = z
   .object({
@@ -83,15 +102,34 @@ export const CreateEventRequestSchema = z
     expiresAt: unixSeconds,
     sigHost: signature,
   })
-  .refine((v) => {
-    try {
-      return BigInt(v.endsAt) > BigInt(v.startsAt);
-    } catch {
-      return true; // Biarkan error BigInt ini ditangani level validasi field
-    }
-  }, {
+  .refine((v) => waktuTakTerbaca(v.startsAt, v.endsAt)
+    || BigInt(v.endsAt) > BigInt(v.startsAt), {
     message: "waktu selesai harus setelah waktu mulai",
     path: ["endsAt"],
+  })
+  // Jendela yang tak terbatas panjangnya membuat sebuah acara bisa menempel di
+  // puncak discovery selamanya, padahal spec §8 mensyaratkan perhatian itu
+  // DIPEROLEH. Ia juga memperlebar rentang waktu yang bisa dicap ulang oleh
+  // eventOccasionFor di load-graph.
+  .refine((v) => waktuTakTerbaca(v.startsAt, v.endsAt)
+    || BigInt(v.endsAt) - BigInt(v.startsAt) <= MAKS_DURASI_DETIK, {
+    message: "acara tidak boleh lebih lama dari 24 jam",
+    path: ["endsAt"],
+  })
+  // Modul ini murni dan tidak punya jam. "Sekarang" diambil dari `expiresAt`
+  // yang memang baru dibuat klien — dan gerbang server menolak `expiresAt`
+  // yang sudah lewat, jadi expiresAt >= sekarang. Artinya batas ini menahan
+  // startsAt mundur lebih dari satu jam dari waktu nyata; mengarang expiresAt
+  // yang jauh ke depan hanya membuatnya makin ketat, bukan makin longgar.
+  //
+  // Yang dijaga: host yang memundurkan startsAt bisa membuat jendela acaranya
+  // memuat koneksi-koneksi lama, dan eventOccasionFor akan mencap ulang koneksi
+  // itu — melanggar janji spec §9 bahwa koneksi yang sudah ada tidak berubah
+  // nilainya.
+  .refine((v) => waktuTakTerbaca(v.startsAt, v.expiresAt)
+    || BigInt(v.startsAt) + MAKS_MUNDUR_DETIK >= BigInt(v.expiresAt), {
+    message: "waktu mulai tidak boleh lebih dari 1 jam di masa lalu",
+    path: ["startsAt"],
   });
 
 export const RsvpRequestSchema = z.object({

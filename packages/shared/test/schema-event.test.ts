@@ -42,6 +42,35 @@ describe("CreateEventRequestSchema", () => {
     expect(CreateEventRequestSchema.safeParse(createBody({ startsAt: "besok" })).success)
       .toBe(false);
   });
+
+  // Jendela tak terbatas = satu acara menempel di puncak discovery selamanya
+  // (spec §8), sekaligus rentang cap-ulang occasion yang selebar-lebarnya.
+  it("menerima jendela tepat 24 jam", () => {
+    const body = createBody({ startsAt: "1700000000", endsAt: "1700086400" });
+    expect(CreateEventRequestSchema.safeParse(body).success).toBe(true);
+  });
+
+  it("menolak jendela lebih dari 24 jam", () => {
+    const body = createBody({ startsAt: "1700000000", endsAt: "1700086401" });
+    expect(CreateEventRequestSchema.safeParse(body).success).toBe(false);
+  });
+
+  // "Sekarang" diambil dari expiresAt yang baru dibuat klien. Memundurkan
+  // startsAt jauh ke belakang akan membuat jendela acara memuat koneksi lama
+  // dan mencap ulangnya — spec §9 menjanjikan itu tidak terjadi.
+  it("menerima startsAt tepat 1 jam sebelum expiresAt", () => {
+    const body = createBody({
+      startsAt: "1700000000", endsAt: "1700003600", expiresAt: "1700003600",
+    });
+    expect(CreateEventRequestSchema.safeParse(body).success).toBe(true);
+  });
+
+  it("menolak startsAt lebih dari 1 jam di masa lalu", () => {
+    const body = createBody({
+      startsAt: "1700000000", endsAt: "1700010000", expiresAt: "1700003601",
+    });
+    expect(CreateEventRequestSchema.safeParse(body).success).toBe(false);
+  });
 });
 
 describe("RsvpRequestSchema", () => {
