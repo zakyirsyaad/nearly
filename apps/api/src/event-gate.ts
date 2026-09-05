@@ -1,6 +1,7 @@
 import type { Address, Hex } from "viem";
 import {
-  cellToBytes32, recoverCreateEventSigner, recoverRsvpSigner,
+  cellToBytes32, isEventLive, isInsideGeofence, recoverCheckInAcceptSigner,
+  recoverCheckInOfferSigner, recoverCreateEventSigner, recoverRsvpSigner, verifyColocation,
 } from "@nearly/shared";
 import type { EventDeps } from "./ports";
 
@@ -109,4 +110,132 @@ export async function rsvp(input: RsvpInput, deps: EventDeps): Promise<EventResu
 
   await deps.events.recordRsvp(input.eventId, input.who);
   return { ok: true, value: undefined };
+}
+
+export type CheckInOfferInput = {
+  eventId: Hex; nonce: Hex; host: Address; expiresAt: bigint;
+  sigHost: Hex; cell: string; atMs: number;
+};
+
+/**
+ * Host membuka pintu. Cermin submitOffer di handshake-gate.ts — bedanya cuma
+ * satu penjagaan tambahan: penandatangan harus host EVENT INI, bukan sembarang
+ * orang. Tanpa itu, QR check-in bisa dibuat siapa saja dari mana saja.
+ */
+export async function submitCheckInOffer(
+  input: CheckInOfferInput, deps: EventDeps,
+): Promise<EventResult<void>> {
+  if (deps.nowMs() > Number(input.expiresAt) * 1000) {
+    return fail({ code: "expired", httpStatus: 410 });
+  }
+
+  const ev = await deps.events.getEvent(input.eventId);
+  if (!ev) return fail({ code: "event_not_found", httpStatus: 404 });
+
+  if (ev.host.toLowerCase() !== input.host.toLowerCase()) {
+    return fail({ code: "not_host", httpStatus: 403 });
+  }
+
+  if (await deps.events.getCheckInOffer(input.nonce)) {
+    return fail({ code: "nonce_used", httpStatus: 409 });
+  }
+
+  const signer = await recoverCheckInOfferSigner(
+    { eventId: input.eventId, nonce: input.nonce, expiresAt: input.expiresAt },
+    input.sigHost,
+    deps.attendanceContract,
+  );
+  if (signer.toLowerCase() !== input.host.toLowerCase()) {
+    return fail({ code: "bad_signature", httpStatus: 401 });
+  }
+
+  await deps.events.putCheckInOffer({
+    nonce: input.nonce, eventId: input.eventId, host: input.host,
+    expiresAt: input.expiresAt, sigHost: input.sigHost, cell: input.cell, atMs: input.atMs,
+  });
+  return { ok: true, value: undefined };
+}
+
+export type CheckInInput = {
+  eventId: Hex; nonce: Hex; attendee: Address; expiresAt: bigint;
+  sigAttendee: Hex; cell: string; atMs: number;
+};
+
+/**
+ * Tamu melangkah masuk. Sembilan penjagaan, urutannya sengaja: yang termurah
+ * dan paling sering gagal lebih dulu, pemanggilan chain paling akhir.
+ *
+ * Dua pemeriksaan lokasi menjawab pertanyaan yang BERBEDA dan dua-duanya perlu:
+ * geofence menjawab "apakah dia di venue yang diumumkan", ko-lokasi menjawab
+ * "apakah dia benar-benar berdiri di depan host saat itu".
+ */
+export async function acceptCheckIn(
+  input: CheckInInput, deps: EventDeps,
+): Promise<EventResult<{ txHash: Hex }>> {
+  const offer = await deps.events.getCheckInOffer(input.nonce);
+  if (!offer) return fail({ code: "offer_not_found", httpStatus: 404 });
+  if (offer.consumed) return fail({ code: "offer_consumed", httpStatus: 409 });
+  if (offer.eventId.toLowerCase() !== input.eventId.toLowerCase()) {
+    return fail({ code: "offer_not_found", httpStatus: 404 });
+  }
+  if (deps.nowMs() > Number(offer.expiresAt) * 1000) {
+    return fail({ code: "expired", httpStatus: 410 });
+  }
+
+  const ev = await deps.events.getEvent(input.eventId);
+  if (!ev) return fail({ code: "event_not_found", httpStatus: 404 });
+
+  if (!isEventLive(ev.startsAt, ev.endsAt, deps.nowMs())) {
+    return fail({ code: "event_not_live", httpStatus: 422 });
+  }
+
+  // Keputusan pemilik project (spec §2.2): RSVP adalah SYARAT, bukan anjuran.
+  if (!(await deps.events.hasRsvp(input.eventId, input.attendee))) {
+    return fail({ code: "not_rsvped", httpStatus: 403 });
+  }
+
+  if (await deps.events.hasCheckIn(input.eventId, input.attendee)) {
+    return fail({ code: "already_checked_in", httpStatus: 409 });
+  }
+
+  if (!isInsideGeofence(ev.centerCell, input.cell)) {
+    return fail({ code: "outside_geofence", httpStatus: 422 });
+  }
+
+  const colo = verifyColocation(
+    { cell: offer.cell, at: offer.atMs },
+    { cell: input.cell, at: input.atMs },
+  );
+  if (!colo.ok) return fail({ code: "not_colocated", reason: colo.reason, httpStatus: 422 });
+
+  const signer = await recoverCheckInAcceptSigner(
+    {
+      eventId: input.eventId, nonce: input.nonce,
+      attendee: input.attendee, expiresAt: offer.expiresAt,
+    },
+    input.sigAttendee,
+    deps.attendanceContract,
+  );
+  if (signer.toLowerCase() !== input.attendee.toLowerCase()) {
+    return fail({ code: "bad_signature", httpStatus: 401 });
+  }
+
+  let txHash: Hex;
+  try {
+    txHash = await deps.attendance.submitCheckIn({
+      eventId: input.eventId, attendee: input.attendee, nonce: input.nonce,
+      expiresAt: offer.expiresAt, sigHost: offer.sigHost, sigAttendee: input.sigAttendee,
+    });
+  } catch {
+    // Tawaran TIDAK ditandai terpakai, supaya tamu bisa mencoba lagi dengan QR
+    // yang sama alih-alih menunggu rotasi berikutnya.
+    return fail({ code: "chain_error", httpStatus: 502 });
+  }
+
+  await deps.events.consumeCheckInOffer(input.nonce);
+  await deps.events.recordCheckIn({
+    eventId: input.eventId, who: input.attendee, nonce: input.nonce,
+    cell: input.cell, atMs: input.atMs, txHash,
+  });
+  return { ok: true, value: { txHash } };
 }
