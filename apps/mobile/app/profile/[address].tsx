@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { useLocalSearchParams } from "expo-router";
 import {
-  Button, Keyboard, KeyboardAvoidingView, Platform, Pressable,
-  ScrollView, StyleSheet, Text, TextInput, View,
+  Button, InputAccessoryView, Keyboard, KeyboardAvoidingView, Platform,
+  Pressable, ScrollView, StyleSheet, Text, TextInput, View,
 } from "react-native";
 import type { Address } from "viem";
 import { CONFIG } from "../../src/config";
@@ -10,6 +10,9 @@ import { pesanGagal } from "../../src/errors";
 import { createDevSigner } from "../../src/signer";
 import { SUGGESTED_TAGS, tierView } from "../../src/tier";
 import { fetchTrust, sendReport, sendVouch, type TrustResponse } from "../../src/trust-api";
+
+/** id batang di atas keyboard. iOS butuh id eksplisit untuk menautkannya. */
+const ACCESSORY_ID = "laporan-accessory";
 
 type Profile = {
   address: string; displayName: string; ens: string | null;
@@ -194,19 +197,24 @@ export default function ProfileScreen() {
 
           {showReportForm && (
             <View style={s.reportForm}>
-              <View style={s.inputHeader}>
-                <Text style={s.inputLabel}>Alasan laporan</Text>
-                <Pressable onPress={() => Keyboard.dismiss()} hitSlop={12}>
-                  <Text style={s.done}>Selesai</Text>
-                </Pressable>
-              </View>
+              <Text style={s.inputLabel}>Alasan laporan</Text>
               <TextInput
                 style={s.input}
                 placeholder="Ceritakan apa yang terjadi"
                 value={reportReason}
                 onChangeText={setReportReason}
                 multiline
+                inputAccessoryViewID={Platform.OS === "ios" ? ACCESSORY_ID : undefined}
               />
+              {/* Android menutup keyboard lewat tombol back sistem; iOS tidak
+                  punya padanannya untuk input multiline, jadi tombolnya harus
+                  disediakan sendiri dan HARUS menempel di keyboard — kalau
+                  ditaruh di dalam form, keyboard sendiri yang menutupinya. */}
+              {Platform.OS !== "ios" && (
+                <Pressable onPress={() => Keyboard.dismiss()} hitSlop={12}>
+                  <Text style={s.done}>Selesai</Text>
+                </Pressable>
+              )}
               <Button
                 title={reportBusy ? "Mengirim…" : "Kirim Laporan"}
                 disabled={reportBusy || !reportReason.trim()}
@@ -219,6 +227,16 @@ export default function ProfileScreen() {
         </View>
       )}
       </ScrollView>
+
+      {Platform.OS === "ios" && (
+        <InputAccessoryView nativeID={ACCESSORY_ID}>
+          <View style={s.accessory}>
+            <Pressable onPress={() => Keyboard.dismiss()} hitSlop={12}>
+              <Text style={s.done}>Selesai</Text>
+            </Pressable>
+          </View>
+        </InputAccessoryView>
+      )}
     </KeyboardAvoidingView>
   );
 }
@@ -226,9 +244,16 @@ export default function ProfileScreen() {
 const s = StyleSheet.create({
   flex: { flex: 1 },
   root: { padding: 24, paddingBottom: 48, gap: 8 },
-  inputHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
   inputLabel: { fontSize: 14, opacity: 0.7 },
-  done: { fontSize: 16, fontWeight: "600" },
+  done: { fontSize: 17, fontWeight: "600" },
+  accessory: {
+    alignItems: "flex-end",
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    backgroundColor: "#f2f2f7",
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: "#c6c6c8",
+  },
   name: { fontSize: 26, fontWeight: "700" },
   addr: { fontFamily: "Courier", fontSize: 12, opacity: 0.6 },
   facts: { marginTop: 20, gap: 6 },
