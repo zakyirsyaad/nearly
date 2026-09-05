@@ -293,6 +293,21 @@ contract AttendanceRegistryTest is Test {
         reg.checkIn(EVENT_ID, address(0), NONCE, expiresAt, sigHost, hex"00");
     }
 
+    // Tanpa guard `host == address(0)`, tanda tangan yang rusak (panjang
+    // bukan 65 byte) membuat _recover mengembalikan address(0) — dan kalau
+    // host yang dikirim juga address(0), pencocokan `_recover(...) != host`
+    // jadi `address(0) != address(0)` yang FALSE, sehingga pemeriksaan
+    // tanda tangan LOLOS dan event tercatat tanpa pemilik. Guard di baris
+    // `if (host == address(0)) revert BadSignature();` wajib menangkapnya
+    // lebih dulu, sebelum tanda tangan sempat diperiksa.
+    function test_buatEventAlamatNolDitolak() public {
+        vm.prank(attestor);
+        vm.expectRevert(AttendanceRegistry.BadSignature.selector);
+        reg.createEvent(
+            keccak256("event-host-nol"), address(0), startsAt, endsAt, CELL, expiresAt, hex"00"
+        );
+    }
+
     // Setiap test lain menurunkan digestnya dari reg.DOMAIN_SEPARATOR() itu
     // sendiri, jadi domain EIP-712 yang salah pun tetap lolos semua test.
     // Test ini menghitung separator secara independen dan membandingkannya —
