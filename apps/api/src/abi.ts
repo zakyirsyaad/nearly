@@ -102,3 +102,49 @@ export const VOUCH_REGISTRY_ABI = [
     outputs: [{ type: "bytes32" }],
   },
 ] as const;
+
+export const ATTENDANCE_REGISTRY_ABI = [
+  {
+    type: "function",
+    name: "createEvent",
+    stateMutability: "nonpayable",
+    inputs: [
+      { name: "eventId", type: "bytes32" },
+      { name: "host", type: "address" },
+      { name: "startsAt", type: "uint64" },
+      { name: "endsAt", type: "uint64" },
+      { name: "centerCell", type: "bytes32" },
+      { name: "expiresAt", type: "uint64" },
+      { name: "sigHost", type: "bytes" },
+    ],
+    outputs: [],
+  },
+  {
+    type: "function",
+    name: "checkIn",
+    stateMutability: "nonpayable",
+    inputs: [
+      { name: "eventId", type: "bytes32" },
+      { name: "attendee", type: "address" },
+      { name: "nonce", type: "bytes32" },
+      { name: "expiresAt", type: "uint64" },
+      { name: "sigHost", type: "bytes" },
+      { name: "sigAttendee", type: "bytes" },
+    ],
+    outputs: [],
+  },
+  {
+    type: "function",
+    name: "hasAttended",
+    stateMutability: "view",
+    inputs: [{ name: "eventId", type: "bytes32" }, { name: "who", type: "address" }],
+    outputs: [{ type: "bool" }],
+  },
+  {
+    type: "function",
+    name: "DOMAIN_SEPARATOR",
+    stateMutability: "view",
+    inputs: [],
+    outputs: [{ type: "bytes32" }],
+  },
+] as const;
