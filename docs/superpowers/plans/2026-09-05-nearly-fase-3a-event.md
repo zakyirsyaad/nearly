@@ -590,7 +590,9 @@ contract AttendanceRegistryTest is Test {
 
     bytes32 constant EVENT_ID = keccak256("event-1");
     bytes32 constant NONCE = keccak256("nonce-1");
-    bytes32 constant CELL = bytes32(bytes("qqguv1r"));
+    // Literal string rata-kiri, cocok dengan pad(dir:"right") di cellToBytes32.
+    // bytes32(bytes("...")) TIDAK sah: bytes dinamis tidak bisa dikonversi ke bytes32.
+    bytes32 constant CELL = "qqguv1r";
 
     uint64 startsAt;
     uint64 endsAt;
@@ -2922,10 +2924,29 @@ describe("POST /events", () => {
     expect(await res.json()).toMatchObject({ code: "invalid_body" });
   });
 
+  // Tanda tangan BERBENTUK SAH dari kunci lain, bukan heksa karangan: viem
+  // melempar untuk byte v yang tidak sah, dan itu akan menghasilkan 500 —
+  // menguji hal yang bukan maksud test ini. Yang diuji di sini adalah kode
+  // kegagalan gerbang diteruskan beserta status HTTP-nya.
   it("meneruskan kode kegagalan gerbang beserta status HTTP-nya", async () => {
-    const body = await createBody();
-    const res = await post(app(), "/events", { ...body, host: host.address, sigHost: `0x${"9".repeat(130)}` });
+    const orangLain = privateKeyToAccount(
+      "0x5de4111afa1a4b94908f83103eb1f1706367c2e68ca870fc3fb9a804cdab365a" as Hex,
+    );
+    const startsAt = NOW_SEC;
+    const endsAt = NOW_SEC + 3600n;
+    const expiresAt = NOW_SEC + 600n;
+    const sigHost = await orangLain.signTypedData(
+      createEventTypedData(
+        {
+          eventId: EVENT_ID, host: host.address, startsAt, endsAt,
+          centerCell: cellToBytes32("qqguv1r"), expiresAt,
+        },
+        CONTRACT,
+      ),
+    );
+    const res = await post(app(), "/events", { ...(await createBody()), sigHost });
     expect(res.status).toBe(401);
+    expect(await res.json()).toMatchObject({ code: "bad_signature" });
   });
 });
 
@@ -3709,7 +3730,7 @@ Buat `apps/mobile/app/events/index.tsx`:
 ```tsx
 import { useCallback, useState } from "react";
 import { Link, useFocusEffect } from "expo-router";
-import { ActivityIndicator, FlatList, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, View } from "react-native";
 import { getDiscovery, type EventSummary } from "../../src/events-api";
 
 function waktuSingkat(unixSec: string): string {
@@ -3749,15 +3770,17 @@ export default function EventsScreen() {
           <Text style={s.p}>Belum ada acara yang akan datang. Kamu bisa membuat yang pertama.</Text>
         }
         renderItem={({ item }) => (
-          <Link href={`/events/${item.eventId}`} style={s.kartu}>
-            <View>
+          // asChild WAJIB: Link merender Text, dan View di dalam Text tidak sah
+          // di React Native. asChild membuat Pressable yang menjadi tautannya.
+          <Link href={`/events/${item.eventId}`} asChild>
+            <Pressable style={s.kartu}>
               <Text style={s.judul}>{item.title}</Text>
               <Text style={s.meta}>
                 {waktuSingkat(item.startsAt)}
                 {item.venueLabel ? ` · ${item.venueLabel}` : ""}
               </Text>
               <Text style={s.meta}>{item.rsvpCount ?? 0} RSVP</Text>
-            </View>
+            </Pressable>
           </Link>
         )}
       />
