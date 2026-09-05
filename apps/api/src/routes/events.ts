@@ -1,5 +1,5 @@
 import { Hono } from "hono";
-import type { Address, Hex } from "viem";
+import { isAddress, type Address, type Hex } from "viem";
 import {
   CheckInOfferRequestSchema, CheckInRequestSchema,
   CreateEventRequestSchema, RsvpRequestSchema,
@@ -69,11 +69,25 @@ export function eventRoutes(deps: EventDeps & { onChanged: () => Promise<void> }
   });
 
   // TANPA penyaring apa pun, dengan sengaja (spec §8): inilah yang membuat
-  // event host ber-trust rendah "tetap bisa dibagikan lewat link".
+  // event host ber-trust rendah "tetap bisa dibagikan lewat link". `who`
+  // OPSIONAL: tautan yang dibagikan ke orang lain tidak pernah membawanya,
+  // dan itu harus tetap menghasilkan respons yang sama seperti sebelum
+  // parameter ini ada — bukan galat.
   r.get("/events/:id", async (c) => {
     const ev = await deps.events.getEvent(c.req.param("id") as Hex);
     if (!ev) return c.json({ code: "event_not_found" }, 404);
     const summary = await deps.events.attendanceSummary(ev.eventId);
+
+    const who = c.req.query("who");
+    if (who && isAddress(who)) {
+      const addr = who.toLowerCase() as Address;
+      const [sudahRsvp, sudahCheckIn] = await Promise.all([
+        deps.events.hasRsvp(ev.eventId, addr),
+        deps.events.hasCheckIn(ev.eventId, addr),
+      ]);
+      return c.json({ ...eventToJson(ev), ...summary, sudahRsvp, sudahCheckIn });
+    }
+
     return c.json({ ...eventToJson(ev), ...summary });
   });
 

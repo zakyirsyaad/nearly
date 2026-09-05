@@ -17,6 +17,9 @@ export type EventSummary = {
   rsvps?: number;
   checkins?: number;
   rsvpBelumHadir?: number;
+  /** Hanya ada kalau `who` disertakan saat memuat. */
+  sudahRsvp?: boolean;
+  sudahCheckIn?: boolean;
 };
 
 async function req<T>(path: string, init?: RequestInit): Promise<T> {
@@ -40,7 +43,9 @@ const postJson = (path: string, body: unknown) =>
   });
 
 export const getDiscovery = () => req<{ events: EventSummary[] }>("/events");
-export const getEvent = (id: string) => req<EventSummary>(`/events/${id}`);
+
+export const getEvent = (id: string, who?: string) =>
+  req<EventSummary>(`/events/${id}${who ? `?who=${who.toLowerCase()}` : ""}`);
 
 export const postCreateEvent = (b: Record<string, unknown>) =>
   postJson("/events", b) as Promise<{ txHash: Hex }>;

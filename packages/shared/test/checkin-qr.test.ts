@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { Hex } from "viem";
 import { decodeCheckInQr, encodeCheckInQr } from "../src/event";
-import { decodeQr } from "../src/qr";
+import { decodeQr, encodeQr } from "../src/qr";
 
 const payload = {
   v: 1 as const,
@@ -35,5 +35,20 @@ describe("QR check-in", () => {
   // dibaca sebagai yang lain, pemindai akan menjalankan alur yang salah.
   it("QR check-in tidak terbaca sebagai QR handshake", () => {
     expect(decodeQr(encodeCheckInQr(payload))).toBeNull();
+  });
+
+  // Arah sebaliknya justru yang lebih berbahaya secara operasional:
+  // decodeCheckInQr dijalankan LEBIH DULU di pemindai. Kalau ia menerima
+  // payload handshake, memindai untuk koneksi akan diam-diam menjalankan
+  // alur check-in alih-alih handshake.
+  it("QR handshake tidak terbaca sebagai QR check-in", () => {
+    const handshake = {
+      v: 1 as const,
+      initiator: `0x${"4".repeat(40)}` as Hex,
+      nonce: `0x${"2".repeat(64)}` as Hex,
+      expiresAt: 1_700_000_030n,
+      sigOffer: `0x${"3".repeat(130)}` as Hex,
+    };
+    expect(decodeCheckInQr(encodeQr(handshake))).toBeNull();
   });
 });

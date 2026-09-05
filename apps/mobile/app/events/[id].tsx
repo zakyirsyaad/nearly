@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useLocalSearchParams } from "expo-router";
 import { ActivityIndicator, Button, StyleSheet, Text, View } from "react-native";
-import type { Hex } from "viem";
 import { isEventLive, rsvpTypedData } from "@nearly/shared";
 import { CONFIG } from "../../src/config";
 import { createDevSigner } from "../../src/signer";
@@ -17,17 +16,24 @@ export default function EventDetailScreen() {
   );
 
   const [ev, setEv] = useState<EventSummary | null>(null);
+  // Diseed dari server (bukan diasumsikan false) — server sudah tahu
+  // jawabannya lewat `who`, dan tamu yang RSVP lalu menutup app tidak boleh
+  // disuruh RSVP lagi hanya karena state lokal lupa.
   const [sudahRsvp, setSudahRsvp] = useState(false);
+  const [sudahCheckIn, setSudahCheckIn] = useState(false);
   const [pesan, setPesan] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
   const load = useCallback(async () => {
     try {
-      setEv(await getEvent(id));
+      const data = await getEvent(id, signer.address);
+      setEv(data);
+      setSudahRsvp(data.sudahRsvp === true);
+      setSudahCheckIn(data.sudahCheckIn === true);
     } catch (e) {
       setPesan(e instanceof ApiError ? eventErrorMessage(e.code) : "Gagal memuat acara.");
     }
-  }, [id]);
+  }, [id, signer.address]);
 
   useEffect(() => { void load(); }, [load]);
 
@@ -62,12 +68,15 @@ export default function EventDetailScreen() {
   const akuHost = ev.host.toLowerCase() === signer.address.toLowerCase();
 
   // Tombol check-in TIDAK PERNAH gagal diam-diam (spec §2.2): syaratnya
-  // terbaca sebelum orang berdiri di depan host, bukan sesudah.
-  const alasanTakBisaCheckIn = !sudahRsvp
-    ? "RSVP dulu untuk bisa check-in."
-    : !berlangsung
-      ? "Check-in terbuka saat acara berlangsung."
-      : null;
+  // terbaca sebelum orang berdiri di depan host, bukan sesudah. Kalau tamu
+  // sudah check-in, jangan tawarkan tautan pindai lagi — beri tahu saja.
+  const alasanTakBisaCheckIn = sudahCheckIn
+    ? eventErrorMessage("already_checked_in")
+    : !sudahRsvp
+      ? "RSVP dulu untuk bisa check-in."
+      : !berlangsung
+        ? "Check-in terbuka saat acara berlangsung."
+        : null;
 
   return (
     <View style={s.root}>

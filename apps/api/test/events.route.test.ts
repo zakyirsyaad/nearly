@@ -129,6 +129,69 @@ describe("GET /events/:id", () => {
     expect(res.status).toBe(200);
     expect(await res.json()).toMatchObject({ title: "Meetup BNB", startsAt: NOW_SEC.toString() });
   });
+
+  // `who` opsional membawa dua bendera tambahan — status RSVP dan check-in
+  // pemanggil sendiri — supaya layar detail tidak perlu menebak-nebak dari
+  // state lokal yang bisa basi begitu sesi ditutup lalu dibuka lagi.
+  it("menyertakan sudahRsvp dan sudahCheckIn ketika who diberikan", async () => {
+    const a = app({
+      events: {
+        getEvent: vi.fn(async () => ({
+          eventId: EVENT_ID, host: host.address, title: "Meetup BNB",
+          venueLabel: "Kalibata", centerCell: "qqguv1r",
+          startsAt: NOW_SEC, endsAt: NOW_SEC + 3600n, txHash: "0xtx" as Hex,
+        })),
+        attendanceSummary: vi.fn(async () => ({ rsvps: 1, checkins: 1, rsvpBelumHadir: 0 })),
+        hasRsvp: vi.fn(async () => true),
+        hasCheckIn: vi.fn(async () => true),
+      },
+    });
+    const res = await a.request(`/events/${EVENT_ID}?who=${host.address}`);
+    expect(res.status).toBe(200);
+    expect(await res.json()).toMatchObject({ sudahRsvp: true, sudahCheckIn: true });
+  });
+
+  // Tanpa who (tautan yang dibagikan ke orang lain, misalnya), respons harus
+  // identik dengan sebelum parameter ini ada — tidak ada kunci baru, dan
+  // yang pasti bukan galat.
+  it("mengembalikan respons yang sama seperti sebelumnya ketika who tidak diberikan", async () => {
+    const a = app({
+      events: {
+        getEvent: vi.fn(async () => ({
+          eventId: EVENT_ID, host: host.address, title: "Meetup BNB",
+          venueLabel: "Kalibata", centerCell: "qqguv1r",
+          startsAt: NOW_SEC, endsAt: NOW_SEC + 3600n, txHash: "0xtx" as Hex,
+        })),
+        attendanceSummary: vi.fn(async () => ({ rsvps: 1, checkins: 1, rsvpBelumHadir: 0 })),
+      },
+    });
+    const res = await a.request("/events/" + EVENT_ID);
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body).not.toHaveProperty("sudahRsvp");
+    expect(body).not.toHaveProperty("sudahCheckIn");
+  });
+
+  // who yang cacat (bukan alamat sah) harus diperlakukan sama seperti tidak
+  // ada — rute ini harus tetap bisa dibuka siapa pun lewat link apa adanya,
+  // jadi query yang jelek TIDAK BOLEH berubah jadi galat.
+  it("mengabaikan who yang bukan alamat sah, bukan menjadikannya galat", async () => {
+    const a = app({
+      events: {
+        getEvent: vi.fn(async () => ({
+          eventId: EVENT_ID, host: host.address, title: "Meetup BNB",
+          venueLabel: "Kalibata", centerCell: "qqguv1r",
+          startsAt: NOW_SEC, endsAt: NOW_SEC + 3600n, txHash: "0xtx" as Hex,
+        })),
+        attendanceSummary: vi.fn(async () => ({ rsvps: 1, checkins: 1, rsvpBelumHadir: 0 })),
+      },
+    });
+    const res = await a.request(`/events/${EVENT_ID}?who=bukan-alamat`);
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body).not.toHaveProperty("sudahRsvp");
+    expect(body).not.toHaveProperty("sudahCheckIn");
+  });
 });
 
 describe("GET /events", () => {
