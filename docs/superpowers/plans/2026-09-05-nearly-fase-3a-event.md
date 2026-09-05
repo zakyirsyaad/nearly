@@ -223,7 +223,7 @@ export * from "./geofence";
 pnpm --filter @nearly/shared test geofence
 ```
 
-Diharapkan: PASS, 9 test.
+Diharapkan: PASS, 11 test.
 
 - [ ] **Step 6: Commit**
 
