@@ -9,6 +9,16 @@ import type { EventDeps, EventRecord } from "../ports";
 
 const DISCOVERY_LIMIT = 50;
 
+/**
+ * `:id` di path harus sama dengan `eventId` di badan permintaan — kalau
+ * tidak, path segment itu diam-diam diabaikan (bug klien yang menyakitkan
+ * untuk dilacak). Dibandingkan case-insensitive karena id memang heksa
+ * lowercase, tapi klien bisa saja mengirim campuran huruf besar/kecil.
+ */
+function sameId(pathId: string, bodyId: string) {
+  return pathId.toLowerCase() === bodyId.toLowerCase();
+}
+
 /** bigint tidak bisa di-JSON. Waktu keluar sebagai string, seperti expiresAt. */
 function eventToJson(e: EventRecord) {
   return {
@@ -76,6 +86,9 @@ export function eventRoutes(deps: EventDeps & { onChanged: () => Promise<void> }
     const raw = await c.req.json().catch(() => null);
     const parsed = RsvpRequestSchema.safeParse(raw);
     if (!parsed.success) return c.json({ code: "invalid_body" }, 400);
+    if (!sameId(c.req.param("id"), parsed.data.eventId)) {
+      return c.json({ code: "invalid_body" }, 400);
+    }
 
     const b = parsed.data;
     const result = await rsvp(
@@ -95,6 +108,9 @@ export function eventRoutes(deps: EventDeps & { onChanged: () => Promise<void> }
     const raw = await c.req.json().catch(() => null);
     const parsed = CheckInOfferRequestSchema.safeParse(raw);
     if (!parsed.success) return c.json({ code: "invalid_body" }, 400);
+    if (!sameId(c.req.param("id"), parsed.data.eventId)) {
+      return c.json({ code: "invalid_body" }, 400);
+    }
 
     const b = parsed.data;
     const result = await submitCheckInOffer(
@@ -117,6 +133,9 @@ export function eventRoutes(deps: EventDeps & { onChanged: () => Promise<void> }
     const raw = await c.req.json().catch(() => null);
     const parsed = CheckInRequestSchema.safeParse(raw);
     if (!parsed.success) return c.json({ code: "invalid_body" }, 400);
+    if (!sameId(c.req.param("id"), parsed.data.eventId)) {
+      return c.json({ code: "invalid_body" }, 400);
+    }
 
     const b = parsed.data;
     const result = await acceptCheckIn(

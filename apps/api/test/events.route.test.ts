@@ -11,6 +11,10 @@ const host = privateKeyToAccount(
 );
 const CONTRACT = "0x00000000000000000000000000000000000c0de0" as Address;
 const EVENT_ID = `0x${"1".repeat(64)}` as Hex;
+// Mengandung huruf heksa (bukan cuma digit) supaya uji besar/kecil di bawah
+// benar-benar berarti — EVENT_ID sendiri semua digit, toUpperCase() atasnya
+// tidak mengubah apa-apa.
+const CASE_ID = `0x${"a".repeat(64)}` as Hex;
 
 function app(over: Record<string, unknown> = {}) {
   return eventRoutes({
@@ -133,11 +137,85 @@ describe("GET /events", () => {
     expect(res.status).toBe(200);
     expect(await res.json()).toMatchObject({ events: [] });
   });
+
+  // Fake lama mengembalikan array kosong, jadi eventToJson tidak pernah
+  // benar-benar dipanggil pada satu baris pun — regresi yang mengembalikan
+  // baris mentah (bukan lewat eventToJson) tetap lolos. Baris di sini
+  // berisi bigint asli supaya bug macam itu ketahuan: kalau serialisasi
+  // gagal, respons akan berisi bigint mentah (dan Hono akan melempar saat
+  // meng-encode-nya), bukan string.
+  it("mengubah startsAt/endsAt bigint jadi string pada baris discovery", async () => {
+    const a = app({
+      events: {
+        listDiscovery: vi.fn(async () => [
+          {
+            eventId: EVENT_ID, host: host.address, title: "Meetup BNB",
+            venueLabel: "Kalibata", centerCell: "qqguv1r",
+            startsAt: NOW_SEC, endsAt: NOW_SEC + 3600n, txHash: "0xtx" as Hex,
+            hostScore: 7, rsvpCount: 4,
+          },
+        ]),
+      },
+    });
+    const res = await a.request("/events");
+    expect(res.status).toBe(200);
+    expect(await res.json()).toMatchObject({
+      events: [
+        {
+          eventId: EVENT_ID,
+          startsAt: NOW_SEC.toString(),
+          endsAt: (NOW_SEC + 3600n).toString(),
+          hostScore: 7,
+          rsvpCount: 4,
+        },
+      ],
+    });
+  });
 });
 
 describe("GET /events/:id/attendance", () => {
   it("mengembalikan tiga angka", async () => {
     const res = await app().request(`/events/${EVENT_ID}/attendance`);
     expect(await res.json()).toMatchObject({ rsvps: 3, checkins: 2, rsvpBelumHadir: 1 });
+  });
+});
+
+// :id di path dan eventId di badan harus sama — kalau tidak, path diam-diam
+// diabaikan dan permintaan dieksekusi untuk event LAIN daripada yang
+// ditunjuk URL-nya. Ditolak sebelum gerbang manapun dipanggil.
+describe("POST /events/:id/checkin — :id vs eventId badan", () => {
+  it("menolak dengan 400 kalau :id path tidak sama dengan eventId badan", async () => {
+    const lainId = `0x${"2".repeat(64)}` as Hex;
+    const res = await post(app(), `/events/${lainId}/checkin`, {
+      eventId: EVENT_ID,
+      nonce: `0x${"3".repeat(64)}`,
+      attendee: host.address,
+      expiresAt: NOW_SEC.toString(),
+      sigAttendee: `0x${"4".repeat(130)}`,
+      cell: "qqguv1r",
+      atMs: NOW,
+    });
+    expect(res.status).toBe(400);
+    expect(await res.json()).toMatchObject({ code: "invalid_body" });
+  });
+
+  // Perbedaan huruf besar/kecil saja BUKAN mismatch — id memang heksa
+  // lowercase secara konvensi, tapi klien bisa mengirim campuran.
+  it("menerima :id path dan eventId badan yang sama tapi beda huruf besar/kecil", async () => {
+    const idHurufBesar = CASE_ID.toUpperCase().replace("0X", "0x") as Hex;
+    const res = await post(app(), `/events/${idHurufBesar}/checkin`, {
+      eventId: CASE_ID,
+      nonce: `0x${"3".repeat(64)}`,
+      attendee: host.address,
+      expiresAt: NOW_SEC.toString(),
+      sigAttendee: `0x${"4".repeat(130)}`,
+      cell: "qqguv1r",
+      atMs: NOW,
+    });
+    // Lolos pengecekan :id vs eventId, lanjut ke gerbang — yang di sini gagal
+    // dengan offer_not_found (404) karena getCheckInOffer fake mengembalikan
+    // null, bukan 400 invalid_body dari pengecekan :id.
+    expect(res.status).toBe(404);
+    expect(await res.json()).toMatchObject({ code: "offer_not_found" });
   });
 });
