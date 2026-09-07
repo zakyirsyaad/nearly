@@ -26,7 +26,22 @@ export function getFeed(who?: string, cursor?: string) {
 
 export const postPost = (b: unknown) => postJson<{ ok: true }>("/posts", b);
 export const postLike = (id: Hex, b: unknown) => postJson<{ ok: true }>(`/posts/${id}/like`, b);
-export const postReport = (id: Hex, b: unknown) => postJson<{ ok: true }>(`/posts/${id}/report`, b);
+/**
+ * Laporan butuh tanda tangan `LaporPost` (spec §5). Tipenya dinyatakan di
+ * sini, bukan `unknown`, supaya pemanggil yang lupa menandatangani gagal saat
+ * typecheck alih-alih mendapat 401 saat dijalankan.
+ */
+export type LaporPostBody = {
+  postId: Hex;
+  reporter: string;
+  reason: string;
+  /** unix DETIK sebagai string — JSON tidak punya bigint. */
+  expiresAt: string;
+  sig: Hex;
+};
+
+export const postReport = (id: Hex, b: LaporPostBody) =>
+  postJson<{ ok: true }>(`/posts/${id}/report`, b);
 export const postDelete = (id: Hex, b: unknown) => postJson<{ ok: true }>(`/posts/${id}/delete`, b);
 export const postImage = (id: Hex, b: unknown) =>
   postJson<{ ok: true; imageStatus: string }>(`/posts/${id}/image`, b);

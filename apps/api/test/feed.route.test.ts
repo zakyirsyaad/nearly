@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import { Hono } from "hono";
 import { privateKeyToAccount } from "viem/accounts";
 import type { Address, Hex } from "viem";
-import { makePostId, postTypedData } from "@nearly/shared";
+import { laporPostTypedData, makePostId, postTypedData } from "@nearly/shared";
 import { feedRoutes } from "../src/routes/feed";
 import type { FeedCandidate, FeedDeps, FeedStore, PostRecord } from "../src/ports";
 
@@ -109,6 +109,57 @@ describe("kecocokan :id dengan badan", () => {
     });
     // Lolos pemeriksaan :id, lalu gagal di gerbang karena unggahan tidak ada.
     expect(res.status).toBe(404);
+  });
+});
+
+describe("POST /posts/:id/report", () => {
+  const ID = `0x${"1".repeat(64)}` as Hex;
+  const ALASAN = "spam berulang di feed";
+
+  async function badanLapor(over: Record<string, unknown> = {}) {
+    const pesan = { postId: ID, reporter: penulis.address, reason: ALASAN, expiresAt: EXP };
+    const sig = await penulis.signTypedData(laporPostTypedData(pesan, KONTRAK));
+    return {
+      postId: ID, reporter: penulis.address, reason: ALASAN,
+      expiresAt: EXP.toString(), sig, ...over,
+    };
+  }
+
+  it("mencatat laporan yang bertanda tangan sah", async () => {
+    const s = store({ getPost: vi.fn(async () => rekam()) });
+    const res = await kirim(app(s), `/posts/${ID}/report`, await badanLapor());
+    expect(res.status).toBe(200);
+    expect(s.addReport).toHaveBeenCalled();
+  });
+
+  /**
+   * Rute ini menyembunyikan unggahan begitu 3 pelapor BERBEDA terkumpul, dan
+   * `post_reports.reporter` bukan foreign key — alamatnya tidak perlu pernah
+   * ada. Tes ini menjadi merah begitu pemeriksaan tanda tangan dicabut.
+   */
+  it("menolak tiga alamat karangan yang mencoba menembus ambang", async () => {
+    const karangan = [
+      "0x00000000000000000000000000000000000000a1",
+      "0x00000000000000000000000000000000000000a2",
+      "0x00000000000000000000000000000000000000a3",
+    ];
+    const sah = await badanLapor();
+    for (const palsu of karangan) {
+      const s = store({ getPost: vi.fn(async () => rekam()) });
+      const res = await kirim(app(s), `/posts/${ID}/report`, { ...sah, reporter: palsu });
+      expect(res.status).toBe(401);
+      expect(await res.json()).toMatchObject({ code: "bad_signature" });
+      expect(s.addReport).not.toHaveBeenCalled();
+    }
+  });
+
+  it("menolak badan laporan tanpa tanda tangan sama sekali", async () => {
+    const s = store({ getPost: vi.fn(async () => rekam()) });
+    const res = await kirim(app(s), `/posts/${ID}/report`, {
+      postId: ID, reporter: penulis.address, reason: ALASAN,
+    });
+    expect(res.status).toBe(400);
+    expect(s.addReport).not.toHaveBeenCalled();
   });
 });
 

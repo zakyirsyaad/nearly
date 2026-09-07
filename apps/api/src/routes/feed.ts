@@ -84,6 +84,7 @@ export function feedRoutes(deps: FeedDeps) {
     const b = parsed.data;
     const hasil = await reportPost({
       postId: b.postId as Hex, reporter: b.reporter as Address, reason: b.reason,
+      expiresAt: BigInt(b.expiresAt), sig: b.sig as Hex,
     }, deps);
     if (!hasil.ok) return c.json(hasil.failure, hasil.failure.httpStatus);
     return c.json({ ok: true });

@@ -56,7 +56,10 @@ describe("LikeRequestSchema", () => {
 });
 
 describe("ReportPostRequestSchema", () => {
-  const dasar = { postId: ID, reporter: ADDR, reason: "spam berulang di feed" };
+  const dasar = {
+    postId: ID, reporter: ADDR, reason: "spam berulang di feed",
+    expiresAt: "1800000000", sig: SIG,
+  };
 
   it("menerima alasan yang cukup panjang", () => {
     expect(ReportPostRequestSchema.safeParse(dasar).success).toBe(true);
@@ -64,6 +67,26 @@ describe("ReportPostRequestSchema", () => {
 
   it("menolak alasan terlalu pendek", () => {
     expect(ReportPostRequestSchema.safeParse({ ...dasar, reason: "jelek" }).success).toBe(false);
+  });
+
+  /**
+   * Laporan BERTANDA TANGAN. Ambang penyembunyian 3 pelapor berbeda dan
+   * `post_reports.reporter` bukan foreign key ke profiles — tanpa tanda
+   * tangan, tiga alamat karangan menyembunyikan unggahan siapa pun.
+   */
+  it("menolak laporan tanpa tanda tangan", () => {
+    const { sig: _sig, ...tanpaSig } = dasar;
+    expect(ReportPostRequestSchema.safeParse(tanpaSig).success).toBe(false);
+  });
+
+  it("menolak laporan tanpa expiresAt", () => {
+    const { expiresAt: _exp, ...tanpaExp } = dasar;
+    expect(ReportPostRequestSchema.safeParse(tanpaExp).success).toBe(false);
+  });
+
+  it("menolak expiresAt bukan angka tanpa melempar", () => {
+    expect(() => ReportPostRequestSchema.safeParse({ ...dasar, expiresAt: "besok" })).not.toThrow();
+    expect(ReportPostRequestSchema.safeParse({ ...dasar, expiresAt: "besok" }).success).toBe(false);
   });
 });
 

@@ -229,16 +229,17 @@ lama.
 
 ## 5. Tanda Tangan
 
-Empat tipe EIP-712 baru di `packages/shared/src/feed.ts`:
+**Lima** tipe EIP-712 baru di `packages/shared/src/feed.ts`:
 
 ```
 Post         { postId: bytes32, author: address, body: string, expiresAt: uint64 }
 Like         { postId: bytes32, who: address, suka: bool, expiresAt: uint64 }
 HapusPost    { postId: bytes32, author: address, expiresAt: uint64 }
 LampirGambar { postId: bytes32, author: address, mime: string, expiresAt: uint64 }
+LaporPost    { postId: bytes32, reporter: address, reason: string, expiresAt: uint64 }
 ```
 
-**Kenapa empat, bukan satu `Post` yang dipakai ulang.** Menghapus dan melampirkan gambar
+**Kenapa lima, bukan satu `Post` yang dipakai ulang.** Menghapus dan melampirkan gambar
 sama-sama membuktikan "aku penulis unggahan ini" — menggoda untuk memakai ulang tanda tangan
 `Post` yang sama. Itu lubang: tanda tangan yang seseorang buat untuk **memposting** akan sah
 pula sebagai perintah **menghapus**, sehingga siapa pun yang menangkapnya — dari log akses,
@@ -253,17 +254,37 @@ perintah tersebut.
 `LampirGambar` ikut mengikat `mime` supaya tanda tangan untuk melampirkan JPEG tidak bisa
 dipakai melampirkan tipe berkas lain.
 
-Keempatnya **tidak pernah naik ke chain**, dan karena itu tidak boleh punya pasangan
+**Kenapa laporan wajib bertanda tangan.** `LaporPost` adalah tipe kelima, dan ia ada karena
+laporan bukan sekadar "suara" yang aman dibiarkan telanjang. Ambang penyembunyian hanya
+**3 pelapor berbeda** (§4.3), dan `post_reports.reporter` **bukan foreign key** ke
+`profiles` — migrasi `0004_feed.sql` hanya memeriksa formatnya. Alamat pelapor karena itu
+tidak perlu pernah ada, tidak perlu punya koneksi, dan tidak perlu punya trust. Tanpa tanda
+tangan, tiga permintaan dengan tiga alamat karangan sudah cukup untuk menyembunyikan
+unggahan **siapa pun** dari feed **semua orang**, secara permanen — dan penulisnya tidak
+akan pernah tahu, karena penyaring visibilitas §7 mengecualikan unggahan sendiri dari sebab
+laporan.
+
+Primary key gabungan `(post_id, reporter)` tidak menutup lubang itu: ia hanya mencegah satu
+**alamat yang sama** melapor berkali-kali. Yang menutupnya adalah keharusan menguasai kunci
+privat alamat pelapor.
+
+Ini juga bukan hal baru di repo ini — `POST /report` Fase 2 sudah memulihkan
+`recoverReportSigner` dan menolak signer yang tidak cocok, dengan alasan yang persis sama.
+`reason` ikut ditandatangani supaya alasan tidak bisa ditukar setelah ditandatangani,
+mengikuti `reasonHash` di `Report` Fase 2. Laporannya sendiri tetap off-chain; tanda tangan
+ini murni otentikasi ke server.
+
+Kelimanya **tidak pernah naik ke chain**, dan karena itu tidak boleh punya pasangan
 typehash di Solidity mana pun — sama seperti `Rsvp` dan `LihatEvent` di Fase 3a.
 
-**Kenapa tetap ditandatangani.** Alasan identik dengan `Rsvp`: tanpa tanda tangan, `author`
-dan `who` datang telanjang dari body request, dan siapa pun bisa memposting atau menyukai
-atas nama orang lain.
+**Kenapa tetap ditandatangani.** Alasan identik dengan `Rsvp`: tanpa tanda tangan, `author`,
+`who`, dan `reporter` datang telanjang dari body request, dan siapa pun bisa memposting,
+menyukai, atau melapor atas nama orang lain.
 
 **Domain** memakai `ConnectionRegistry` sebagai `verifyingContract`. Jangkar identitas feed
 adalah graf pertemuan, dan `ConnectionRegistry` adalah kontrak yang memegang graf itu.
 
-**Penjaga Ruling 23.** Keempat nama tipe unik di seluruh aplikasi, jadi digest-nya berbeda
+**Penjaga Ruling 23.** Kelima nama tipe unik di seluruh aplikasi, jadi digest-nya berbeda
 dari `Accept`, `Vouch`, `Rsvp`, `LihatEvent`, dan satu sama lain — tidak ada tanda tangan
 yang bisa menyeberang ke jalur tulis lain. Ini dikunci tes typehash (§13.2).
 
@@ -459,7 +480,7 @@ Kunci penandatangannya adalah `RELAYER_PRIVATE_KEY` yang sudah ada.
 | `POST /posts` | Bertanda tangan `Post`. Teks terbit seketika |
 | `POST /posts/:id/image` | Memicu unggah Greenfield asinkron, status jadi `pending` |
 | `POST /posts/:id/like` | Bertanda tangan `Like`, medan `suka` true/false |
-| `POST /posts/:id/report` | Menyembunyikan unggahan, bukan menghukum orang |
+| `POST /posts/:id/report` | Bertanda tangan `LaporPost`. Menyembunyikan unggahan, bukan menghukum orang |
 | `POST /posts/:id/delete` | Bertanda tangan `HapusPost` milik penulisnya |
 | `GET /feed?who=&cursor=` | Feed terperingkat; `who` opsional |
 
@@ -602,9 +623,10 @@ kuota unggah per alamat · pembobotan suka dengan trust · pembekuan peringkat p
 **13.1 Penilai diuji sebagai fungsi murni.** Satu tes per konstanta: ubah `0.5` menjadi
 `0.6` pada peluruhan diversitas, satu tes merah. Bukan tes yang lulus karena kebetulan.
 
-**13.2 Tes kunci typehash** untuk `Post` dan `Like`, meniru
-`packages/shared/test/event-typehash.test.ts`, membuktikan keduanya tidak bertabrakan dengan
-tipe mana pun yang sudah ada. Penjaga langsung terhadap kelas kesalahan Ruling 23.
+**13.2 Tes kunci typehash** untuk kelima tipe feed, meniru
+`packages/shared/test/event-typehash.test.ts`, membuktikan semuanya tidak bertabrakan dengan
+tipe mana pun yang sudah ada maupun satu sama lain. Penjaga langsung terhadap kelas
+kesalahan Ruling 23.
 
 **13.3 Greenfield tidak pernah disentuh tes.** Adapter di balik port dengan fake. Adapter
 asli diverifikasi manual saat deploy: buat bucket, unggah satu gambar, baca kembali lewat

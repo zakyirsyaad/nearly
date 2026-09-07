@@ -1,6 +1,7 @@
 import type { Address, Hex } from "viem";
 import {
-  recoverHapusPostSigner, recoverLampirGambarSigner, recoverLikeSigner, recoverPostSigner,
+  recoverHapusPostSigner, recoverLampirGambarSigner, recoverLaporPostSigner,
+  recoverLikeSigner, recoverPostSigner,
 } from "@nearly/shared";
 import type { FeedDeps } from "./ports";
 
@@ -116,19 +117,47 @@ export async function setLike(input: LikeInput, deps: FeedDeps): Promise<FeedRes
   return { ok: true, value: undefined };
 }
 
-export type ReportPostInput = { postId: Hex; reporter: Address; reason: string };
+export type ReportPostInput = {
+  postId: Hex; reporter: Address; reason: string; expiresAt: bigint; sig: Hex;
+};
 
 /**
- * Laporan TIDAK bertanda tangan, berbeda dari suka. Suka mengklaim identitas
- * sebagai izin ("aku yang menyukai"); laporan sekadar suara, dan primary key
- * (post_id, reporter) sudah menutup pelaporan berulang. Sama seperti
- * POST /report di Fase 2.
+ * Laporan BERTANDA TANGAN — justru KARENA POST /report di Fase 2 melakukannya
+ * (lihat routes/report.ts, yang memulihkan `recoverReportSigner` dan menolak
+ * signer yang tidak cocok).
+ *
+ * Primary key (post_id, reporter) hanya menutup satu orang melapor
+ * berkali-kali dengan alamat yang SAMA. Ia tidak menutup apa pun kalau
+ * alamatnya berganti-ganti, dan `post_reports.reporter` bukan foreign key ke
+ * `profiles` (migrasi 0004 hanya memeriksa format) — alamat pelapor bahkan
+ * tidak perlu pernah ada. Tanpa tanda tangan ini, tiga permintaan dengan tiga
+ * alamat karangan sudah cukup untuk melewati ambang 3 pelapor dan
+ * menyembunyikan unggahan siapa pun dari feed semua orang, secara permanen.
+ * Penulisnya tidak akan pernah tahu, karena `terlihat()` mengecualikan
+ * unggahan sendiri dari penyaring laporan.
+ *
+ * Laporan sendiri TETAP off-chain; tanda tangan ini murni otentikasi ke
+ * server, sama seperti Fase 2.
  */
 export async function reportPost(
   input: ReportPostInput, deps: FeedDeps,
 ): Promise<FeedResult<void>> {
+  if (sudahLewat(deps, input.expiresAt)) return fail({ code: "expired", httpStatus: 410 });
+
   const post = await deps.feed.getPost(input.postId);
   if (!post || post.deleted) return fail({ code: "post_not_found", httpStatus: 404 });
+
+  const signer = await recoverLaporPostSigner(
+    {
+      postId: input.postId, reporter: input.reporter,
+      reason: input.reason, expiresAt: input.expiresAt,
+    },
+    input.sig,
+    deps.verifyingContract,
+  );
+  if (!samaAlamat(signer, input.reporter)) {
+    return fail({ code: "bad_signature", httpStatus: 401 });
+  }
 
   await deps.feed.addReport(input.postId, input.reporter, input.reason);
   return { ok: true, value: undefined };

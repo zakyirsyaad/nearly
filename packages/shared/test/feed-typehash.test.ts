@@ -17,16 +17,19 @@ function encodeType(nama: string, fields: readonly { name: string; type: string 
 const SOL_DIR = fileURLToPath(new URL("../../contracts/src/", import.meta.url));
 
 describe("tipe EIP-712 feed", () => {
-  it("keempat nama tidak bertabrakan dengan tipe mana pun yang sudah ada", () => {
+  it("kelima nama tidak bertabrakan dengan tipe mana pun yang sudah ada", () => {
     const lama = Object.keys(EVENT_TYPES);
-    for (const nama of ["Post", "Like", "HapusPost", "LampirGambar"]) {
+    for (const nama of ["Post", "Like", "HapusPost", "LampirGambar", "LaporPost"]) {
       expect(lama).not.toContain(nama);
     }
   });
 
-  it("keempat encodeType saling berbeda", () => {
+  // LIMA, bukan empat: LaporPost menyusul di gelombang perbaikan review
+  // akhir. Kalau angka ini turun lagi, satu tipe hilang atau bertabrakan.
+  it("kelima encodeType saling berbeda", () => {
     const semua = Object.entries(FEED_TYPES).map(([n, f]) => encodeType(n, f));
-    expect(new Set(semua).size).toBe(4);
+    expect(semua).toHaveLength(5);
+    expect(new Set(semua).size).toBe(5);
   });
 
   // Post dan Like TIDAK PERNAH naik on-chain (spec §5). Kalau suatu hari ada
@@ -37,7 +40,7 @@ describe("tipe EIP-712 feed", () => {
     expect(berkasSol.length).toBeGreaterThan(0);
     for (const berkas of berkasSol) {
       const sumber = readFileSync(`${SOL_DIR}${berkas}`, "utf8");
-      for (const nama of ["Post(", "Like(", "HapusPost(", "LampirGambar("]) {
+      for (const nama of ["Post(", "Like(", "HapusPost(", "LampirGambar(", "LaporPost("]) {
         expect(sumber).not.toContain(nama);
       }
     }
@@ -61,5 +64,10 @@ describe("tipe EIP-712 feed", () => {
   it("encodeType LampirGambar persis seperti yang didokumentasikan spec §5", () => {
     expect(encodeType("LampirGambar", FEED_TYPES.LampirGambar))
       .toBe("LampirGambar(bytes32 postId,address author,string mime,uint64 expiresAt)");
+  });
+
+  it("encodeType LaporPost persis seperti yang didokumentasikan spec §5", () => {
+    expect(encodeType("LaporPost", FEED_TYPES.LaporPost))
+      .toBe("LaporPost(bytes32 postId,address reporter,string reason,uint64 expiresAt)");
   });
 });

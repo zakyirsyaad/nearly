@@ -50,6 +50,26 @@ export type LampirGambarMessage = {
   expiresAt: bigint;
 };
 
+/**
+ * Laporan WAJIB bertanda tangan, dan itu bukan simetri kosmetik dengan suka.
+ * `post_reports.reporter` hanya di-check FORMAT-nya di migrasi 0004 — ia
+ * bukan foreign key ke `profiles`, jadi alamat pelapor bahkan tidak perlu
+ * pernah ada. Tanpa tanda tangan, penyerang mengirim tiga permintaan dengan
+ * tiga alamat karangan, ambang 3 pelapor terlampaui, dan unggahan siapa pun
+ * hilang dari feed semua orang. Penulisnya tidak akan pernah tahu, karena
+ * `terlihat()` mengecualikan unggahan sendiri dari penyaring laporan.
+ *
+ * `reason` ikut ditandatangani supaya alasan tidak bisa ditukar setelah
+ * ditandatangani — persis alasan `reasonHash` ikut ditandatangani di
+ * `Report` Fase 2.
+ */
+export type LaporPostMessage = {
+  postId: Hex;
+  reporter: Address;
+  reason: string;
+  expiresAt: bigint;
+};
+
 const TYPES = {
   Post: [
     { name: "postId", type: "bytes32" },
@@ -72,6 +92,12 @@ const TYPES = {
     { name: "postId", type: "bytes32" },
     { name: "author", type: "address" },
     { name: "mime", type: "string" },
+    { name: "expiresAt", type: "uint64" },
+  ],
+  LaporPost: [
+    { name: "postId", type: "bytes32" },
+    { name: "reporter", type: "address" },
+    { name: "reason", type: "string" },
     { name: "expiresAt", type: "uint64" },
   ],
 } as const;
@@ -130,6 +156,15 @@ export function lampirGambarTypedData(msg: LampirGambarMessage, verifyingContrac
   } as const;
 }
 
+export function laporPostTypedData(msg: LaporPostMessage, verifyingContract: Address) {
+  return {
+    domain: domain(verifyingContract),
+    types: { LaporPost: TYPES.LaporPost },
+    primaryType: "LaporPost",
+    message: msg,
+  } as const;
+}
+
 export function recoverLikeSigner(
   msg: LikeMessage, signature: Hex, verifyingContract: Address,
 ): Promise<Address> {
@@ -146,4 +181,10 @@ export function recoverLampirGambarSigner(
   msg: LampirGambarMessage, signature: Hex, verifyingContract: Address,
 ): Promise<Address> {
   return recoverTypedDataAddress({ ...lampirGambarTypedData(msg, verifyingContract), signature });
+}
+
+export function recoverLaporPostSigner(
+  msg: LaporPostMessage, signature: Hex, verifyingContract: Address,
+): Promise<Address> {
+  return recoverTypedDataAddress({ ...laporPostTypedData(msg, verifyingContract), signature });
 }

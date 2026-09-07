@@ -2,8 +2,9 @@ import { describe, expect, it } from "vitest";
 import { privateKeyToAccount } from "viem/accounts";
 import type { Address, Hex } from "viem";
 import {
-  hapusPostTypedData, lampirGambarTypedData, likeTypedData, makePostId, postTypedData,
-  recoverHapusPostSigner, recoverLampirGambarSigner, recoverLikeSigner, recoverPostSigner,
+  hapusPostTypedData, lampirGambarTypedData, laporPostTypedData, likeTypedData,
+  makePostId, postTypedData, recoverHapusPostSigner, recoverLampirGambarSigner,
+  recoverLaporPostSigner, recoverLikeSigner, recoverPostSigner,
 } from "../src/feed";
 
 const KEY = `0x${"11".repeat(32)}` as Hex;
@@ -122,6 +123,81 @@ describe("tanda tangan tidak boleh menyeberang antar perintah", () => {
     const sig = await akun.signTypedData(lampirGambarTypedData(lampir, KONTRAK));
     const ditukar = { ...dasar, mime: "image/png" };
     expect((await recoverLampirGambarSigner(ditukar, sig, KONTRAK)).toLowerCase())
+      .not.toBe(akun.address.toLowerCase());
+  });
+});
+
+/**
+ * LaporPost adalah tipe KELIMA (spec §5). Laporan wajib bertanda tangan
+ * karena ambang penyembunyian hanya 3 pelapor berbeda dan
+ * `post_reports.reporter` bukan foreign key — tanpa tanda tangan, tiga
+ * alamat karangan menyembunyikan unggahan siapa pun.
+ *
+ * Tes silang di bawah ini menjaga arah Ruling 23: tidak satu pun dari empat
+ * tipe lain boleh bisa ditukar dengan LaporPost.
+ */
+describe("tanda tangan LaporPost", () => {
+  const postId = makePostId();
+  const lapor = {
+    postId, reporter: akun.address, reason: "spam berulang", expiresAt: EXP,
+  };
+
+  it("memulihkan penanda tangannya sendiri", async () => {
+    const sig = await akun.signTypedData(laporPostTypedData(lapor, KONTRAK));
+    expect((await recoverLaporPostSigner(lapor, sig, KONTRAK)).toLowerCase())
+      .toBe(akun.address.toLowerCase());
+  });
+
+  // `reason` ikut ditandatangani supaya alasan tidak bisa ditukar setelahnya.
+  it("alasan yang diubah membuat pemulihan meleset", async () => {
+    const sig = await akun.signTypedData(laporPostTypedData(lapor, KONTRAK));
+    const ditukar = { ...lapor, reason: "alasan lain sama sekali" };
+    expect((await recoverLaporPostSigner(ditukar, sig, KONTRAK)).toLowerCase())
+      .not.toBe(akun.address.toLowerCase());
+  });
+
+  it("tanda tangan Post TIDAK sah sebagai LaporPost", async () => {
+    const sig = await akun.signTypedData(postTypedData(
+      { postId, author: akun.address, body: "halo", expiresAt: EXP }, KONTRAK));
+    expect((await recoverLaporPostSigner(lapor, sig, KONTRAK)).toLowerCase())
+      .not.toBe(akun.address.toLowerCase());
+  });
+
+  it("tanda tangan HapusPost TIDAK sah sebagai LaporPost", async () => {
+    const sig = await akun.signTypedData(hapusPostTypedData(
+      { postId, author: akun.address, expiresAt: EXP }, KONTRAK));
+    expect((await recoverLaporPostSigner(lapor, sig, KONTRAK)).toLowerCase())
+      .not.toBe(akun.address.toLowerCase());
+  });
+
+  it("tanda tangan LampirGambar TIDAK sah sebagai LaporPost", async () => {
+    const sig = await akun.signTypedData(lampirGambarTypedData(
+      { postId, author: akun.address, mime: "image/jpeg", expiresAt: EXP }, KONTRAK));
+    expect((await recoverLaporPostSigner(lapor, sig, KONTRAK)).toLowerCase())
+      .not.toBe(akun.address.toLowerCase());
+  });
+
+  it("tanda tangan Like TIDAK sah sebagai LaporPost", async () => {
+    const sig = await akun.signTypedData(likeTypedData(
+      { postId, who: akun.address, suka: true, expiresAt: EXP }, KONTRAK));
+    expect((await recoverLaporPostSigner(lapor, sig, KONTRAK)).toLowerCase())
+      .not.toBe(akun.address.toLowerCase());
+  });
+
+  // Arah sebaliknya juga: LaporPost tidak boleh menyeberang jadi perintah
+  // TULIS. Ini yang paling berbahaya — melapor adalah aksi yang gampang
+  // dipancing dari orang lain.
+  it("tanda tangan LaporPost TIDAK sah sebagai HapusPost", async () => {
+    const sig = await akun.signTypedData(laporPostTypedData(lapor, KONTRAK));
+    const hapus = { postId, author: akun.address, expiresAt: EXP };
+    expect((await recoverHapusPostSigner(hapus, sig, KONTRAK)).toLowerCase())
+      .not.toBe(akun.address.toLowerCase());
+  });
+
+  it("tanda tangan LaporPost TIDAK sah sebagai Post", async () => {
+    const sig = await akun.signTypedData(laporPostTypedData(lapor, KONTRAK));
+    const posting = { postId, author: akun.address, body: "spam berulang", expiresAt: EXP };
+    expect((await recoverPostSigner(posting, sig, KONTRAK)).toLowerCase())
       .not.toBe(akun.address.toLowerCase());
   });
 });

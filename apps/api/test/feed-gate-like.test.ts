@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { privateKeyToAccount } from "viem/accounts";
 import type { Address, Hex } from "viem";
-import { likeTypedData } from "@nearly/shared";
+import { laporPostTypedData, likeTypedData } from "@nearly/shared";
 import { reportPost, setLike } from "../src/feed-gate";
 import type { FeedDeps, FeedStore, PostRecord } from "../src/ports";
 
@@ -108,21 +108,88 @@ describe("setLike", () => {
   });
 });
 
+const ALASAN = "spam berulang";
+
+async function masukanLapor(
+  over: { reason?: string; expiresAt?: bigint; reporter?: Address } = {},
+  penandaTangan = aku,
+) {
+  const pesan = {
+    postId: ID,
+    reporter: over.reporter ?? aku.address,
+    reason: over.reason ?? ALASAN,
+    expiresAt: over.expiresAt ?? EXP,
+  };
+  const sig = await penandaTangan.signTypedData(laporPostTypedData(pesan, KONTRAK));
+  return { ...pesan, sig };
+}
+
 describe("reportPost", () => {
-  it("mencatat laporan", async () => {
+  it("mencatat laporan yang tanda tangannya sah", async () => {
     const s = store();
-    const hasil = await reportPost(
-      { postId: ID, reporter: aku.address, reason: "spam berulang" }, deps(s),
-    );
+    const hasil = await reportPost(await masukanLapor(), deps(s));
     expect(hasil.ok).toBe(true);
-    expect(s.addReport).toHaveBeenCalledWith(ID, aku.address, "spam berulang");
+    expect(s.addReport).toHaveBeenCalledWith(ID, aku.address, ALASAN);
   });
 
   it("menolak melaporkan unggahan yang tidak ada", async () => {
     const s = store({ getPost: vi.fn(async () => null) });
-    const hasil = await reportPost(
-      { postId: ID, reporter: aku.address, reason: "spam berulang" }, deps(s),
-    );
+    const hasil = await reportPost(await masukanLapor(), deps(s));
     expect(hasil).toMatchObject({ ok: false, failure: { code: "post_not_found", httpStatus: 404 } });
+  });
+
+  /**
+   * INVARIAN INTI perbaikan ini, dan tes yang menjadi merah begitu
+   * pemeriksaan tanda tangan di reportPost dicabut.
+   *
+   * Ambang penyembunyian 3 pelapor berbeda, dan `post_reports.reporter`
+   * bukan foreign key ke `profiles` — alamat pelapor tidak perlu pernah ada.
+   * Jadi tanpa pemeriksaan ini, tiga permintaan dengan tiga alamat karangan
+   * cukup untuk menyembunyikan unggahan siapa pun, selamanya.
+   */
+  it("menolak reporter yang dikarang tanpa tanda tangan yang cocok", async () => {
+    const karangan = [
+      "0x00000000000000000000000000000000000000a1",
+      "0x00000000000000000000000000000000000000a2",
+      "0x00000000000000000000000000000000000000a3",
+    ] as Address[];
+    const sigAku = (await masukanLapor()).sig;
+
+    for (const palsu of karangan) {
+      const s = store();
+      const hasil = await reportPost(
+        { postId: ID, reporter: palsu, reason: ALASAN, expiresAt: EXP, sig: sigAku },
+        deps(s),
+      );
+      expect(hasil).toMatchObject({
+        ok: false, failure: { code: "bad_signature", httpStatus: 401 },
+      });
+      expect(s.addReport).not.toHaveBeenCalled();
+    }
+  });
+
+  it("menolak tanda tangan orang lain atas nama pelapor", async () => {
+    const s = store();
+    const hasil = await reportPost(await masukanLapor({}, lain), deps(s));
+    expect(hasil).toMatchObject({ ok: false, failure: { code: "bad_signature", httpStatus: 401 } });
+    expect(s.addReport).not.toHaveBeenCalled();
+  });
+
+  // `reason` ikut ditandatangani supaya alasan tidak bisa ditukar setelah
+  // ditandatangani.
+  it("alasan yang ditukar setelah ditandatangani ditolak", async () => {
+    const s = store();
+    const sah = await masukanLapor();
+    const hasil = await reportPost({ ...sah, reason: "alasan lain sama sekali" }, deps(s));
+    expect(hasil).toMatchObject({ ok: false, failure: { code: "bad_signature" } });
+    expect(s.addReport).not.toHaveBeenCalled();
+  });
+
+  it("menolak laporan kedaluwarsa", async () => {
+    const lampau = BigInt(Math.floor(NOW / 1000) - 1);
+    const s = store();
+    const hasil = await reportPost(await masukanLapor({ expiresAt: lampau }), deps(s));
+    expect(hasil).toMatchObject({ ok: false, failure: { code: "expired", httpStatus: 410 } });
+    expect(s.addReport).not.toHaveBeenCalled();
   });
 });

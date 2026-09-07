@@ -185,10 +185,18 @@ export const LikeRequestSchema = z.object({
   sig: signature,
 });
 
+/**
+ * Laporan BERTANDA TANGAN. `post_reports.reporter` bukan foreign key ke
+ * `profiles` (migrasi 0004 hanya memeriksa format), jadi tanpa tanda tangan
+ * tiga alamat karangan sudah cukup untuk menembus ambang 3 pelapor dan
+ * menyembunyikan unggahan siapa pun. `reason` ikut ditandatangani.
+ */
 export const ReportPostRequestSchema = z.object({
   postId: bytes32,
   reporter: address,
   reason: z.string().min(10).max(1000),
+  expiresAt: unixSeconds,
+  sig: signature,
 });
 
 /**
