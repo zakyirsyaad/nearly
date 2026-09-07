@@ -29,7 +29,7 @@ create table if not exists post_likes (
 
 create table if not exists post_reports (
   post_id    text not null references posts(post_id) on delete cascade,
-  reporter   text not null check (reporter ~ '^0x[0-9a-fA-F]{40}$'),
+  reporter   text not null check (reporter ~ '^0x[0-9a-f]{40}$'),
   reason     text not null,
   created_at timestamptz not null default now(),
   -- Menutup cara termurah menembus ambang: satu orang melapor berkali-kali
