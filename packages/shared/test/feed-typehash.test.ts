@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { FEED_TYPES } from "../src/feed";
 import { EVENT_TYPES } from "../src/event";
@@ -33,7 +33,9 @@ describe("tipe EIP-712 feed", () => {
   // typehash-nya di Solidity, itu tanda seseorang mulai mengirimnya ke chain
   // dan aturan fase ini bocor.
   it("tidak ada typehash feed di Solidity mana pun", () => {
-    for (const berkas of ["ConnectionRegistry.sol", "VouchRegistry.sol", "AttendanceRegistry.sol"]) {
+    const berkasSol = readdirSync(SOL_DIR).filter((f) => f.endsWith(".sol"));
+    expect(berkasSol.length).toBeGreaterThan(0);
+    for (const berkas of berkasSol) {
       const sumber = readFileSync(`${SOL_DIR}${berkas}`, "utf8");
       for (const nama of ["Post(", "Like(", "HapusPost(", "LampirGambar("]) {
         expect(sumber).not.toContain(nama);

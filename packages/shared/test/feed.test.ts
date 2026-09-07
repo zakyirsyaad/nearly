@@ -108,6 +108,13 @@ describe("tanda tangan tidak boleh menyeberang antar perintah", () => {
       .toBe(akun.address.toLowerCase());
   });
 
+  it("LampirGambar memulihkan penanda tangannya sendiri", async () => {
+    const lampir = { ...dasar, mime: "image/jpeg" };
+    const sig = await akun.signTypedData(lampirGambarTypedData(lampir, KONTRAK));
+    expect((await recoverLampirGambarSigner(lampir, sig, KONTRAK)).toLowerCase())
+      .toBe(akun.address.toLowerCase());
+  });
+
   // mime ikut ditandatangani: tanda tangan untuk JPEG tidak boleh dipakai
   // melampirkan tipe berkas lain.
   it("mime yang diubah membuat LampirGambar meleset", async () => {
