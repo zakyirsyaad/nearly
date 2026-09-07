@@ -5,6 +5,7 @@ import {
 } from "react-native";
 import * as ImagePicker from "expo-image-picker";
 import { lampirGambarTypedData, likeTypedData } from "@nearly/shared";
+import type { Address } from "viem";
 import { CONFIG } from "../../src/config";
 import { createDevSigner } from "../../src/signer";
 import { ApiError } from "../../src/http";
@@ -12,8 +13,9 @@ import { getFeed, postImage, postLike, type FeedPost } from "../../src/feed-api"
 import {
   bisaHapus, hapusUnggahan, laporUnggahan, MASA_BERLAKU_DETIK,
 } from "../../src/feed-actions";
+import { aksiTanda } from "../../src/meet-actions";
 import { mimeGambarDiterima, PESAN_FORMAT_TIDAK_DIDUKUNG } from "../../src/gambar";
-import { alasanMuncul, feedErrorMessage } from "../../src/messages";
+import { alasanMuncul, feedErrorMessage, meetErrorMessage } from "../../src/messages";
 
 export default function FeedScreen() {
   const signer = useMemo(
@@ -118,6 +120,19 @@ export default function FeedScreen() {
     });
   }, "Gagal mengunggah gambar.");
 
+  async function tandai(p: FeedPost) {
+    try {
+      // Layar feed tidak tahu apakah kamu sudah menandai orang ini — bendera
+      // itu hanya keluar dengan bukti baca di layar profil. Jadi dari sini
+      // tombolnya SELALU menandai, tidak pernah mencabut. Mencabut dilakukan
+      // dari layar profil, tempat keadaannya diketahui.
+      await aksiTanda(signer, p.author as Address, false);
+      setPesan("Ditandai. Kalau dia menandaimu balik, kalian akan saling tahu.");
+    } catch (e) {
+      setPesan(e instanceof ApiError ? meetErrorMessage(e.code) : "Gagal menandai.");
+    }
+  }
+
   if (posts === null) return <ActivityIndicator style={s.tengah} />;
 
   return (
@@ -132,7 +147,9 @@ export default function FeedScreen() {
           const milikku = bisaHapus(p.author, signer.address);
           return (
             <View style={s.kartu}>
-              <Text style={s.nama}>{p.displayName.trim() || p.author}</Text>
+              <Link href={`/profile/${p.author}`} style={s.nama}>
+                {p.displayName.trim() || p.author}
+              </Link>
               {/* Spec §10.3 — kartu harus menjelaskan kenapa ia muncul. */}
               <Text style={s.alasan}>{alasanMuncul(p.hop, p.displayName)}</Text>
               <Text style={s.isi}>{p.body}</Text>
@@ -151,6 +168,17 @@ export default function FeedScreen() {
 
                 <Pressable onPress={() => void lapor(p)} hitSlop={8}>
                   <Text style={s.tombol}>Lapor</Text>
+                </Pressable>
+
+                {/*
+                  Angka publiknya (inginBertemuCount) TIDAK ditampilkan di sini
+                  (spec §8) — hanya tombolnya. Kartu feed tidak tahu apakah
+                  penulisnya sudah kamu tandai (bendera itu butuh bukti baca,
+                  hanya tersedia di layar profil), jadi tombol ini SELALU
+                  menandai, tidak pernah mencabut.
+                */}
+                <Pressable onPress={() => void tandai(p)} hitSlop={8}>
+                  <Text style={s.tombol}>Ingin bertemu</Text>
                 </Pressable>
 
                 {milikku && (

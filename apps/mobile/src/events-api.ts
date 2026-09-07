@@ -19,6 +19,18 @@ export type EventSummary = {
   /** Hanya ada kalau `who` disertakan saat memuat. */
   sudahRsvp?: boolean;
   sudahCheckIn?: boolean;
+  /**
+   * Hanya ada kalau bukti bacanya berhasil DAN acara ini punya minimal 5
+   * RSVP (ambang k-anonimitas di server) — di bawah itu, angkanya sendiri
+   * bisa membocorkan siapa menandaimu lewat eliminasi. `undefined` di sini
+   * adalah keadaan NORMAL untuk acara kecil, bukan nol.
+   */
+  penandaHadir?: number;
+  /**
+   * Hanya ada kalau bukti bacanya berhasil. Tidak punya ambang k-anonimitas
+   * karena hanya mencerminkan tanda pemanggil sendiri.
+   */
+  kutandaiHadir?: number;
 };
 
 const postJson = (path: string, body: unknown) =>

@@ -6,6 +6,10 @@ import {
 import type { Address } from "viem";
 import { CONFIG } from "../../src/config";
 import { pesanGagal } from "../../src/errors";
+import { ApiError } from "../../src/http";
+import { aksiTanda } from "../../src/meet-actions";
+import { kueriBuktiProfil } from "../../src/meet-api";
+import { meetErrorMessage } from "../../src/messages";
 import { createDevSigner } from "../../src/signer";
 import { SUGGESTED_TAGS, tierView } from "../../src/tier";
 import { fetchTrust, sendReport, sendVouch, type TrustResponse } from "../../src/trust-api";
@@ -13,6 +17,16 @@ import { fetchTrust, sendReport, sendVouch, type TrustResponse } from "../../src
 type Profile = {
   address: string; displayName: string; ens: string | null;
   txCount: number; connectionCount: number;
+  inginBertemuCount?: number;
+  /**
+   * ABSEN (bukan `false`) kalau bukti baca gagal atau tidak dikirim — server
+   * hanya menyertakan bendera ini untuk pemanggil yang membuktikan dirinya
+   * (lihat GET /profile/:address). Absen berarti "tidak diketahui", BUKAN
+   * "belum kamu tandai" — dua hal itu tidak sama, dan menyamakannya membuat
+   * layar ini berbohong.
+   */
+  sudahKutandai?: boolean;
+  salingMenandai?: boolean;
 };
 
 export default function ProfileScreen() {
@@ -47,6 +61,14 @@ export default function ProfileScreen() {
 
   const [connected, setConnected] = useState<boolean | null>(null);
 
+  // Pesan sendiri, TERPISAH dari vouchMessage: tombol "Ingin bertemu" tampil
+  // untuk siapa pun yang bukti bacanya berhasil, terlepas dari `connected`
+  // (dua orang bisa saling menandai lewat feed tanpa pernah terkoneksi).
+  // Kalau galatnya ditumpangkan ke vouchMessage, ia hanya dirender di dalam
+  // seksi Vouch yang digerbangi `connected` — untuk pasangan yang belum
+  // terkoneksi, pesan galatnya tidak akan pernah terlihat sama sekali.
+  const [meetMessage, setMeetMessage] = useState<string | null>(null);
+
   const [showVouchPicker, setShowVouchPicker] = useState(false);
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [vouchBusy, setVouchBusy] = useState(false);
@@ -58,8 +80,19 @@ export default function ProfileScreen() {
   const [reportMessage, setReportMessage] = useState<string | null>(null);
 
   useEffect(() => {
-    fetch(`${CONFIG.apiUrl}/profile/${address}`).then((r) => r.json()).then(setP).catch(() => {});
-  }, [address]);
+    void (async () => {
+      try {
+        // Bukti baca (LihatProfil) hanya disertakan kalau ada signer — tanpa
+        // itu server tetap membalas dengan angka publiknya saja, dan bendera
+        // sudahKutandai/salingMenandai memang absen (bukan false).
+        const kueri = signer && address
+          ? `?${await kueriBuktiProfil(signer, address as Address)}`
+          : "";
+        const r = await fetch(`${CONFIG.apiUrl}/profile/${address}${kueri}`);
+        setP(await r.json());
+      } catch { /* profil tidak boleh ikut mati kalau bukti gagal dibuat */ }
+    })();
+  }, [address, signer]);
 
   useEffect(() => {
     if (!address) return;
@@ -124,6 +157,19 @@ export default function ProfileScreen() {
     }
   }
 
+  async function toggleTanda() {
+    if (!signer || !address) return;
+    try {
+      await aksiTanda(signer, address as Address, !!p?.sudahKutandai);
+      setMeetMessage(null);
+      // Muat ulang dari server, bukan menebak: angka dan bendera milik server.
+      const kueri = `?${await kueriBuktiProfil(signer, address as Address)}`;
+      setP(await (await fetch(`${CONFIG.apiUrl}/profile/${address}${kueri}`)).json());
+    } catch (e) {
+      setMeetMessage(e instanceof ApiError ? meetErrorMessage(e.code) : "Gagal menandai.");
+    }
+  }
+
   if (!p) return <View style={[s.flex, s.root]}><Text>Memuat…</Text></View>;
 
   return (
@@ -166,6 +212,26 @@ export default function ProfileScreen() {
           </Text>
         </View>
       )}
+
+      <View style={s.section}>
+        {/* Angka publik (spec §8): selalu ada, tidak butuh bukti apa pun. */}
+        <Text style={s.angka}>
+          {p.inginBertemuCount ?? 0} orang ingin bertemu dia
+        </Text>
+        {p.salingMenandai ? <Text style={s.saling}>Kalian saling ingin bertemu.</Text> : null}
+        {/*
+          Tombolnya hanya muncul kalau `sudahKutandai` TERDEFINISI — yaitu
+          kalau bukti bacanya berhasil. Tanpa bukti, keadaannya tidak
+          diketahui, dan tombol dua-arah (tandai/batal) akan menebak.
+        */}
+        {!isOwnProfile && p.sudahKutandai !== undefined ? (
+          <Button
+            title={p.sudahKutandai ? "Batal ingin bertemu" : "Ingin bertemu"}
+            onPress={() => void toggleTanda()}
+          />
+        ) : null}
+        {meetMessage && <Text style={s.message}>{meetMessage}</Text>}
+      </View>
 
       {signer && !isOwnProfile && connected && (
         <View style={s.section}>
@@ -262,6 +328,8 @@ const s = StyleSheet.create({
   tierBox: { marginTop: 20, gap: 4 },
   tierLabel: { fontSize: 22, fontWeight: "700" },
   tierEvidence: { fontSize: 14, opacity: 0.7 },
+  angka: { fontSize: 14, opacity: 0.7 },
+  saling: { fontSize: 14, paddingTop: 2 },
   section: { marginTop: 20, gap: 10 },
   row: { flexDirection: "row", alignItems: "center", gap: 12 },
   button: {

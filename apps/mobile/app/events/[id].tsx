@@ -106,6 +106,24 @@ export default function EventDetailScreen() {
         {ev.rsvps ?? 0} RSVP · {ev.checkins ?? 0} hadir · {ev.rsvpBelumHadir ?? 0} belum hadir
       </Text>
 
+      {/*
+        `undefined` untuk keduanya adalah keadaan NORMAL, bukan nol — untuk
+        orang yang membuka tautan tanpa signer, dan untuk penandaHadir juga
+        pada acara yang RSVP-nya belum sampai ambang k-anonimitas (spec).
+        Karena itu keduanya diperiksa dengan `!== undefined`, bukan dirender
+        dengan `?? 0`.
+      */}
+      {ev.penandaHadir !== undefined ? (
+        <Text style={s.meta}>
+          {ev.penandaHadir} orang yang ingin bertemu kamu sudah RSVP.
+        </Text>
+      ) : null}
+      {ev.kutandaiHadir !== undefined ? (
+        <Text style={s.meta}>
+          {ev.kutandaiHadir} orang yang kamu tandai sudah RSVP.
+        </Text>
+      ) : null}
+
       {!sudahRsvp && (
         <Button title={busy ? "Mengirim…" : "RSVP"} onPress={() => void rsvp()} disabled={busy} />
       )}
