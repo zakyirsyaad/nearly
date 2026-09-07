@@ -42,6 +42,15 @@ export type LaporPostBody = {
 
 export const postReport = (id: Hex, b: LaporPostBody) =>
   postJson<{ ok: true }>(`/posts/${id}/report`, b);
-export const postDelete = (id: Hex, b: unknown) => postJson<{ ok: true }>(`/posts/${id}/delete`, b);
+export type HapusPostBody = {
+  postId: Hex;
+  author: string;
+  /** unix DETIK sebagai string. */
+  expiresAt: string;
+  sig: Hex;
+};
+
+export const postDelete = (id: Hex, b: HapusPostBody) =>
+  postJson<{ ok: true }>(`/posts/${id}/delete`, b);
 export const postImage = (id: Hex, b: unknown) =>
   postJson<{ ok: true; imageStatus: string }>(`/posts/${id}/image`, b);
