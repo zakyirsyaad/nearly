@@ -235,3 +235,26 @@ export const AttachImageRequestSchema = z.object({
   mime: imageMime,
   dataBase64: z.string().min(1).max(MAKS_BASE64),
 });
+
+/**
+ * Menandai atau mencabut. `ingin` wajib boolean asli: tipe EIP-712-nya `bool`,
+ * dan "true" berupa string akan menghasilkan digest yang berbeda tanpa suara.
+ *
+ * Skema ini sengaja TIDAK menolak `target === who`. Penolakan menandai diri
+ * sendiri ada di gerbang (spec §13.7); menaruhnya di dua tempat membuat
+ * pemeriksaan gerbang tidak pernah terjangkau lewat rute.
+ */
+export const InginBertemuRequestSchema = z.object({
+  target: address,
+  who: address,
+  ingin: z.boolean(),
+  expiresAt: unixSeconds,
+  sig: signature,
+});
+
+/** Tidak memuat `target` — ia tidak berbicara tentang orang lain. */
+export const TandaiDilihatRequestSchema = z.object({
+  who: address,
+  expiresAt: unixSeconds,
+  sig: signature,
+});
