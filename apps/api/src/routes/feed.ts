@@ -1,4 +1,5 @@
 import { Hono } from "hono";
+import { bodyLimit } from "hono/body-limit";
 import { isAddress, type Address, type Hex } from "viem";
 import {
   AttachImageRequestSchema, CreatePostRequestSchema, DeletePostRequestSchema,
@@ -90,7 +91,24 @@ export function feedRoutes(deps: FeedDeps) {
     return c.json({ ok: true });
   });
 
-  r.post("/posts/:id/image", async (c) => {
+  /**
+   * `bodyLimit` DULU, sebelum handler-nya jalan. Tanpa ini, `c.req.json()`
+   * menyangga dan mengurai seluruh badan sebelum apa pun menolaknya — badan
+   * 200 MB mengalokasi dua kali, mentah lalu hasil parse, dan baru sesudah
+   * itu batas 2 MB diperiksa. Persis skenario yang komentar
+   * MAKS_GAMBAR_BYTES di feed-gate.ts nyatakan hendak dicegah.
+   *
+   * 3 MB, bukan 2: base64 sekitar 4/3 ukuran aslinya, jadi 2 MB byte ≈ 2,8 MB
+   * string, plus sisa badan JSON (postId, tanda tangan, mime).
+   */
+  const BATAS_BADAN_GAMBAR = 3 * 1024 * 1024;
+
+  r.post("/posts/:id/image", bodyLimit({
+    maxSize: BATAS_BADAN_GAMBAR,
+    // Kode yang sama dengan penolakan ukuran di gerbang, supaya klien tidak
+    // perlu membedakan di lapis mana badannya ditolak.
+    onError: (c) => c.json({ code: "image_too_large" }, 413),
+  }), async (c) => {
     const raw = await c.req.json().catch(() => null);
     const parsed = AttachImageRequestSchema.safeParse(raw);
     if (!parsed.success) return c.json({ code: "invalid_body" }, 400);

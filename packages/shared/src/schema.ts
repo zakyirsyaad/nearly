@@ -214,6 +214,18 @@ export const DeletePostRequestSchema = z.object({
 /** Daftar putih mime. Tanpa ini, apa pun bisa disajikan dari domain SP. */
 const imageMime = z.enum(["image/jpeg", "image/png"]);
 
+/**
+ * Batas atas panjang STRING base64-nya, bukan hanya byte hasil dekode.
+ * Batas 2 MB setelah dekode (spec §9.1) ≈ 2.796.204 karakter base64
+ * (`ceil(2.097.152 / 3) * 4`); 2.800.000 memberi sedikit ruang untuk padding
+ * tanpa membuka celah yang berarti.
+ *
+ * Ini lapis KEDUA. Lapis pertamanya `bodyLimit` di rutenya, karena skema baru
+ * berjalan setelah seluruh badan disangga dan diurai — terlambat untuk
+ * melindungi memori.
+ */
+const MAKS_BASE64 = 2_800_000;
+
 /** Memakai tipe `LampirGambar`, yang mengikat `mime` juga (spec §5). */
 export const AttachImageRequestSchema = z.object({
   postId: bytes32,
@@ -221,5 +233,5 @@ export const AttachImageRequestSchema = z.object({
   expiresAt: unixSeconds,
   sig: signature,
   mime: imageMime,
-  dataBase64: z.string().min(1),
+  dataBase64: z.string().min(1).max(MAKS_BASE64),
 });

@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import { Hono } from "hono";
 import { privateKeyToAccount } from "viem/accounts";
 import type { Address, Hex } from "viem";
-import { laporPostTypedData, makePostId, postTypedData } from "@nearly/shared";
+import { lampirGambarTypedData, laporPostTypedData, makePostId, postTypedData } from "@nearly/shared";
 import { feedRoutes } from "../src/routes/feed";
 import type { FeedCandidate, FeedDeps, FeedStore, PostRecord } from "../src/ports";
 
@@ -160,6 +160,67 @@ describe("POST /posts/:id/report", () => {
     });
     expect(res.status).toBe(400);
     expect(s.addReport).not.toHaveBeenCalled();
+  });
+});
+
+/**
+ * Diuji di TINGKAT HTTP, bukan lewat skema saja. Validasi statis lewat skema
+ * berjalan SETELAH seluruh badan disangga dan diurai — lubang yang perbaikan
+ * ini tutup justru membuktikan bahwa memeriksa skemanya saja tidak cukup.
+ */
+describe("POST /posts/:id/image — batas di tingkat HTTP", () => {
+  const ID = `0x${"1".repeat(64)}` as Hex;
+
+  async function badanGambar(over: Record<string, unknown> = {}) {
+    const mime = (over.mime as string) ?? "image/jpeg";
+    const pesan = { postId: ID, author: penulis.address, mime, expiresAt: EXP };
+    const sig = await penulis.signTypedData(lampirGambarTypedData(pesan, KONTRAK));
+    return {
+      postId: ID, author: penulis.address, mime,
+      expiresAt: EXP.toString(), sig, dataBase64: "aGFsbw==", ...over,
+    };
+  }
+
+  it("menerima jpeg yang sah", async () => {
+    const s = store({ getPost: vi.fn(async () => rekam()) });
+    const res = await kirim(app(s), `/posts/${ID}/image`, await badanGambar());
+    expect(res.status).toBe(200);
+  });
+
+  // Klien pernah melabeli ulang HEIC/WebP jadi image/jpeg. Rute harus
+  // menolak mime asing, bukan menerimanya lalu menyajikan berkas yang tidak
+  // akan pernah tampil.
+  it("menolak mime asing dengan 400", async () => {
+    const s = store({ getPost: vi.fn(async () => rekam()) });
+    const res = await kirim(app(s), `/posts/${ID}/image`, await badanGambar({ mime: "image/heic" }));
+    expect(res.status).toBe(400);
+    expect(await res.json()).toMatchObject({ code: "invalid_body" });
+    expect(s.setImagePending).not.toHaveBeenCalled();
+  });
+
+  /**
+   * Badan raksasa harus ditolak SEBELUM disangga dan diurai. Kalau bodyLimit
+   * dicabut, badan ini tetap ditolak — tapi baru setelah dialokasikan dua
+   * kali, yaitu persis kegagalan yang dilaporkan.
+   */
+  it("menolak dataBase64 yang melewati batas", async () => {
+    const s = store({ getPost: vi.fn(async () => rekam()) });
+    const raksasa = "A".repeat(4 * 1024 * 1024);
+    const res = await kirim(app(s), `/posts/${ID}/image`, await badanGambar({ dataBase64: raksasa }));
+    expect([400, 413]).toContain(res.status);
+    expect(s.setImagePending).not.toHaveBeenCalled();
+  });
+
+  // Penjaga khusus lapis PERTAMA: badan lebih besar dari batas ditolak 413
+  // oleh bodyLimit, tanpa handler-nya pernah dijalankan. Kalau bodyLimit
+  // dicabut, badan ini lolos ke c.req.json() dan statusnya jadi 400.
+  it("badan melebihi batas ditolak 413 oleh bodyLimit sebelum diurai", async () => {
+    const s = store({ getPost: vi.fn(async () => rekam()) });
+    const raksasa = "A".repeat(4 * 1024 * 1024);
+    const res = await kirim(app(s), `/posts/${ID}/image`, await badanGambar({ dataBase64: raksasa }));
+    expect(res.status).toBe(413);
+    expect(await res.json()).toMatchObject({ code: "image_too_large" });
+    expect(s.getPost).not.toHaveBeenCalled();
   });
 });
 
