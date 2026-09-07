@@ -6,10 +6,11 @@ import { vouchRoutes } from "./routes/vouch";
 import { reportRoutes } from "./routes/report";
 import { adminRoutes } from "./routes/admin";
 import { eventRoutes } from "./routes/events";
+import { feedRoutes } from "./routes/feed";
 import { recomputeTrust } from "./trust/recompute";
 import type {
   GateDeps, TrustStore, VouchStore, ReportStore, AttestorPort, VouchChainPort,
-  EventStore, AttendanceChainPort,
+  EventStore, AttendanceChainPort, FeedStore, GreenfieldPort,
 } from "./ports";
 import type { Address } from "viem";
 
@@ -24,6 +25,8 @@ export type TrustDeps = GateDeps & {
   events: EventStore;
   attendance: AttendanceChainPort;
   attendanceContract: Address;
+  feed: FeedStore;
+  greenfield: GreenfieldPort;
 };
 
 // Modul-level, dengan sengaja (Task 8): relayer yang sama menandatangani
@@ -66,5 +69,9 @@ export function createApp(deps: TrustDeps) {
   app.route("/", reportRoutes(deps));
   app.route("/", eventRoutes({ ...deps, onChanged }));
   app.route("/", adminRoutes({ ...deps, onChanged }));
+  // `onChanged` TIDAK dipanggil dari rute feed — unggahan dan suka tidak
+  // mengubah graf pertemuan, jadi tidak ada skor trust yang perlu dihitung
+  // ulang.
+  app.route("/", feedRoutes(deps));
   return app;
 }

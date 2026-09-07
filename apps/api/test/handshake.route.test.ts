@@ -88,6 +88,22 @@ function deps(over: { saveSnapshots?: ReturnType<typeof vi.fn> } = {}): TrustDep
       submitCheckIn: async () => TX,
     },
     attendanceContract: VC,
+    feed: {
+      createPost: async () => {},
+      getPost: async () => null,
+      markDeleted: async () => {},
+      setLike: async () => {},
+      addReport: async () => {},
+      setImagePending: async () => {},
+      setImageDone: async () => {},
+      setImageFailed: async () => {},
+      listCandidates: async () => [],
+    },
+    greenfield: {
+      bucket: "nearly-feed",
+      spEndpoint: "https://sp.example",
+      upload: async () => {},
+    },
   };
 }
 

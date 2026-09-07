@@ -9,6 +9,8 @@ import { createAttestor } from "./trust/attestor";
 import { createVouchRelayer } from "./vouch-relayer";
 import { createEventStore } from "./event-store";
 import { createAttendanceRelayer } from "./attendance-relayer";
+import { createFeedStore } from "./feed-store";
+import { createGreenfield } from "./greenfield";
 
 function required(name: string): string {
   const v = process.env[name];
@@ -59,6 +61,14 @@ const app = createApp({
     registry: attendanceRegistry,
   }),
   attendanceContract: attendanceRegistry,
+  feed: createFeedStore(supabase),
+  greenfield: createGreenfield({
+    rpcUrl: required("GREENFIELD_RPC"),
+    chainId: required("GREENFIELD_CHAIN_ID"),
+    bucket: required("GREENFIELD_BUCKET"),
+    spEndpoint: required("GREENFIELD_SP_ENDPOINT"),
+    privateKey: required("RELAYER_PRIVATE_KEY") as Hex,
+  }),
 });
 
 serve({ fetch: app.fetch, port: 8787 });

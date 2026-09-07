@@ -112,5 +112,24 @@ export function depsFor(overrides: {
       submitCheckIn: vi.fn(async (): Promise<Hex> => "0xtx" as Hex),
     },
     attendanceContract: CONTRACT,
+    // Fase 3b: rute feed tidak diuji lewat helper ini (lihat feed.route.test.ts
+    // sendiri), tapi TrustDeps butuh medan ini supaya createApp bisa dibangun
+    // oleh test route lain (handshake, vouch, admin, dst).
+    feed: {
+      createPost: vi.fn(async () => {}),
+      getPost: vi.fn(async () => null),
+      markDeleted: vi.fn(async () => {}),
+      setLike: vi.fn(async () => {}),
+      addReport: vi.fn(async () => {}),
+      setImagePending: vi.fn(async () => {}),
+      setImageDone: vi.fn(async () => {}),
+      setImageFailed: vi.fn(async () => {}),
+      listCandidates: vi.fn(async () => []),
+    },
+    greenfield: {
+      bucket: "nearly-feed",
+      spEndpoint: "https://sp.example",
+      upload: vi.fn(async () => {}),
+    },
   };
 }
