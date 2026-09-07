@@ -130,7 +130,7 @@ ada jalur kode yang bisa lupa menghapusnya.
 Layar kecocokan menampilkan alamat, nama tampilan, tier, dan tautan ke profil. **Tidak ada
 tombol pesan, dan itu disengaja** — pesan baru datang di Fase 4 (spec induk §11).
 
-Yang bisa dilakukan cuma melihat profilnya dan pergi menemuinya, persis tesis §7.4: online
+Yang bisa dilakukan cuma melihat profilnya dan pergi menemuinya, persis tesis spec induk §7.4: online
 menciptakan keinginan, offline menyelesaikannya. Menaruh tombol chat di sini akan
 membocorkan aturan inti lewat pintu belakang — argumen yang sama persis dengan penolakan
 balasan di feed (spec 3b §2.2).
@@ -240,7 +240,7 @@ Medan yang sudah ada (`address`, `displayName`, `ens`, `txCount`, `connectionCou
 berubah. Tiga tambahan:
 
 ```
-inginBertemuCount   selalu keluar — angka publik (§7.6)
+inginBertemuCount   selalu keluar — angka publik (spec induk §7.6)
 sudahKutandai       HANYA dengan bukti LihatProfil
 salingMenandai      HANYA dengan bukti LihatProfil
 ```
