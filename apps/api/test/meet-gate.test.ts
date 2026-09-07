@@ -1,7 +1,9 @@
 import { describe, expect, it, vi } from "vitest";
 import { privateKeyToAccount } from "viem/accounts";
 import type { Address, Hex } from "viem";
-import { inginBertemuTypedData, lihatProfilTypedData, tandaiDilihatTypedData } from "@nearly/shared";
+import {
+  inginBertemuTypedData, lihatKecocokanTypedData, lihatProfilTypedData, tandaiDilihatTypedData,
+} from "@nearly/shared";
 import { daftarKecocokan, setTanda, tandaiDilihat } from "../src/meet-gate";
 import type { MeetDeps, MeetStore } from "../src/ports";
 
@@ -67,6 +69,27 @@ describe("setTanda", () => {
     const sig = await aku.signTypedData(inginBertemuTypedData(pesan, KONTRAK));
     const hasil = await setTanda({ ...pesan, sig }, deps(store()));
     expect(hasil).toMatchObject({ ok: false, failure: { code: "expired", httpStatus: 410 } });
+  });
+
+  /**
+   * Pin batas kedaluwarsa. `sudahLewat` memakai `>` KETAT
+   * (`deps.nowMs() > Number(expiresAt) * 1000`), jadi permintaan yang
+   * expiresAt-nya PERSIS SAMA dengan waktu server masih dianggap BELUM lewat
+   * dan diterima. Ini bukan celah yang lolos tanpa disadari: `expiresAt`
+   * adalah batas atas dari rentang waktu yang MASIH SAH, jadi detik itu
+   * sendiri semestinya masih berlaku, bukan sudah kedaluwarsa. Tes ini
+   * sengaja mengunci sisi `>` tersebut — kalau operatornya ditukar jadi
+   * `>=`, permintaan tepat di batas ini akan ditolak sebagai kedaluwarsa dan
+   * tes ini merah.
+   */
+  it("permintaan tepat di detik kedaluwarsa masih diterima (batas > ketat)", async () => {
+    const tepat = BigInt(NOW / 1000);
+    const pesan = { target: TARGET, who: aku.address, ingin: true, expiresAt: tepat };
+    const sig = await aku.signTypedData(inginBertemuTypedData(pesan, KONTRAK));
+    const s = store();
+    const hasil = await setTanda({ ...pesan, sig }, deps(s));
+    expect(hasil.ok).toBe(true);
+    expect(s.setTanda).toHaveBeenCalledWith(TARGET, aku.address, true);
   });
 
   /**
@@ -151,6 +174,22 @@ describe("tandaiDilihat", () => {
     expect(s.setCocokDilihat).not.toHaveBeenCalled();
   });
 
+  // Cermin dari "menolak permintaan kedaluwarsa" milik setTanda.
+  // `TandaiDilihat` adalah perintah TULIS yang membungkam lencana kecocokan
+  // (lihat doc comment `TandaiDilihatMessage` di packages/shared/src/meet.ts)
+  // — tanpa penjagaan kedaluwarsa ini, satu tanda tangan yang tertangkap bisa
+  // dipakai berulang-ulang, selamanya, untuk mencegah korban pernah melihat
+  // bahwa ia sudah saling menandai dengan seseorang.
+  it("menolak permintaan kedaluwarsa", async () => {
+    const lampau = BigInt(Math.floor(NOW / 1000) - 1);
+    const pesan = { who: aku.address, expiresAt: lampau };
+    const sig = await aku.signTypedData(tandaiDilihatTypedData(pesan, KONTRAK));
+    const s = store();
+    const hasil = await tandaiDilihat({ ...pesan, sig }, deps(s));
+    expect(hasil).toMatchObject({ ok: false, failure: { code: "expired", httpStatus: 410 } });
+    expect(s.setCocokDilihat).not.toHaveBeenCalled();
+  });
+
   // Sama seperti di atas: bukti baca tidak boleh jadi perintah tulis. Kalau
   // lolos, siapa pun bisa menghapus lencana kecocokan orang lain.
   it("tanda tangan LihatProfil TIDAK diterima", async () => {
@@ -161,6 +200,29 @@ describe("tandaiDilihat", () => {
       { who: aku.address, expiresAt: EXP, sig: sigBaca }, deps(s),
     );
     expect(hasil).toMatchObject({ ok: false, failure: { code: "bad_signature" } });
+    expect(s.setCocokDilihat).not.toHaveBeenCalled();
+  });
+
+  /**
+   * INVARIAN inti fase ini. `LihatKecocokan` (bukti BACA) dan `TandaiDilihat`
+   * (perintah TULIS) punya bentuk field yang IDENTIK — `{who, expiresAt}` —
+   * dan itu disengaja (lihat doc comment `LihatKecocokanMessage` di
+   * packages/shared/src/meet.ts). Hanya NAMA TIPE EIP-712 yang memisahkan
+   * keduanya. Tanda tangan di bawah ini SAH, oleh kunci yang BENAR, atas
+   * nilai `{who, expiresAt}` yang BENAR — cuma primaryType-nya beda. Ini
+   * pasangan yang berbahaya, bukan `LihatProfil` di atas (bentuknya beda,
+   * jadi kasusnya mudah). Kalau tes ini tidak ada, pelebaran di masa depan
+   * yang mencoba `recoverLihatKecocokanSigner` sebagai fallback di
+   * `tandaiDilihat` akan lolos tanpa terdeteksi test manapun.
+   */
+  it("tanda tangan LihatKecocokan (bentuk field identik) TIDAK diterima sebagai TandaiDilihat", async () => {
+    const sigBaca = await aku.signTypedData(
+      lihatKecocokanTypedData({ who: aku.address, expiresAt: EXP }, KONTRAK));
+    const s = store();
+    const hasil = await tandaiDilihat(
+      { who: aku.address, expiresAt: EXP, sig: sigBaca }, deps(s),
+    );
+    expect(hasil).toMatchObject({ ok: false, failure: { code: "bad_signature", httpStatus: 401 } });
     expect(s.setCocokDilihat).not.toHaveBeenCalled();
   });
 });
