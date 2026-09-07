@@ -62,3 +62,15 @@ const FEED_MESSAGES: Record<string, string> = {
 export function feedErrorMessage(code: string): string {
   return FEED_MESSAGES[code] ?? "Gagal. Coba lagi sebentar.";
 }
+
+/**
+ * Baris alasan di setiap kartu feed (spec §10.3). Spec induk §8 memegang
+ * prinsip bahwa peringkat tidak pernah tampil telanjang — selalu bersama
+ * buktinya. Feed yang tidak bisa menjelaskan dirinya melanggar prinsip itu.
+ */
+export function alasanMuncul(hop: 1 | 2 | null, displayName: string): string {
+  const nama = displayName.trim() || "orang ini";
+  if (hop === 1) return `Kamu pernah bertemu ${nama}.`;
+  if (hop === 2) return `Kenalanmu pernah bertemu ${nama}.`;
+  return "Di luar jaringanmu.";
+}

@@ -27,6 +27,7 @@ export default function Home() {
       <Link href="/scan" style={s.link}>Pindai QR orang lain</Link>
       <Link href="/connections" style={s.link}>Koneksiku</Link>
       <Link href="/events" style={s.link}>Acara</Link>
+      <Link href="/feed" style={s.link}>Feed</Link>
     </View>
   );
 }
