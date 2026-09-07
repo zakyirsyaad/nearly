@@ -33,7 +33,7 @@
 
 | Berkas | Tanggung jawab |
 |---|---|
-| `packages/shared/src/meet.ts` | Tiga tipe EIP-712 + recover |
+| `packages/shared/src/meet.ts` | Empat tipe EIP-712 + recover |
 | `packages/shared/src/schema.ts` (ubah) | Skema Zod permintaan meet |
 | `packages/shared/src/index.ts` (ubah) | Ekspor `./meet` |
 | `supabase/migrations/0005_meet.sql` | Tabel `ingin_bertemu` + kolom `cocok_dilihat_at` |
@@ -2695,7 +2695,7 @@ git commit -m "feat(mobile): klien meet dan dua pembangun bukti baca terpisah"
 
 **Files:**
 - Create: `apps/mobile/app/kecocokan.tsx`
-- Modify: `apps/mobile/app/index.tsx`
+- Modify: `apps/mobile/app/index.tsx`, `apps/mobile/src/messages.ts`
 - Test: `apps/mobile/test/kecocokan-teks.test.ts`
 
 **Interfaces:**
@@ -2890,6 +2890,7 @@ git commit -m "feat(mobile): layar kecocokan dan lencana beranda"
 ## Task 13: Mobile — tombol di kartu feed, tautan profil, dan layar profil
 
 **Files:**
+- Create: `apps/mobile/src/meet-actions.ts`
 - Modify: `apps/mobile/app/feed/index.tsx`, `apps/mobile/app/profile/[address].tsx`, `apps/mobile/app/events/[id].tsx`
 - Test: `apps/mobile/test/meet-aksi.test.ts`
 
