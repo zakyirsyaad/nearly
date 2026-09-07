@@ -41,14 +41,25 @@ export async function setTanda(
   // adalah bukti BACA yang berkeliaran di query string, dan kalau ia sah di
   // sini, siapa pun yang menangkapnya bisa menandai orang atas nama korban —
   // lalu menandai memicu pengungkapan identitas. Kelas kesalahan Ruling 23.
-  const signer = await recoverInginBertemuSigner(
-    {
-      target: input.target, who: input.who,
-      ingin: input.ingin, expiresAt: input.expiresAt,
-    },
-    input.sig,
-    deps.verifyingContract,
-  );
+  //
+  // Dibungkus try/catch: byte `v` yang cacat bentuknya (tapi lolos regex
+  // panjang skema Zod) membuat viem melempar synchronously, bukan
+  // mengembalikan alamat yang salah. Tanpa ini badan permintaan seperti
+  // sig 0x99...99 membuat rute berakhir 500, bukan 401 seperti kegagalan
+  // tanda tangan lainnya.
+  let signer: Address;
+  try {
+    signer = await recoverInginBertemuSigner(
+      {
+        target: input.target, who: input.who,
+        ingin: input.ingin, expiresAt: input.expiresAt,
+      },
+      input.sig,
+      deps.verifyingContract,
+    );
+  } catch {
+    return fail({ code: "bad_signature", httpStatus: 401 });
+  }
   if (!samaAlamat(signer, input.who)) {
     return fail({ code: "bad_signature", httpStatus: 401 });
   }
@@ -64,11 +75,18 @@ export async function tandaiDilihat(
 ): Promise<MeetResult<void>> {
   if (sudahLewat(deps, input.expiresAt)) return fail({ code: "expired", httpStatus: 410 });
 
-  const signer = await recoverTandaiDilihatSigner(
-    { who: input.who, expiresAt: input.expiresAt },
-    input.sig,
-    deps.verifyingContract,
-  );
+  // Sama seperti di setTanda: byte `v` yang cacat bentuknya membuat viem
+  // melempar, bukan mengembalikan alamat yang salah.
+  let signer: Address;
+  try {
+    signer = await recoverTandaiDilihatSigner(
+      { who: input.who, expiresAt: input.expiresAt },
+      input.sig,
+      deps.verifyingContract,
+    );
+  } catch {
+    return fail({ code: "bad_signature", httpStatus: 401 });
+  }
   if (!samaAlamat(signer, input.who)) {
     return fail({ code: "bad_signature", httpStatus: 401 });
   }

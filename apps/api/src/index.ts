@@ -11,6 +11,7 @@ import { createEventStore } from "./event-store";
 import { createAttendanceRelayer } from "./attendance-relayer";
 import { createFeedStore } from "./feed-store";
 import { createGreenfield } from "./greenfield";
+import { createMeetStore } from "./meet-store";
 
 function required(name: string): string {
   const v = process.env[name];
@@ -69,6 +70,7 @@ const app = createApp({
     spEndpoint: required("GREENFIELD_SP_ENDPOINT"),
     privateKey: required("RELAYER_PRIVATE_KEY") as Hex,
   }),
+  meet: createMeetStore(supabase),
 });
 
 serve({ fetch: app.fetch, port: 8787 });

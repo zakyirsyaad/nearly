@@ -132,5 +132,19 @@ export function depsFor(overrides: {
       spEndpoint: "https://sp.example",
       upload: vi.fn(async () => {}),
     },
+    // Fase 3c: rute meet tidak diuji lewat helper ini (lihat meet.route.test.ts
+    // sendiri), tapi TrustDeps butuh medan ini supaya createApp bisa dibangun
+    // oleh test route lain (handshake, vouch, admin, dst).
+    meet: {
+      setTanda: vi.fn(async () => {}),
+      hitungTanda: vi.fn(async () => 0),
+      adaTanda: vi.fn(async () => false),
+      tandaOleh: vi.fn(async () => []),
+      tandaKe: vi.fn(async () => []),
+      cocokDilihatAtMs: vi.fn(async () => null),
+      setCocokDilihat: vi.fn(async () => {}),
+      profilRingkas: vi.fn(async () => new Map()),
+      hitungTandaBanyak: vi.fn(async () => new Map()),
+    },
   };
 }

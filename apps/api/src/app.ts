@@ -7,10 +7,11 @@ import { reportRoutes } from "./routes/report";
 import { adminRoutes } from "./routes/admin";
 import { eventRoutes } from "./routes/events";
 import { feedRoutes } from "./routes/feed";
+import { meetRoutes } from "./routes/meet";
 import { recomputeTrust } from "./trust/recompute";
 import type {
   GateDeps, TrustStore, VouchStore, ReportStore, AttestorPort, VouchChainPort,
-  EventStore, AttendanceChainPort, FeedStore, GreenfieldPort,
+  EventStore, AttendanceChainPort, FeedStore, GreenfieldPort, MeetStore,
 } from "./ports";
 import type { Address } from "viem";
 
@@ -27,6 +28,7 @@ export type TrustDeps = GateDeps & {
   attendanceContract: Address;
   feed: FeedStore;
   greenfield: GreenfieldPort;
+  meet: MeetStore;
 };
 
 // Modul-level, dengan sengaja (Task 8): relayer yang sama menandatangani
@@ -73,5 +75,9 @@ export function createApp(deps: TrustDeps) {
   // mengubah graf pertemuan, jadi tidak ada skor trust yang perlu dihitung
   // ulang.
   app.route("/", feedRoutes(deps));
+  // `onChanged` TIDAK dipanggil dari rute meet — menandai bukan bertemu, jadi
+  // tidak ada graf pertemuan yang berubah dan tidak ada skor trust yang perlu
+  // dihitung ulang (spec §9).
+  app.route("/", meetRoutes(deps));
   return app;
 }

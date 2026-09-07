@@ -105,6 +105,19 @@ function deps(over: { saveSnapshots?: ReturnType<typeof vi.fn> } = {}): TrustDep
       spEndpoint: "https://sp.example",
       upload: async () => {},
     },
+    // Stub Fase 3c: tidak dipakai langsung oleh test handshake ini, tapi
+    // createApp mendaftarkan meetRoutes yang butuh medan ini lengkap.
+    meet: {
+      setTanda: async () => {},
+      hitungTanda: async () => 0,
+      adaTanda: async () => false,
+      tandaOleh: async () => [],
+      tandaKe: async () => [],
+      cocokDilihatAtMs: async () => null,
+      setCocokDilihat: async () => {},
+      profilRingkas: async () => new Map(),
+      hitungTandaBanyak: async () => new Map(),
+    },
   };
 }
 
