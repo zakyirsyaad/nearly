@@ -53,8 +53,22 @@ export function createGreenfield(cfg: GreenfieldConfig): GreenfieldPort {
       // Langkah 1 — checksum Reed-Solomon. Wajib ada SEBELUM createObject:
       // rantai menyimpan checksum ini, dan storage provider menolak byte
       // yang tidak cocok.
+      //
+      // SENGAJA memakai encodeInSubWorker, BUKAN encodeInWorker, meski
+      // encodeInWorker terlihat lebih "eksplisit" (menerima path file
+      // sendiri). encodeInWorker ditandai @deprecated di SDK, dan argumen
+      // pertamanya harus berupa path ke berkas worker yang membuat
+      // bootstrap-nya sendiri lewat `parentPort` saat `isMainThread` false
+      // (lihat dist/node.adapter.js). File ini (greenfield.ts) tidak punya
+      // bootstrap semacam itu, dan apps/api dijalankan sebagai .ts mentah
+      // lewat tsx tanpa loader worker — jadi memakai __filename di sini akan
+      // memuat worker yang tidak pernah mengirim balik hasilnya (checksum
+      // kosong/salah, tanpa error yang kelihatan). encodeInSubWorker tidak
+      // punya masalah ini: ia memakai sub-worker.js yang sudah dibundel di
+      // paket (dist/sub-worker.js), jadi tidak bergantung pada berkas
+      // pemanggil sama sekali.
       const rs = new NodeAdapterReedSolomon();
-      const checksums = await rs.encodeInWorker(__filename, bytes);
+      const checksums = await rs.encodeInSubWorker(bytes);
 
       // Langkah 2 — createObject: transaksi on-chain DI GREENFIELD, bukan
       // BSC. Gasnya dibayar dari saldo akun ini di chain Greenfield.
