@@ -488,15 +488,22 @@ tidak sepadan untuk satu berkas.
 
 ```
 { posts: [ {
-    postId, author, displayName, tier, evidenceLine,
+    postId, author, displayName, tier,
     body, imageUrl | null, imageStatus,
-    likeCount, sudahSuka, hop, createdAt
+    likeCount, sudahSuka, hop, createdAtMs
   } ], cursor: string | null }
 ```
 
 `hop` bernilai `1`, `2`, atau `null` (luar jaringan) — inilah medan yang menyalakan baris
 alasan di tiap kartu (§10.3). `imageUrl` dibangun server dari `image_bucket` +
-`image_object`, dan bernilai `null` selama `imageStatus` belum `ready`.
+`image_object`, dan bernilai `null` selama `imageStatus` belum `ready`. `createdAtMs` adalah
+milidetik epoch, bukan string ISO, supaya klien tidak perlu mengurai tanggal.
+
+**Tanpa `evidenceLine`, sengaja.** Di layar profil, tier tampil bersama bukti berupa hitungan
+(`3 koneksi · 2 occasion`) lewat `tierView`. Di feed, peran itu diambil baris alasan yang
+dihitung dari `hop` — dan baris itu lebih tepat, karena yang perlu dijawab kartu feed bukan
+"seberapa dipercaya orang ini" melainkan "kenapa unggahan ini ada di depanku". Mengirim
+keduanya hanya akan menaruh dua penjelasan bersaing di satu kartu kecil.
 
 ### 9.3 Kenapa `GET /feed?who=` TIDAK butuh bukti baca
 
