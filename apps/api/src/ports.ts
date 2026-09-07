@@ -153,6 +153,12 @@ export type EventStore = {
   attendanceSummary(eventId: Hex): Promise<{
     rsvps: number; checkins: number; rsvpBelumHadir: number;
   }>;
+  /**
+   * Alamat yang RSVP di satu event. Dipakai loop event (spec §4.3) untuk
+   * dipotong dengan himpunan tanda. Tabel `rsvps` dimiliki fase event, jadi
+   * store inilah yang membacanya.
+   */
+  rsvpAddresses(eventId: Hex): Promise<Address[]>;
 };
 
 export type AttendanceChainPort = {
@@ -272,6 +278,50 @@ export type FeedDeps = {
   feed: FeedStore;
   greenfield: GreenfieldPort;
   /** Alamat ConnectionRegistry — domain EIP-712 feed terikat padanya (spec §5). */
+  verifyingContract: Address;
+  nowMs: () => number;
+};
+
+/** Satu tanda: siapa, dan kapan tanda itu dibuat. MILIDETIK. */
+export type Tanda = { address: Address; atMs: number };
+
+/**
+ * Dua orang saling menandai. `sejakMs` adalah waktu tanda KEDUA dibuat —
+ * kecocokan baru ada saat yang kedua menandai.
+ */
+export type Kecocokan = { address: Address; sejakMs: number };
+
+export type ProfilRingkas = { displayName: string; tier: number };
+
+export type MeetStore = {
+  /** `ingin` false berarti MENGHAPUS baris — angka publik ikut turun (spec §2.1). */
+  setTanda(target: Address, who: Address, ingin: boolean): Promise<void>;
+  hitungTanda(target: Address): Promise<number>;
+  adaTanda(target: Address, who: Address): Promise<boolean>;
+  /** Yang DITANDAI oleh `who`. */
+  tandaOleh(who: Address): Promise<Tanda[]>;
+  /** Yang MENANDAI `target`. */
+  tandaKe(target: Address): Promise<Tanda[]>;
+  cocokDilihatAtMs(who: Address): Promise<number | null>;
+  setCocokDilihat(who: Address, atMs: number): Promise<void>;
+  profilRingkas(addresses: Address[]): Promise<Map<string, ProfilRingkas>>;
+  /** Hitungan tanda untuk BANYAK target sekaligus, dipotong per kelompok. */
+  hitungTandaBanyak(targets: Address[]): Promise<Map<string, number>>;
+};
+
+/**
+ * Daftar nama metode MeetStore, dipakai tes bentuk di meet-ports.test.ts.
+ * Menambah metode tanpa memperbarui daftar ini membuat tes itu merah — dan
+ * itulah gunanya: setiap fake di tes gerbang harus ikut diperbarui.
+ */
+export const METODE_MEET_STORE = [
+  "setTanda", "hitungTanda", "adaTanda", "tandaOleh", "tandaKe",
+  "cocokDilihatAtMs", "setCocokDilihat", "profilRingkas", "hitungTandaBanyak",
+] as const;
+
+export type MeetDeps = {
+  meet: MeetStore;
+  /** Alamat ConnectionRegistry — domain EIP-712 meet terikat padanya (spec §5). */
   verifyingContract: Address;
   nowMs: () => number;
 };

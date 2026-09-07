@@ -106,6 +106,7 @@ export function depsFor(overrides: {
       hasCheckIn: vi.fn(async () => false),
       recordCheckIn: vi.fn(async () => {}),
       attendanceSummary: vi.fn(async () => ({ rsvps: 0, checkins: 0, rsvpBelumHadir: 0 })),
+      rsvpAddresses: vi.fn(async () => []),
     },
     attendance: {
       submitCreateEvent: vi.fn(async (): Promise<Hex> => "0xtx" as Hex),

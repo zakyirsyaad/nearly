@@ -228,5 +228,12 @@ export function createEventStore(db: SupabaseClient): EventStore {
         rsvpBelumHadir: daftar.filter((a) => !hadir.has(a)).length,
       };
     },
+
+    async rsvpAddresses(eventId) {
+      const { data, error } = await db
+        .from("rsvps").select("address").eq("event_id", eventId.toLowerCase());
+      if (error) throw new Error(`baca rsvp gagal: ${error.message}`);
+      return (data ?? []).map((r) => String(r.address).toLowerCase() as Address);
+    },
   };
 }

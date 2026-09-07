@@ -82,6 +82,7 @@ function deps(over: { saveSnapshots?: ReturnType<typeof vi.fn> } = {}): TrustDep
       hasCheckIn: async () => false,
       recordCheckIn: async () => {},
       attendanceSummary: async () => ({ rsvps: 0, checkins: 0, rsvpBelumHadir: 0 }),
+      rsvpAddresses: async () => [],
     },
     attendance: {
       submitCreateEvent: async () => TX,
