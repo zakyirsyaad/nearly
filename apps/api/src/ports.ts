@@ -313,11 +313,23 @@ export type MeetStore = {
  * Daftar nama metode MeetStore, dipakai tes bentuk di meet-ports.test.ts.
  * Menambah metode tanpa memperbarui daftar ini membuat tes itu merah — dan
  * itulah gunanya: setiap fake di tes gerbang harus ikut diperbarui.
+ *
+ * Dua penjaga tipe di bawah membuat "diperbarui" bukan sekadar niat baik:
+ * `satisfies` memastikan setiap nama di sini benar-benar metode MeetStore
+ * (typo atau metode yang sudah dihapus akan gagal kompilasi), dan
+ * `AssertNever<SisaMetodeMeetStore>` memastikan arah sebaliknya — kalau
+ * MeetStore dapat metode baru yang belum disebut di sini, tipe
+ * `SisaMetodeMeetStore` berhenti jadi `never` dan baris itu sendiri gagal
+ * dikompilasi.
  */
 export const METODE_MEET_STORE = [
   "setTanda", "hitungTanda", "adaTanda", "tandaOleh", "tandaKe",
   "cocokDilihatAtMs", "setCocokDilihat", "profilRingkas", "hitungTandaBanyak",
-] as const;
+] as const satisfies readonly (keyof MeetStore)[];
+
+type SisaMetodeMeetStore = Exclude<keyof MeetStore, (typeof METODE_MEET_STORE)[number]>;
+type AssertNever<T extends never> = T;
+type _PastikanMetodeMeetStoreLengkap = AssertNever<SisaMetodeMeetStore>;
 
 export type MeetDeps = {
   meet: MeetStore;
