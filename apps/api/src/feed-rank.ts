@@ -38,8 +38,14 @@ export function basisTrust(rasio: number): number {
   return Math.log1p(rasio * SCORE_SCALE) / NORMALISASI;
 }
 
-export function faktorJarak(hop: 1 | 2 | null): number {
-  if (hop === 1) return JARAK_1_HOP;
+/**
+ * `0` berarti unggahan penonton sendiri, dan ia mendapat JARAK_1_HOP —
+ * pengali yang sama dengan orang yang benar-benar kamu temui. Kalau ia jatuh
+ * ke JARAK_LUAR, unggahan seseorang diperlakukan sebagai berasal dari luar
+ * jaringannya sendiri.
+ */
+export function faktorJarak(hop: 0 | 1 | 2 | null): number {
+  if (hop === 0 || hop === 1) return JARAK_1_HOP;
   if (hop === 2) return JARAK_2_HOP;
   return JARAK_LUAR;
 }

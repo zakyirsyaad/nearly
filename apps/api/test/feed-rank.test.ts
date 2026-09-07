@@ -233,6 +233,36 @@ describe("sisipkanPendatang (spec §6.6)", () => {
   });
 });
 
+describe("rankFeed — unggahan sendiri (hop 0)", () => {
+  /**
+   * Sebelum perbaikan ini, unggahan penonton sendiri tiba dengan hop null dan
+   * dikalikan JARAK_LUAR 0.3 — dihukum seolah penulisnya orang asing bagi
+   * dirinya sendiri.
+   */
+  it("unggahan sendiri tidak kalah dari unggahan luar jaringan yang identik", () => {
+    const milikku = kandidat({
+      hop: 0, author: AKU, authorRatio: 0.01,
+      postId: `0x${"f".repeat(64)}` as Hex,
+    });
+    const asing = kandidat({
+      hop: null, author: "0x2222222222222222222222222222222222222222" as Address,
+      authorRatio: 0.01, postId: `0x${"1".repeat(64)}` as Hex,
+    });
+    expect(peringkat([asing, milikku])[0]!.postId).toBe(milikku.postId);
+  });
+
+  it("hop 0 diteruskan apa adanya ke baris", () => {
+    expect(peringkat([kandidat({ hop: 0, author: AKU })])[0]!.hop).toBe(0);
+  });
+
+  // Penonton anonim tidak punya "milikmu" sama sekali.
+  it("penonton anonim tetap mendapat hop null", () => {
+    const rows = rankFeed([kandidat({ hop: 0 })],
+      { nowMs: NOW, viewer: null, spEndpoint: SP });
+    expect(rows[0]!.hop).toBeNull();
+  });
+});
+
 describe("rankFeed — pemetaan baris", () => {
   it("membangun imageUrl hanya saat status ready", () => {
     const siap = kandidat({

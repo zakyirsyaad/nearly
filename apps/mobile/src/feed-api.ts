@@ -11,8 +11,11 @@ export type FeedPost = {
   imageStatus: "none" | "pending" | "ready" | "failed";
   likeCount: number;
   sudahSuka: boolean;
-  /** 1, 2, atau null (luar jaringan). Menyalakan baris alasan di kartu. */
-  hop: 1 | 2 | null;
+  /**
+   * 0 (milikmu), 1, 2, atau null (luar jaringan). Menyalakan baris alasan di
+   * kartu.
+   */
+  hop: 0 | 1 | 2 | null;
   createdAtMs: number;
 };
 

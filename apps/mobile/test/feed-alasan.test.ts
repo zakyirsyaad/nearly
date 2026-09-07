@@ -12,13 +12,24 @@ describe("alasanMuncul", () => {
     expect(pesan.toLowerCase()).toContain("kenalan");
   });
 
+  /**
+   * hop 0 berarti unggahanmu sendiri. Tanpa cabang ini, unggahan sendiri
+   * jatuh ke cabang terakhir dan kartunya memberi tahu penulisnya bahwa
+   * unggahannya sendiri berada di luar jaringannya sendiri.
+   */
+  it("unggahan sendiri disebut milikmu, bukan luar jaringan", () => {
+    const pesan = alasanMuncul(0, "Andi");
+    expect(pesan.toLowerCase()).toContain("unggahanmu");
+    expect(pesan.toLowerCase()).not.toContain("luar jaringan");
+  });
+
   it("luar jaringan dinyatakan apa adanya", () => {
     expect(alasanMuncul(null, "Andi").toLowerCase()).toContain("luar jaringan");
   });
 
   // Nama kosong wajar: profil tidak mewajibkan nama, alamat-lah identitasnya.
   it("tidak menghasilkan kalimat rusak saat nama kosong", () => {
-    for (const hop of [1, 2, null] as const) {
+    for (const hop of [0, 1, 2, null] as const) {
       const pesan = alasanMuncul(hop, "");
       expect(pesan.trim().length).toBeGreaterThan(5);
       expect(pesan).not.toContain("  ");

@@ -205,8 +205,15 @@ export type FeedCandidate = PostRecord & {
   reportCount: number;
   likeCount: number;
   sudahSuka: boolean;
-  /** 1, 2, atau null (luar jaringan / penonton anonim). */
-  hop: 1 | 2 | null;
+  /**
+   * 0 (milikmu), 1, 2, atau null (luar jaringan / penonton anonim).
+   *
+   * `0` ada karena tanpanya unggahan penonton sendiri tiba dengan `hop: null`
+   * dan dua hal salah sekaligus: kartunya berbunyi "Di luar jaringanmu" untuk
+   * unggahan penulisnya sendiri, dan penilai mengalikan skornya dengan
+   * JARAK_LUAR 0.3 seolah penulisnya orang asing bagi dirinya sendiri.
+   */
+  hop: 0 | 1 | 2 | null;
 };
 
 /** Satu kartu di feed, siap dikirim sebagai JSON. */
@@ -220,7 +227,7 @@ export type FeedRow = {
   imageStatus: ImageStatus;
   likeCount: number;
   sudahSuka: boolean;
-  hop: 1 | 2 | null;
+  hop: 0 | 1 | 2 | null;
   createdAtMs: number;
 };
 

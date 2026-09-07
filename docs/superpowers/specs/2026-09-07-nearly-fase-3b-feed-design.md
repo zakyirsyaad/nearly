@@ -299,7 +299,7 @@ berharga daripada mekanisme nonce khusus untuk aksi seringan ini.
 
 ```
 basis      = ln(1 + rasio × SCORE_SCALE) / ln(1 + SCORE_SCALE)        ∈ [0,1]
-jarak      = 1.0 (1 lompatan) · 0.6 (2 lompatan) · 0.3 (luar jaringan)
+jarak      = 1.0 (milikmu / 1 lompatan) · 0.6 (2 lompatan) · 0.3 (luar jaringan)
 kebaruan   = 0.5 ^ (umur_jam / 24)
 suka       = min(1, ln(1 + jumlah_suka) / ln(1 + 50))
 
@@ -346,9 +346,17 @@ terbit on-chain lewat `TrustAttestor` tidak berubah sedikit pun.
 
 Dihitung dari tabel `connections` yang sudah ada:
 
+- **0 lompatan** — penulisnya kamu sendiri.
 - **1 lompatan** — kamu pernah bertemu penulisnya.
 - **2 lompatan** — seseorang yang kamu temui pernah bertemu penulisnya.
 - **Luar jaringan** — selain itu.
+
+**Nol itu wajib ada, dan bukan kosmetik.** Kalau penonton dikeluarkan dari peta jaraknya
+sendiri, unggahannya sendiri tiba sebagai "luar jaringan": kartunya memberi tahu penulisnya
+bahwa unggahannya berada di luar jaringannya sendiri (§10.3), dan penilai mengalikan skornya
+dengan 0.3 — menghukumnya seolah penulisnya orang asing bagi dirinya sendiri. Jarak 0
+memakai pengali yang sama dengan 1 lompatan (1.0); ia bukan dorongan, hanya penghapusan
+hukuman yang tidak pernah dimaksudkan.
 
 **Dihitung dua kueri, bukan per unggahan.** Ambil himpunan 1 lompatan penonton dalam satu
 kueri, lalu himpunan 2 lompatan dalam satu kueri lagi (`addr_a in (...) or addr_b in (...)`),
@@ -381,7 +389,8 @@ ditulis maupun diuji, dan karena itu tidak ada cabang khusus yang bisa rusak.
 **Penonton anonim** — `GET /feed` tanpa parameter `who` (§9) — jatuh ke jalur yang sama
 persis: tidak ada graf untuk diukur, jadi semua kandidat berjarak "luar jaringan". Urutannya
 identik dengan penonton bernol koneksi. Yang berbeda hanya di respons: medan `hop` selalu
-`null` dan `sudahSuka` selalu `false`.
+`null` — termasuk untuk unggahan yang kebetulan miliknya, karena tanpa `who` tidak ada
+"milikmu" yang bisa dikenali — dan `sudahSuka` selalu `false`.
 
 ### 6.6 Slot pendatang baru
 
@@ -527,8 +536,8 @@ tidak sepadan untuk satu berkas.
   } ], cursor: string | null }
 ```
 
-`hop` bernilai `1`, `2`, atau `null` (luar jaringan) — inilah medan yang menyalakan baris
-alasan di tiap kartu (§10.3). `imageUrl` dibangun server dari `image_bucket` +
+`hop` bernilai `0` (milikmu), `1`, `2`, atau `null` (luar jaringan, atau penonton anonim) —
+inilah medan yang menyalakan baris alasan di tiap kartu (§10.3). `imageUrl` dibangun server dari `image_bucket` +
 `image_object`, dan bernilai `null` selama `imageStatus` belum `ready`. `createdAtMs` adalah
 milidetik epoch, bukan string ISO, supaya klien tidak perlu mengurai tanggal.
 
@@ -577,8 +586,8 @@ kalau itu milik penonton.
 
 ### 10.3 Setiap kartu menyebut alasan ia muncul
 
-Satu baris di tiap kartu: *"kamu bertemu Andi"*, *"Andi pernah bertemu dia"*, atau *"di luar
-jaringanmu"*.
+Satu baris di tiap kartu: *"unggahanmu"*, *"kamu bertemu Andi"*, *"Andi pernah bertemu dia"*,
+atau *"di luar jaringanmu"*.
 
 Ini bukan hiasan. Spec induk §8 memegang prinsip bahwa tier tidak pernah tampil telanjang,
 selalu bersama buktinya — angka peringkat telanjang menghidupkan kecemasan ala Nosedive,

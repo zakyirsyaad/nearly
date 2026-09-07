@@ -61,8 +61,24 @@ describe("petaHop", () => {
     expect(petaHop(AKU, [tepi(AKU, B), tepi(AKU, C)], [tepi(B, C)]).get(C.toLowerCase())).toBe(1);
   });
 
-  it("penonton sendiri tidak masuk peta", () => {
-    expect(petaHop(AKU, [tepi(AKU, B)], [tepi(B, AKU)]).has(AKU.toLowerCase())).toBe(false);
+  /**
+   * Penonton memetakan DIRINYA SENDIRI ke 0. Sebelumnya ia dikeluarkan dari
+   * peta, jadi unggahannya sendiri tiba dengan `hop: null` — kartunya berbunyi
+   * "Di luar jaringanmu" untuk unggahan penulisnya sendiri, dan penilai
+   * mengalikan skornya dengan JARAK_LUAR 0.3.
+   */
+  it("penonton memetakan dirinya sendiri ke 0", () => {
+    expect(petaHop(AKU, [tepi(AKU, B)], [tepi(B, AKU)]).get(AKU.toLowerCase())).toBe(0);
+  });
+
+  it("0 tidak bisa diturunkan menjadi 1 atau 2 oleh tepi mana pun", () => {
+    const peta = petaHop(AKU, [tepi(AKU, B), tepi(AKU, AKU)], [tepi(B, AKU)]);
+    expect(peta.get(AKU.toLowerCase())).toBe(0);
+  });
+
+  it("0 dipetakan tanpa peduli besar-kecil huruf alamat penonton", () => {
+    const peta = petaHop(AKU.toUpperCase() as Address, [], []);
+    expect(peta.get(AKU.toLowerCase())).toBe(0);
   });
 
   it("orang yang tak terjangkau tidak masuk peta", () => {
@@ -73,7 +89,10 @@ describe("petaHop", () => {
     expect(petaHop(AKU.toUpperCase() as Address, [tepi(AKU, B)], []).get(B.toLowerCase())).toBe(1);
   });
 
-  it("penonton tanpa koneksi menghasilkan peta kosong", () => {
-    expect(petaHop(AKU, [], []).size).toBe(0);
+  // Hanya dirinya sendiri yang ada di dalamnya.
+  it("penonton tanpa koneksi hanya memetakan dirinya sendiri", () => {
+    const peta = petaHop(AKU, [], []);
+    expect(peta.size).toBe(1);
+    expect(peta.get(AKU.toLowerCase())).toBe(0);
   });
 });

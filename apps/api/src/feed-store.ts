@@ -40,12 +40,20 @@ type Tepi = { addr_a: string; addr_b: string };
  * kueri per unggahan. Feed dimuat jauh lebih sering daripada discovery, dan
  * pola N+1 di sini akan jauh lebih mahal daripada yang diparkir di Fase 3a.
  *
+ * Penonton MEMETAKAN DIRINYA SENDIRI ke 0. Sebelumnya ia sengaja dikeluarkan
+ * dari peta, sehingga unggahannya sendiri tiba dengan `hop: null` — kartunya
+ * berbunyi "Di luar jaringanmu" untuk unggahan penulisnya sendiri, dan
+ * penilai mengalikan skornya dengan JARAK_LUAR 0.3. Nol berarti "milikmu",
+ * dan ia menang atas 1 maupun 2 kalau seseorang entah bagaimana punya tepi ke
+ * dirinya sendiri.
+ *
  * Kolom `blocked` TIDAK ADA di tabel connections; blokir baru datang di Fase 4
  * (spec §6.4). Setiap koneksi dihitung sebagai lompatan.
  */
-export function petaHop(viewer: Address, tepi1: Tepi[], tepi2: Tepi[]): Map<string, 1 | 2> {
+export function petaHop(viewer: Address, tepi1: Tepi[], tepi2: Tepi[]): Map<string, 0 | 1 | 2> {
   const aku = viewer.toLowerCase();
-  const peta = new Map<string, 1 | 2>();
+  const peta = new Map<string, 0 | 1 | 2>();
+  peta.set(aku, 0);
 
   const seberang = (t: Tepi, dari: Set<string>): string | null => {
     const a = t.addr_a.toLowerCase();
@@ -218,7 +226,7 @@ export function createFeedStore(db: SupabaseClient): FeedStore {
       }
 
       // DUA kueri untuk seluruh graf penonton, bukan satu per unggahan.
-      let hop = new Map<string, 1 | 2>();
+      let hop = new Map<string, 0 | 1 | 2>();
       if (aku) {
         const { data: t1, error: e2 } = await db
           .from("connections").select("addr_a, addr_b")

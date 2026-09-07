@@ -90,6 +90,15 @@ describe("faktorJarak", () => {
     expect(faktorJarak(2)).toBe(0.6);
     expect(faktorJarak(null)).toBe(0.3);
   });
+
+  /**
+   * `0` berarti "milikmu". Kalau ia jatuh ke JARAK_LUAR, unggahan seseorang
+   * dihukum 0.3 seolah penulisnya orang asing bagi dirinya sendiri.
+   */
+  it("unggahan sendiri (hop 0) mendapat pengali penuh, bukan JARAK_LUAR", () => {
+    expect(faktorJarak(0)).toBe(JARAK_1_HOP);
+    expect(faktorJarak(0)).not.toBe(JARAK_LUAR);
+  });
 });
 
 describe("faktorKebaruan", () => {

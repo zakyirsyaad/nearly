@@ -68,7 +68,11 @@ export function feedErrorMessage(code: string): string {
  * prinsip bahwa peringkat tidak pernah tampil telanjang — selalu bersama
  * buktinya. Feed yang tidak bisa menjelaskan dirinya melanggar prinsip itu.
  */
-export function alasanMuncul(hop: 1 | 2 | null, displayName: string): string {
+export function alasanMuncul(hop: 0 | 1 | 2 | null, displayName: string): string {
+  // 0 berarti unggahanmu sendiri. Tanpa cabang ini, unggahan sendiri tiba
+  // dengan hop null dan kartunya memberi tahu penulisnya bahwa unggahannya
+  // sendiri berada di luar jaringannya sendiri.
+  if (hop === 0) return "Unggahanmu.";
   const nama = displayName.trim() || "orang ini";
   if (hop === 1) return `Kamu pernah bertemu ${nama}.`;
   if (hop === 2) return `Kenalanmu pernah bertemu ${nama}.`;
