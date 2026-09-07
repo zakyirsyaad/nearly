@@ -1,7 +1,10 @@
+import { useEffect, useState } from "react";
 import { Link } from "expo-router";
 import { StyleSheet, Text, View } from "react-native";
 import { CONFIG } from "../src/config";
 import { createDevSigner } from "../src/signer";
+import { getKecocokan, kueriBuktiKecocokan } from "../src/meet-api";
+import { teksLencana } from "../src/messages";
 
 export default function Home() {
   if (!CONFIG.devPrivateKey) {
@@ -18,6 +21,26 @@ export default function Home() {
 
   const signer = createDevSigner(CONFIG.devPrivateKey, CONFIG.verifyingContract);
 
+  const [baru, setBaru] = useState(0);
+
+  useEffect(() => {
+    // Satu tanda tangan per pembukaan beranda, hanya untuk angka lencana.
+    // Ongkos yang dipilih sadar (spec §6.2): endpoint hitung tanpa autentikasi
+    // akan membocorkan berapa kecocokan dimiliki sebuah alamat.
+    //
+    // Fungsi async DI DALAM useEffect, bukan useEffect yang async —
+    // useEffect yang mengembalikan Promise merusak jalur pembersihannya.
+    void (async () => {
+      try {
+        const { baru } = await getKecocokan(await kueriBuktiKecocokan(signer));
+        setBaru(baru);
+      } catch {
+        // Beranda tidak boleh gagal hanya karena lencana gagal dimuat.
+        setBaru(0);
+      }
+    })();
+  }, [signer]);
+
   return (
     <View style={s.root}>
       <Text style={s.h1}>Nearly</Text>
@@ -28,6 +51,9 @@ export default function Home() {
       <Link href="/connections" style={s.link}>Koneksiku</Link>
       <Link href="/events" style={s.link}>Acara</Link>
       <Link href="/feed" style={s.link}>Feed</Link>
+      <Link href="/kecocokan" style={s.link}>
+        Saling ingin bertemu{teksLencana(baru) ? `  ${teksLencana(baru)}` : ""}
+      </Link>
     </View>
   );
 }

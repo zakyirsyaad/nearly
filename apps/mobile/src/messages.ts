@@ -80,6 +80,16 @@ export function meetErrorMessage(code: string): string {
 }
 
 /**
+ * Teks lencana kecocokan baru. `null` berarti tidak ada lencana sama sekali —
+ * memamerkan "0" akan membuat beranda terasa seperti papan skor yang kosong,
+ * padahal yang benar adalah tidak ada apa-apa untuk diberitahukan.
+ */
+export function teksLencana(baru: number): string | null {
+  if (!Number.isFinite(baru) || baru <= 0) return null;
+  return baru > 9 ? "9+" : String(baru);
+}
+
+/**
  * Baris alasan di setiap kartu feed (spec §10.3). Spec induk §8 memegang
  * prinsip bahwa peringkat tidak pernah tampil telanjang — selalu bersama
  * buktinya. Feed yang tidak bisa menjelaskan dirinya melanggar prinsip itu.
