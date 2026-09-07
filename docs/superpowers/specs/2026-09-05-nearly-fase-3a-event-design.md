@@ -319,6 +319,12 @@ BSC testnet (chainId 97), gas price 0.1 gwei. `createEvent` menulis satu struct 
 `trust_published` di Fase 2 yang perlu ditiru di sini: check-in memang seharusnya satu
 transaksi per orang per event.
 
+**Alamat ter-deploy (BSC testnet, 2026-09-07):**
+`AttendanceRegistry` = `0x8D1e85ff67553e5569d337690FC8102D7Bd02299`,
+attestor = `0xD4f3eb5724ECcAd969331144385C08a14325284E` (sama dengan
+`RELAYER_PRIVATE_KEY`). Deploy memakai 963.011 gas pada 0.1 gwei = 0.0000963 tBNB.
+Biaya nyata per transaksi terukur: `createEvent` 98.813 gas, `checkIn` 88.189 gas.
+
 ## 8. Discovery
 
 Aturan spec induk §7.7 yang harus dipatuhi: **siapa pun boleh mengadakan event**, dan event
