@@ -1,5 +1,7 @@
 import type { Address, Hex } from "viem";
-import { recoverHapusPostSigner, recoverLikeSigner, recoverPostSigner } from "@nearly/shared";
+import {
+  recoverHapusPostSigner, recoverLampirGambarSigner, recoverLikeSigner, recoverPostSigner,
+} from "@nearly/shared";
 import type { FeedDeps } from "./ports";
 
 export type FeedFailure =
@@ -130,4 +132,93 @@ export async function reportPost(
 
   await deps.feed.addReport(input.postId, input.reporter, input.reason);
   return { ok: true, value: undefined };
+}
+
+/**
+ * Batas ukuran gambar. Ini BUKAN rem biaya — spec §11.3 menyatakan rem biaya
+ * sengaja dibuat longgar dan dipantau manual. Ini pelindung memori API:
+ * tanpa batas, satu badan permintaan 100 MB cukup untuk mematikan server.
+ */
+export const MAKS_GAMBAR_BYTES = 2 * 1024 * 1024;
+
+const EKSTENSI: Record<string, string> = {
+  "image/jpeg": "jpg",
+  "image/png": "png",
+};
+
+/**
+ * Deterministik dari postId, bukan acak: percobaan ulang setelah `failed`
+ * menimpa objek yang sama alih-alih meninggalkan sampah di Greenfield yang
+ * tidak dirujuk baris mana pun.
+ */
+export function objectNameOf(postId: Hex, mime: string): string {
+  return `${postId.slice(2)}.${EKSTENSI[mime] ?? "bin"}`;
+}
+
+export type AttachImageInput = {
+  postId: Hex; author: Address; mime: string; expiresAt: bigint;
+  sig: Hex; dataBase64: string;
+};
+
+export async function attachImage(
+  input: AttachImageInput, deps: FeedDeps,
+): Promise<FeedResult<{ objectName: string; bytes: Uint8Array }>> {
+  if (sudahLewat(deps, input.expiresAt)) return fail({ code: "expired", httpStatus: 410 });
+
+  const post = await deps.feed.getPost(input.postId);
+  if (!post || post.deleted) return fail({ code: "post_not_found", httpStatus: 404 });
+
+  const signer = await recoverLampirGambarSigner(
+    { postId: input.postId, author: input.author, mime: input.mime, expiresAt: input.expiresAt },
+    input.sig,
+    deps.verifyingContract,
+  );
+  if (!samaAlamat(signer, input.author)) {
+    return fail({ code: "bad_signature", httpStatus: 401 });
+  }
+
+  if (!samaAlamat(post.author, input.author)) {
+    return fail({ code: "not_author", httpStatus: 403 });
+  }
+
+  // Satu gambar per unggahan. `failed` sengaja BOLEH dicoba ulang — itu yang
+  // membuat tombol coba-ulang di UI bekerja (spec §11.4).
+  if (post.imageStatus === "pending" || post.imageStatus === "ready") {
+    return fail({ code: "image_slot_taken", httpStatus: 409 });
+  }
+
+  const bytes = new Uint8Array(Buffer.from(input.dataBase64, "base64"));
+  if (bytes.byteLength > MAKS_GAMBAR_BYTES) {
+    return fail({ code: "image_too_large", httpStatus: 413 });
+  }
+
+  const objectName = objectNameOf(input.postId, input.mime);
+  await deps.feed.setImagePending(input.postId, objectName, input.mime);
+  return { ok: true, value: { objectName, bytes } };
+}
+
+/**
+ * Dipanggil TANPA `await` oleh rute (spec §8.2). Karena itu ia tidak boleh
+ * melempar apa pun: pelemparan dari promise yang tidak di-await menjadi
+ * unhandled rejection yang bisa menjatuhkan proses.
+ *
+ * Kegagalan berhenti di sini sebagai status `failed`, dan teks unggahannya
+ * tetap tayang — Greenfield mati tidak mematikan feed.
+ */
+export async function prosesUnggahGambar(
+  deps: FeedDeps, postId: Hex, objectName: string, mime: string, bytes: Uint8Array,
+): Promise<void> {
+  try {
+    await deps.greenfield.upload({ objectName, mime, bytes });
+    await deps.feed.setImageDone(postId, deps.greenfield.bucket);
+  } catch (e) {
+    console.error("unggah gambar gagal:", e);
+    try {
+      await deps.feed.setImageFailed(postId);
+    } catch (e2) {
+      // Database ikut bermasalah. Baris tertinggal `pending` (spec §11.4);
+      // penulis bisa mencoba ulang setelah statusnya terlihat macet.
+      console.error("menandai gambar gagal juga gagal:", e2);
+    }
+  }
 }
