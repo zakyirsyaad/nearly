@@ -495,7 +495,8 @@ lengkap dengan blokir & lapor dari dalam percakapan.
 pernah bertemu tidak punya jalur apa pun untuk mengirim pesan di dalam Nearly.*
 
 **Fase 5 — FYP.** Feed unggahan (view-only, tanpa jalur koneksi maupun pesan), upload gambar
-ke Greenfield, tombol "Ingin bertemu" di kartu feed (mekaniknya sudah ada dari Fase 3),
+ke Greenfield, tombol "Ingin bertemu" di kartu feed (mekaniknya menyusul di Fase 3c — feed
+dikerjakan lebih dulu justru karena penanda itu butuh permukaan berisi orang yang belum kamu temui),
 notifikasi proximity, lapor.
 
 *Selesai = feed berjalan dan "ingin bertemu" bisa ditandai langsung dari feed.*
@@ -505,6 +506,11 @@ tumbuh saat orang bersalaman di ruangan — ini money shot-nya), seed trusted co
 page, video pitch.
 
 *Selesai = graf tumbuh hidup di layar saat orang-orang bersalaman di ruangan.*
+
+**Catatan urutan (2026-09-07).** Fase 3 dipecah menjadi 3a (event & kehadiran, tuntas),
+3b (feed, dokumen `2026-09-07-nearly-fase-3b-feed-design.md`), dan 3c ("ingin bertemu",
+menyusul). Feed didahulukan dari "ingin bertemu" karena penanda itu tidak punya permukaan
+untuk hidup sampai feed ada.
 
 ### 11.1 Pengurangan kedalaman yang disepakati
 
