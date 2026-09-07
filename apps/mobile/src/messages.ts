@@ -67,8 +67,12 @@ const MEET_MESSAGES: Record<string, string> = {
   expired: "Permintaannya sudah kedaluwarsa. Coba lagi.",
   bad_signature: "Tanda tangan tidak cocok. Coba lagi.",
   tandai_diri: "Kamu tidak bisa menandai dirimu sendiri.",
-  butuh_bukti: "Perlu masuk sebagai dirimu untuk melihat ini.",
+  // Penandatanganan buktinya otomatis, jadi ini bukan salah pengguna — buktinya
+  // hilang, kedaluwarsa, atau dibuat dari dompet yang berbeda dari yang
+  // dipakai sekarang. Muat ulang layarnya memaksa bukti baru dibuat.
+  butuh_bukti: "Buktinya belum ada, sudah kedaluwarsa, atau dari dompet yang berbeda. Muat ulang layar ini untuk mencoba lagi.",
   invalid_body: "Ada isian yang belum benar.",
+  invalid_address: "Alamatnya tidak valid. Coba lagi dari layar sebelumnya.",
 };
 
 export function meetErrorMessage(code: string): string {
