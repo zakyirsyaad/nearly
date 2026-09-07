@@ -474,7 +474,32 @@ Expected: PASS
 
 - [ ] **Step 7: Buktikan tes tabrakan nama benar-benar menggigit**
 
-Tambahkan sementara tipe bernama `Rsvp` ke `MEET_TYPES` (isi fieldnya bebas), jalankan `pnpm --filter @nearly/shared test typehash-semua`, dan pastikan tes "tidak ada nama tipe yang bertabrakan lintas keluarga" MERAH. Hapus lagi setelahnya. Jangan commit versi bertabrakan.
+Berkas ini punya DUA asersi yang menjaga hal berbeda, dan satu mutasi tidak
+bisa membuktikan keduanya. Jalankan dua-duanya, kembalikan setiap mutasi
+sebelum lanjut, dan jangan commit versi yang bertabrakan.
+
+**Mutasi A — jalur pertumbuhan.** Tambahkan sementara tipe dengan nama yang
+BENAR-BENAR belum ada di kelima keluarga (periksa dulu dengan grep). Jalankan
+`pnpm --filter @nearly/shared test typehash-semua`. Harapkan: jumlah per
+keluarga naik 19→20 DAN `SEMUA` naik 19→20 — dua-duanya merah karena alasan
+jujur "sekarang memang ada 20 tipe".
+
+**Mutasi B — jalur tabrakan.** Jangan tambah apa pun. Ganti NAMA satu tipe
+yang sudah ada di satu keluarga supaya bertabrakan dengan tipe di keluarga
+lain (misalnya `FEED_TYPES.Like` jadi `Rsvp`, yang sudah dipakai
+`EVENT_TYPES`). Harapkan: jumlah per keluarga tetap 19 sehingga asersi jumlah
+HIJAU, sementara `Object.keys(SEMUA)` turun ke 18 sehingga asersi SEMUA yang
+MERAH. Inilah jalur yang membuktikan penjaga tabrakan nama benar-benar
+bekerja.
+
+**Jangan pakai nama yang sudah ada sebagai umpan Mutasi A.** Versi rencana
+sebelumnya menyuruh menambahkan `Rsvp` ke `MEET_TYPES` — padahal `Rsvp` sudah
+ada di `EVENT_TYPES`, jadi mutasi itu diam-diam adalah tabrakan, bukan
+pertumbuhan. Yang merah cuma asersi jumlah (19→20); asersi `SEMUA` justru
+LULUS, karena spread menimpa `EVENT_TYPES.Rsvp` dan jumlah kunci tetap 19.
+Vitest berhenti di `expect` pertama yang gagal, jadi asersi yang seharusnya
+diuji tidak pernah dijalankan. Itulah kenapa kedua asersi hidup di blok `it`
+terpisah.
 
 - [ ] **Step 8: Commit**
 
