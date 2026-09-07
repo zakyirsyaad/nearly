@@ -33,14 +33,17 @@ function meetStore(over: Partial<MeetStore> = {}): MeetStore {
   };
 }
 
-function app(meet: MeetStore, rsvp: Address[]) {
+// `rsvps` default 5: tepat di ambang PENANDA_HADIR_MIN_RSVP, supaya tes lama
+// yang menegaskan isi `penandaHadir`/`kutandaiHadir` tidak ikut tersandung
+// penjaga k-anonimitas yang diuji terpisah di bawah.
+function app(meet: MeetStore, rsvpAddrs: Address[], rsvps = 5) {
   const deps = {
     events: {
       getEvent: vi.fn(async () => acara),
-      attendanceSummary: vi.fn(async () => ({ rsvps: 3, checkins: 1, rsvpBelumHadir: 2 })),
+      attendanceSummary: vi.fn(async () => ({ rsvps, checkins: 1, rsvpBelumHadir: 2 })),
       hasRsvp: vi.fn(async () => true),
       hasCheckIn: vi.fn(async () => false),
-      rsvpAddresses: vi.fn(async () => rsvp),
+      rsvpAddresses: vi.fn(async () => rsvpAddrs),
       listDiscovery: vi.fn(async () => []),
       recordEvent: vi.fn(async () => {}), recordRsvp: vi.fn(async () => {}),
       putCheckInOffer: vi.fn(async () => {}), getCheckInOffer: vi.fn(async () => null),
@@ -80,6 +83,18 @@ describe("loop event di GET /events/:id", () => {
     ]) });
     const res = await app(s, [B, C]).request(await kueriTerbukti());
     expect(await res.json()).toMatchObject({ kutandaiHadir: 2 });
+  });
+
+  // Sebelum tes ini: `kutandaiHadir = tandaOleh.length` lolos semua tes lain
+  // di berkas ini, karena setiap kasus yang ada kebetulan menandai orang yang
+  // juga RSVP. Di sini C ditandai tapi TIDAK RSVP — kalau implementasinya
+  // tidak benar-benar memotong dengan daftar RSVP, angkanya akan 2, bukan 1.
+  it("tidak menghitung orang yang kutandai tapi belum RSVP", async () => {
+    const s = meetStore({ tandaOleh: vi.fn(async () => [
+      { address: B, atMs: NOW }, { address: C, atMs: NOW },
+    ]) });
+    const res = await app(s, [B]).request(await kueriTerbukti());
+    expect(await res.json()).toMatchObject({ kutandaiHadir: 1 });
   });
 
   it("nol kalau tidak ada yang beririsan", async () => {
@@ -123,5 +138,30 @@ describe("loop event di GET /events/:id", () => {
     const json = await res.json() as Record<string, unknown>;
     expect(json.sudahRsvp).toBe(true);
     expect(json.sudahCheckIn).toBe(false);
+  });
+
+  /**
+   * Ambang k-anonimitas (PENANDA_HADIR_MIN_RSVP). Di event kecil, pemanggil
+   * terbukti yang tahu jumlah RSVP event ini bisa menyimpulkan siapa
+   * menandainya lewat eliminasi murni — reveal SEPIHAK yang bertentangan
+   * dengan aturan inti aplikasi. Di bawah ambang, `penandaHadir` harus
+   * benar-benar TIDAK ADA sebagai kunci (bukan `0` — itu klaim faktual
+   * "tidak ada yang menandaimu", yang bisa saja bohong).
+   */
+  it("penandaHadir tidak keluar di event kecil (di bawah ambang k-anonimitas)", async () => {
+    const s = meetStore({ tandaKe: vi.fn(async () => [{ address: B, atMs: NOW }]) });
+    const res = await app(s, [B], 4).request(await kueriTerbukti());
+    const json = await res.json() as Record<string, unknown>;
+    expect(Object.prototype.hasOwnProperty.call(json, "penandaHadir")).toBe(false);
+    expect(json.penandaHadir).toBeUndefined();
+    // kutandaiHadir TIDAK diambang: tetap keluar walau event kecil.
+    expect(json.kutandaiHadir).toBe(0);
+  });
+
+  it("penandaHadir keluar tepat di ambang k-anonimitas", async () => {
+    const s = meetStore({ tandaKe: vi.fn(async () => [{ address: B, atMs: NOW }]) });
+    const res = await app(s, [B], 5).request(await kueriTerbukti());
+    const json = await res.json() as Record<string, unknown>;
+    expect(json.penandaHadir).toBe(1);
   });
 });

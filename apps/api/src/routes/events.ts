@@ -11,6 +11,19 @@ import type { EventDeps, EventRecord, MeetStore } from "../ports";
 const DISCOVERY_LIMIT = 50;
 
 /**
+ * Ambang k-anonimitas untuk `penandaHadir`.
+ *
+ * Di event kecil, pemanggil yang sudah terbukti dan tahu jumlah RSVP event
+ * ini bisa menyimpulkan SIAPA menandainya lewat eliminasi murni — bukan
+ * dengan melihat nama, hanya dengan berhitung. Itu adalah reveal SEPIHAK,
+ * dan aturan inti aplikasi ini mensyaratkan KEDUA pihak sama-sama menandai
+ * sebelum identitas siapa pun terungkap. Ambang ini menahan angkanya sampai
+ * kerumunan cukup besar agar eliminasi semacam itu tidak lagi trivial — ia
+ * mengurangi risiko itu, bukan menghapusnya.
+ */
+const PENANDA_HADIR_MIN_RSVP = 5;
+
+/**
  * `:id` di path harus sama dengan `eventId` di badan permintaan — kalau
  * tidak, path segment itu diam-diam diabaikan (bug klien yang menyakitkan
  * untuk dilacak). Dibandingkan case-insensitive karena id memang heksa
@@ -132,7 +145,7 @@ export function eventRoutes(
 
     const addr = await pemanggilTerbukti(c.req.query(), ev.eventId, deps);
     if (addr) {
-      const [sudahRsvp, sudahCheckIn, tandaKe, tandaOleh, rsvp] = await Promise.all([
+      const [sudahRsvp, sudahCheckIn, tandaKe, tandaOleh, alamatRsvp] = await Promise.all([
         deps.events.hasRsvp(ev.eventId, addr),
         deps.events.hasCheckIn(ev.eventId, addr),
         deps.meet.tandaKe(addr),
@@ -147,12 +160,20 @@ export function eventRoutes(
       // menanyakan "berapa orang yang ingin bertemu Alice akan datang ke
       // acara ini", dan mengulanginya lintas banyak acara akan menyingkap
       // pola tanda Alice tanpa satu nama pun terlihat (spec §5.3).
-      const penandaHadir = irisan(tandaKe.map((t) => t.address), rsvp);
-      const kutandaiHadir = irisan(tandaOleh.map((t) => t.address), rsvp);
+      //
+      // `kutandaiHadir` hanya mencerminkan tanda pemanggil SENDIRI — tidak
+      // membocorkan apa pun yang belum diketahuinya, jadi tidak diberi
+      // ambang. `penandaHadir` beda: lihat PENANDA_HADIR_MIN_RSVP di atas.
+      const kutandaiHadir = irisan(tandaOleh.map((t) => t.address), alamatRsvp);
+      const penandaHadir = summary.rsvps >= PENANDA_HADIR_MIN_RSVP
+        ? irisan(tandaKe.map((t) => t.address), alamatRsvp)
+        : undefined;
 
       return c.json({
         ...eventToJson(ev), ...summary,
-        sudahRsvp, sudahCheckIn, penandaHadir, kutandaiHadir,
+        sudahRsvp, sudahCheckIn,
+        ...(penandaHadir !== undefined ? { penandaHadir } : {}),
+        kutandaiHadir,
       });
     }
 
