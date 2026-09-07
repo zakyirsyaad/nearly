@@ -174,3 +174,97 @@ export type EventDeps = {
   attendanceContract: Address;
   nowMs: () => number;
 };
+
+export type ImageStatus = "none" | "pending" | "ready" | "failed";
+
+export type PostRecord = {
+  postId: Hex;
+  author: Address;
+  body: string;
+  imageBucket: string | null;
+  imageObject: string | null;
+  imageMime: string | null;
+  imageStatus: ImageStatus;
+  /** MILIDETIK. */
+  createdAtMs: number;
+  deleted: boolean;
+};
+
+/**
+ * Satu kandidat sebelum diperingkat. Semua medan turunan sudah dihidrasi di
+ * store, supaya penilai tetap murni dan bisa diuji tanpa Supabase — pola yang
+ * sama dengan DiscoveryCandidate di discovery.ts.
+ */
+export type FeedCandidate = PostRecord & {
+  displayName: string;
+  /** `ratio` dari trust_snapshots. 0 kalau penulis belum punya snapshot. */
+  authorRatio: number;
+  authorTier: number;
+  authorConnections: number;
+  authorSlashed: boolean;
+  reportCount: number;
+  likeCount: number;
+  sudahSuka: boolean;
+  /** 1, 2, atau null (luar jaringan / penonton anonim). */
+  hop: 1 | 2 | null;
+};
+
+/** Satu kartu di feed, siap dikirim sebagai JSON. */
+export type FeedRow = {
+  postId: Hex;
+  author: Address;
+  displayName: string;
+  tier: number;
+  body: string;
+  imageUrl: string | null;
+  imageStatus: ImageStatus;
+  likeCount: number;
+  sudahSuka: boolean;
+  hop: 1 | 2 | null;
+  createdAtMs: number;
+};
+
+/**
+ * URL baca publik Greenfield (spec §8.1). Dibangun saat baca, TIDAK disimpan —
+ * endpoint storage provider bisa berubah tanpa membusukkan baris lama.
+ */
+export function imageUrlOf(
+  spEndpoint: string, bucket: string | null, objectName: string | null,
+): string | null {
+  if (!bucket || !objectName) return null;
+  return `${spEndpoint.replace(/\/+$/, "")}/view/${bucket}/${objectName}`;
+}
+
+export type FeedStore = {
+  createPost(row: { postId: Hex; author: Address; body: string; createdAtMs: number }): Promise<void>;
+  getPost(postId: Hex): Promise<PostRecord | null>;
+  markDeleted(postId: Hex): Promise<void>;
+  /** Idempoten: menyukai dua kali sama dengan sekali. */
+  setLike(postId: Hex, who: Address, suka: boolean): Promise<void>;
+  /** Idempoten lewat primary key gabungan (post_id, reporter). */
+  addReport(postId: Hex, reporter: Address, reason: string): Promise<void>;
+  setImagePending(postId: Hex, objectName: string, mime: string): Promise<void>;
+  setImageDone(postId: Hex, bucket: string): Promise<void>;
+  setImageFailed(postId: Hex): Promise<void>;
+  /**
+   * Sudah terhidrasi penuh dan siap diperingkat. `viewer` null berarti
+   * penonton anonim: setiap `hop` null dan `sudahSuka` false (spec §6.5).
+   */
+  listCandidates(a: {
+    sinceMs: number; limit: number; viewer: Address | null;
+  }): Promise<FeedCandidate[]>;
+};
+
+export type GreenfieldPort = {
+  bucket: string;
+  spEndpoint: string;
+  upload(a: { objectName: string; mime: string; bytes: Uint8Array }): Promise<void>;
+};
+
+export type FeedDeps = {
+  feed: FeedStore;
+  greenfield: GreenfieldPort;
+  /** Alamat ConnectionRegistry — domain EIP-712 feed terikat padanya (spec §5). */
+  verifyingContract: Address;
+  nowMs: () => number;
+};
