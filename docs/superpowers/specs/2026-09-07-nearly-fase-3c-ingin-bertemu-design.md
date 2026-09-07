@@ -152,15 +152,27 @@ dijaga §7.6.
 
 ## 5. Tanda Tangan
 
-Tiga tipe EIP-712 baru di `packages/shared/src/meet.ts`:
+Empat tipe EIP-712 baru di `packages/shared/src/meet.ts`:
 
 ```
-InginBertemu  { target: address, who: address, ingin: bool, expiresAt: uint64 }
-LihatProfil   { target: address, who: address, expiresAt: uint64 }
-TandaiDilihat { who: address, expiresAt: uint64 }
+InginBertemu   { target: address, who: address, ingin: bool, expiresAt: uint64 }
+LihatProfil    { target: address, who: address, expiresAt: uint64 }
+LihatKecocokan { who: address, expiresAt: uint64 }
+TandaiDilihat  { who: address, expiresAt: uint64 }
 ```
 
-Ketiganya **tidak pernah naik ke chain** (§2.3), dan karena itu tidak boleh punya pasangan
+**Kenapa `LihatKecocokan` terpisah dari `LihatProfil`.** `LihatProfil` mengikat `target`,
+karena ia membuka bendera tentang HUBUNGAN antara dua orang. Membaca daftar kecocokan sendiri
+tidak punya target — yang dibuktikan cuma "aku adalah `who`". Memaksakan `LihatProfil` di sana
+berarti mengarang `target` yang tidak berarti apa-apa.
+
+**`LihatKecocokan` dan `TandaiDilihat` berbentuk field IDENTIK, dan itu justru intinya.** Yang
+pertama bukti BACA, yang kedua perintah TULIS. Nama tipe yang berbeda membuat digest-nya
+berbeda, dan itulah satu-satunya hal yang mencegah tanda tangan baca yang bocor lewat query
+string dipakai menghapus lencana kecocokan orang lain. Ini pelajaran Ruling 23 dipakai dengan
+sengaja, bukan kebetulan.
+
+Keempatnya **tidak pernah naik ke chain** (§2.3), dan karena itu tidak boleh punya pasangan
 typehash di Solidity mana pun — sama seperti `Rsvp`, `LihatEvent`, dan kelima tipe feed.
 
 **Kenapa `TandaiDilihat` tipe tersendiri, bukan `LihatProfil` yang dipakai ulang.** Menandai
@@ -203,11 +215,11 @@ membuka tautan. Yang terjadi hanya bendera tidak keluar.
 
 ### 5.2 Penjaga Ruling 23
 
-Ketiga nama baru unik di seluruh aplikasi, jadi digest-nya berbeda dari satu sama lain dan
+Keempat nama baru unik di seluruh aplikasi, jadi digest-nya berbeda dari satu sama lain dan
 dari **kelima belas tipe yang sudah ada**: `HandshakeOffer`, `HandshakeAccept`, `Vouch`,
 `RevokeVouch`, `Report`, `CreateEvent`, `CheckInOffer`, `CheckInAccept`, `Rsvp`,
 `LihatEvent`, `Post`, `Like`, `HapusPost`, `LampirGambar`, `LaporPost`. Setelah fase ini
-aplikasi memiliki **delapan belas** tipe EIP-712, dan tidak satu pun boleh bertabrakan.
+aplikasi memiliki **sembilan belas** tipe EIP-712, dan tidak satu pun boleh bertabrakan.
 
 Di sini taruhannya lebih tinggi daripada di fase mana pun sebelumnya. Kalau bukti baca bisa
 dipakai sebagai perintah tulis, tanda tangan yang bocor lewat query string — log akses,
@@ -229,7 +241,7 @@ tanda Alice bisa disimpulkan tanpa pernah melihat satu nama pun.
 | Endpoint | Keterangan |
 |---|---|
 | `POST /ingin-bertemu` | Bertanda tangan `InginBertemu`, medan `ingin` true/false |
-| `GET /kecocokan?who=&expiresAt=&sig=` | Daftar kecocokan; **wajib** bukti baca |
+| `GET /kecocokan?who=&expiresAt=&sig=` | Daftar kecocokan; **wajib** bukti `LihatKecocokan` |
 | `POST /kecocokan/dilihat` | Bertanda tangan **`TandaiDilihat`**, menyetel `cocok_dilihat_at` |
 | `GET /profile/:address` | **diperluas** — lihat §6.1 |
 | `GET /events/:id` | **diperluas** — dua angka loop di cabang terbukti |
@@ -379,8 +391,10 @@ Ditunda, bukan dibuang. Ia mendapat keputusan tersendiri di fase berikutnya.
 dan dua angka loop event. Termasuk kasus tepi — pencabutan di tengah, alamat beda
 kapitalisasi, himpunan kosong, dan `cocok_dilihat_at` bernilai `null`.
 
-**13.2 Tes silang tipe.** `InginBertemu` tidak sah sebagai `LihatProfil` dan sebaliknya, plus
-tidak sah terhadap ketujuh tipe lain. Ini penjaga langsung terhadap kelas kesalahan Ruling 23,
+**13.2 Tes silang tipe.** Setiap tipe tulis (`InginBertemu`, `TandaiDilihat`) tidak sah
+sebagai tipe baca (`LihatProfil`, `LihatKecocokan`) dan sebaliknya. Pasangan
+`LihatKecocokan`/`TandaiDilihat` mendapat perhatian khusus karena bentuk fieldnya identik —
+hanya nama tipenya yang memisahkan bukti baca dari perintah tulis. Ini penjaga langsung terhadap kelas kesalahan Ruling 23,
 dan di fase ini taruhannya adalah kemampuan memalsukan tanda atas nama orang lain.
 
 **13.3 Bukti baca benar-benar menjaga.** Satu tes memanggil `GET /profile/:address?who=`
@@ -388,7 +402,7 @@ dan di fase ini taruhannya adalah kemampuan memalsukan tanda atas nama orang lai
 `GET /kecocokan` tanpa tanda tangan dan membuktikan ia MENOLAK, bukan mengembalikan daftar
 kosong.
 
-**13.4 Typehash lintas seluruh aplikasi.** Tes menuntut **delapan belas** `encodeType` unik
+**13.4 Typehash lintas seluruh aplikasi.** Tes menuntut **sembilan belas** `encodeType` unik
 di seluruh `packages/shared` — bukan hanya di dalam keluarga meet. Tabrakan lintas keluarga
 justru yang paling mungkin lolos, karena tidak ada satu berkas pun yang memuat semuanya. Tes
 ini juga menuntut ketiga tipe baru tidak punya pasangan di Solidity mana pun.
