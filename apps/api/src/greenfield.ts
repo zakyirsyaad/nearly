@@ -17,6 +17,65 @@ import { privateKeyToAccount } from "viem/accounts";
 import type { Hex } from "viem";
 import type { GreenfieldPort } from "./ports";
 
+/**
+ * Bentuk kembalian yang BENAR-BENAR dipakai SDK, dibaca langsung dari
+ * node_modules (@bnb-chain/greenfield-js-sdk@2.2.2) — bukan ditebak:
+ *
+ * - `object.uploadObject` mengembalikan `SpResponse<null>`
+ *   (`dist/cjs/types/types/sp/SuccessResponse.d.ts`):
+ *   `{ code: number | string; message?: string; statusCode?: number; ... }`.
+ *   Implementasinya (`putObject`) MENANGKAP galat HTTP dari storage provider
+ *   dan mengembalikannya sebagai `{ code: error.code || -1, message, statusCode }`.
+ *   Sukses adalah `{ code: 0, message: "Put object success.", statusCode }`.
+ *   Artinya: SP menolak unggahan TIDAK melempar. Kalau nilai kembaliannya
+ *   diabaikan, kegagalan hilang tanpa suara.
+ *
+ * - `tx.broadcast` mengembalikan `DeliverTxResponse` dari @cosmjs/stargate:
+ *   `{ code: number; transactionHash: string; rawLog?: string; ... }`, dan
+ *   dokumentasi kolomnya menyatakan "transaksi sukses jika dan hanya jika
+ *   code 0". Kegagalan CheckTx memang melempar, tapi kegagalan EKSEKUSI
+ *   (DeliverTx) kembali sebagai `code` bukan nol — dan `transactionHash`
+ *   tetap terisi, jadi langkah unggah berikutnya akan memakai hash
+ *   transaksi yang gagal.
+ */
+type SpHasil = { code: number | string; message?: string; statusCode?: number };
+type TxHasil = { code: number; transactionHash: string; rawLog?: string };
+
+/**
+ * `code` nol berarti sukses; apa pun selain itu kegagalan. Dilempar, bukan
+ * dikembalikan, karena satu-satunya pemanggil `upload` adalah
+ * `prosesUnggahGambar` yang menangkap lemparan dan menyetel `image_status`
+ * jadi `failed` (spec §8.2 dan §11.4). Tanpa lemparan ini, status `failed`
+ * yang menjadi tumpuan spec TIDAK PERNAH terjadi: unggahan ditandai `ready`
+ * dengan URL gambar yang tidak pernah ada.
+ */
+export function pastikanTxSukses(res: TxHasil | null | undefined, langkah: string): TxHasil {
+  if (!res) throw new Error(`Greenfield ${langkah} tidak mengembalikan hasil`);
+  if (res.code !== 0) {
+    throw new Error(
+      `Greenfield ${langkah} gagal: code=${res.code}`
+      + `${res.rawLog ? ` ${res.rawLog}` : ""}`,
+    );
+  }
+  return res;
+}
+
+/** Sama untuk balasan storage provider, yang `code`-nya bisa angka ATAU string. */
+export function pastikanSpSukses(res: SpHasil | null | undefined, langkah: string): SpHasil {
+  if (!res) throw new Error(`Greenfield ${langkah} tidak mengembalikan hasil`);
+  // Dibandingkan sebagai string supaya `0` dan `"0"` sama-sama lolos, dan
+  // code non-numerik (SP mengembalikan kode galat berupa teks) tidak
+  // diam-diam jadi NaN yang lolos perbandingan.
+  if (String(res.code) !== "0") {
+    throw new Error(
+      `Greenfield ${langkah} gagal: code=${res.code}`
+      + `${res.message ? ` ${res.message}` : ""}`
+      + `${res.statusCode ? ` (HTTP ${res.statusCode})` : ""}`,
+    );
+  }
+  return res;
+}
+
 export type GreenfieldConfig = {
   rpcUrl: string;
   chainId: string;
@@ -24,6 +83,72 @@ export type GreenfieldConfig = {
   spEndpoint: string;
   privateKey: Hex;
 };
+
+/**
+ * Cukup permukaan klien SDK yang dipakai langkah 2 dan 3. Diambil dengan
+ * `Pick` dari tipe klien asli, jadi klien sungguhan selalu memenuhi bentuk
+ * ini — dan tes bisa memberikan klien palsu tanpa menyentuh jaringan.
+ */
+export type KlienUnggah = {
+  object: Pick<ReturnType<typeof Client.create>["object"], "createObject" | "uploadObject">;
+};
+
+/**
+ * Langkah 2 dan 3 unggahan, dipisah dari `createGreenfield` supaya jalur
+ * penanganan kegagalannya bisa diuji tanpa jaringan maupun worker Reed-Solomon.
+ * Checksum diterima jadi, bukan dihitung di sini.
+ */
+export async function unggahLewatKlien(
+  client: KlienUnggah,
+  cfg: GreenfieldConfig,
+  alamat: string,
+  args: { objectName: string; mime: string; bytes: Uint8Array },
+  checksums: string[],
+): Promise<void> {
+  const { objectName, mime, bytes } = args;
+
+  // Langkah 2 — createObject: transaksi on-chain DI GREENFIELD, bukan BSC.
+  // Gasnya dibayar dari saldo akun ini di chain Greenfield.
+  const tx = await client.object.createObject({
+    bucketName: cfg.bucket,
+    objectName,
+    creator: alamat,
+    visibility: VisibilityType.VISIBILITY_TYPE_PUBLIC_READ,
+    contentType: mime,
+    redundancyType: RedundancyType.REDUNDANCY_EC_TYPE,
+    payloadSize: Long.fromInt(bytes.byteLength),
+    expectChecksums: checksums.map((c: string) => bytesFromBase64(c)),
+  });
+  const sim = await tx.simulate({ denom: "BNB" });
+  const res = await tx.broadcast({
+    denom: "BNB",
+    gasLimit: Number(sim?.gasLimit),
+    gasPrice: sim?.gasPrice || "5000000000",
+    payer: alamat,
+    granter: "",
+    privateKey: cfg.privateKey,
+  });
+
+  // Diperiksa SEBELUM langkah 3. Kegagalan eksekusi tidak melempar, dan
+  // `transactionHash` tetap terisi — meneruskannya ke uploadObject berarti
+  // mengunggah byte dengan hash transaksi yang gagal.
+  pastikanTxSukses(res, "createObject");
+
+  // Langkah 3 — byte-nya sendiri, lewat HTTP ke storage provider.
+  const unggah = await client.object.uploadObject(
+    {
+      bucketName: cfg.bucket,
+      objectName,
+      body: { name: objectName, type: mime, size: bytes.byteLength, content: Buffer.from(bytes) },
+      txnHash: res.transactionHash,
+    },
+    { type: "ECDSA", privateKey: cfg.privateKey },
+  );
+
+  // SP yang menolak TIDAK melempar — ia mengembalikan code bukan nol.
+  // Mengabaikannya berarti unggahan ditandai `ready` dengan URL yang kosong.
+  pastikanSpSukses(unggah, "uploadObject");
+}
 
 export function createGreenfield(cfg: GreenfieldConfig): GreenfieldPort {
   // Divalidasi saat pembuatan, bukan saat unggahan pertama: salah konfigurasi
@@ -70,38 +195,7 @@ export function createGreenfield(cfg: GreenfieldConfig): GreenfieldPort {
       const rs = new NodeAdapterReedSolomon();
       const checksums = await rs.encodeInSubWorker(bytes);
 
-      // Langkah 2 — createObject: transaksi on-chain DI GREENFIELD, bukan
-      // BSC. Gasnya dibayar dari saldo akun ini di chain Greenfield.
-      const tx = await client.object.createObject({
-        bucketName: cfg.bucket,
-        objectName,
-        creator: alamat,
-        visibility: VisibilityType.VISIBILITY_TYPE_PUBLIC_READ,
-        contentType: mime,
-        redundancyType: RedundancyType.REDUNDANCY_EC_TYPE,
-        payloadSize: Long.fromInt(bytes.byteLength),
-        expectChecksums: checksums.map((c: string) => bytesFromBase64(c)),
-      });
-      const sim = await tx.simulate({ denom: "BNB" });
-      const res = await tx.broadcast({
-        denom: "BNB",
-        gasLimit: Number(sim?.gasLimit),
-        gasPrice: sim?.gasPrice || "5000000000",
-        payer: alamat,
-        granter: "",
-        privateKey: cfg.privateKey,
-      });
-
-      // Langkah 3 — byte-nya sendiri, lewat HTTP ke storage provider.
-      await client.object.uploadObject(
-        {
-          bucketName: cfg.bucket,
-          objectName,
-          body: { name: objectName, type: mime, size: bytes.byteLength, content: Buffer.from(bytes) },
-          txnHash: res.transactionHash,
-        },
-        { type: "ECDSA", privateKey: cfg.privateKey },
-      );
+      await unggahLewatKlien(client, cfg, alamat, { objectName, mime, bytes }, checksums);
     },
   };
 }
