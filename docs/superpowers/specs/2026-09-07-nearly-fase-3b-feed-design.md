@@ -621,6 +621,12 @@ terbuka ke dompet Greenfield relayer.
 tertinggal berstatus `pending` selamanya. Penawarnya: statusnya terlihat jujur dan penulis
 bisa mencoba ulang dari UI.
 
+**"Mencoba ulang" berarti MEMILIH GAMBARNYA LAGI.** Byte gambar tidak pernah disimpan di
+mana pun kecuali badan permintaan yang gagal itu — Greenfield tidak menerimanya, justru
+karena itulah statusnya `failed` — dan layar feed tidak pernah memegangnya. Jadi tombol
+coba-ulang di kartu membuka pemilih gambar lalu melampirkan yang baru dipilih; ia tidak bisa
+dan tidak berpura-pura bisa mengulang unggahan yang sama sendiri.
+
 **11.5 Paginasi memberi peringkat ulang.** Jendela kandidat diperingkat utuh setiap
 permintaan lalu dipotong per halaman. Karena `kebaruan` terus meluruh, sebuah unggahan bisa
 bergeser antar halaman saat menggulir lama. Obatnya diketahui: bekukan peringkat per sesi di
