@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useLocalSearchParams } from "expo-router";
 import {
   Button, Keyboard, Pressable, ScrollView, StyleSheet, Text, TextInput, View,
@@ -6,10 +6,10 @@ import {
 import type { Address } from "viem";
 import { CONFIG } from "../../src/config";
 import { pesanGagal } from "../../src/errors";
-import { ApiError } from "../../src/http";
+import { ApiError, req } from "../../src/http";
 import { aksiTanda } from "../../src/meet-actions";
 import { kueriBuktiProfil } from "../../src/meet-api";
-import { meetErrorMessage } from "../../src/messages";
+import { meetErrorMessage, meetSuccessMessage } from "../../src/messages";
 import { createDevSigner } from "../../src/signer";
 import { SUGGESTED_TAGS, tierView } from "../../src/tier";
 import { fetchTrust, sendReport, sendVouch, type TrustResponse } from "../../src/trust-api";
@@ -17,6 +17,14 @@ import { fetchTrust, sendReport, sendVouch, type TrustResponse } from "../../src
 type Profile = {
   address: string; displayName: string; ens: string | null;
   txCount: number; connectionCount: number;
+  /**
+   * Angka publik (spec §8) — server selalu menyertakannya pada respons
+   * sukses, tanpa perlu bukti apa pun. Tetap ditandai opsional dan dirender
+   * dengan `!== undefined` (bukan `?? 0`): satu-satunya cara medan ini bisa
+   * benar-benar hilang adalah kalau `req` di bawah gagal dan badan JSON-nya
+   * bukan profil sama sekali — dan pada saat itu, `0` adalah karangan, bukan
+   * fakta dari server.
+   */
   inginBertemuCount?: number;
   /**
    * ABSEN (bukan `false`) kalau bukti baca gagal atau tidak dikirim — server
@@ -68,6 +76,17 @@ export default function ProfileScreen() {
   // seksi Vouch yang digerbangi `connected` — untuk pasangan yang belum
   // terkoneksi, pesan galatnya tidak akan pernah terlihat sama sekali.
   const [meetMessage, setMeetMessage] = useState<string | null>(null);
+  // Sedang menandai/mencabut — dipakai untuk menolak ketukan kedua sebelum
+  // yang pertama selesai (finding #5) dan untuk memberi tahu pengguna bahwa
+  // ketukannya sudah terdaftar, bukan diam saja.
+  const [meetBusy, setMeetBusy] = useState(false);
+
+  // Kegagalan MEMUAT profil (bukan kegagalan membuat bukti baca — itu
+  // ditangani secara terpisah di bawah dan tidak boleh menutup profil
+  // publik). Hanya diisi kalau permintaan profilnya sendiri gagal, supaya
+  // layar bisa menampilkan pesan dan tombol "Coba lagi" alih-alih macet di
+  // "Memuat…" selamanya (finding #1).
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   const [showVouchPicker, setShowVouchPicker] = useState(false);
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
@@ -79,20 +98,34 @@ export default function ProfileScreen() {
   const [reportBusy, setReportBusy] = useState(false);
   const [reportMessage, setReportMessage] = useState<string | null>(null);
 
-  useEffect(() => {
-    void (async () => {
+  const muatProfil = useCallback(async () => {
+    setLoadError(null);
+    // Bukti baca (LihatProfil) hanya disertakan kalau ada signer — tanpa
+    // itu server tetap membalas dengan angka publiknya saja, dan bendera
+    // sudahKutandai/salingMenandai memang absen (bukan false).
+    //
+    // Kegagalan MEMBUAT buktinya (mis. pengguna menolak permintaan tanda
+    // tangan di dompet sungguhan) ditangkap DI SINI, terpisah dari
+    // permintaan profilnya sendiri (finding #1) — endpoint ini publik, dan
+    // bukti hanya membuka bendera privat tambahan. Profil publik tidak
+    // boleh ikut gagal hanya karena tanda tangannya gagal.
+    let kueri = "";
+    if (signer && address) {
       try {
-        // Bukti baca (LihatProfil) hanya disertakan kalau ada signer — tanpa
-        // itu server tetap membalas dengan angka publiknya saja, dan bendera
-        // sudahKutandai/salingMenandai memang absen (bukan false).
-        const kueri = signer && address
-          ? `?${await kueriBuktiProfil(signer, address as Address)}`
-          : "";
-        const r = await fetch(`${CONFIG.apiUrl}/profile/${address}${kueri}`);
-        setP(await r.json());
-      } catch { /* profil tidak boleh ikut mati kalau bukti gagal dibuat */ }
-    })();
+        kueri = `?${await kueriBuktiProfil(signer, address as Address)}`;
+      } catch { /* lanjut sebagai pemanggil tanpa bukti, bukan gagal total */ }
+    }
+    try {
+      // `req` melempar ApiError kalau responsnya bukan 2xx (finding #3) —
+      // tanpa ini, badan galat dari server bisa lolos ke `setP` dan
+      // dirender seolah-olah itu profil sungguhan.
+      setP(await req<Profile>(`/profile/${address}${kueri}`));
+    } catch {
+      setLoadError("Profil gagal dimuat. Periksa koneksimu, lalu coba lagi.");
+    }
   }, [address, signer]);
+
+  useEffect(() => { void muatProfil(); }, [muatProfil]);
 
   useEffect(() => {
     if (!address) return;
@@ -158,19 +191,51 @@ export default function ProfileScreen() {
   }
 
   async function toggleTanda() {
-    if (!signer || !address) return;
+    if (!signer || !address || meetBusy) return;
+    // Dibersihkan di AWAL, bukan setelah `aksiTanda` berhasil (finding #6) —
+    // kalau tidak, pesan galat percobaan sebelumnya nongkrong di layar
+    // sepanjang percobaan berikutnya, termasuk selama request ini berjalan.
+    setMeetMessage(null);
+    setMeetBusy(true);
+    const akanMencabut = !!p?.sudahKutandai;
     try {
-      await aksiTanda(signer, address as Address, !!p?.sudahKutandai);
-      setMeetMessage(null);
-      // Muat ulang dari server, bukan menebak: angka dan bendera milik server.
-      const kueri = `?${await kueriBuktiProfil(signer, address as Address)}`;
-      setP(await (await fetch(`${CONFIG.apiUrl}/profile/${address}${kueri}`)).json());
+      await aksiTanda(signer, address as Address, akanMencabut);
     } catch (e) {
       setMeetMessage(e instanceof ApiError ? meetErrorMessage(e.code) : "Gagal menandai.");
+      setMeetBusy(false);
+      return;
+    }
+    // Tandanya SUDAH tersimpan di server pada titik ini. Kegagalan di bawah
+    // (memuat ulang) adalah kegagalan yang BERBEDA dari kegagalan menandai
+    // (finding #2) — memakai pesan "Gagal menandai." di sini akan
+    // membohongi pengguna tentang aksi yang justru berhasil.
+    try {
+      const kueri = `?${await kueriBuktiProfil(signer, address as Address)}`;
+      setP(await req<Profile>(`/profile/${address}${kueri}`));
+      // Kalimat "menandai"-nya SAMA PERSIS dengan yang diucapkan kartu feed
+      // untuk aksi yang sama (finding #7) — lihat meetSuccessMessage.
+      setMeetMessage(meetSuccessMessage(!akanMencabut));
+    } catch {
+      setMeetMessage(
+        "Tandanya tersimpan, tapi profil gagal dimuat ulang. Muat ulang layar ini untuk melihat angka terbaru.",
+      );
+    } finally {
+      setMeetBusy(false);
     }
   }
 
-  if (!p) return <View style={[s.flex, s.root]}><Text>Memuat…</Text></View>;
+  if (!p) {
+    // `loadError` hanya terisi kalau permintaan profilnya sendiri gagal
+    // (bukan kalau hanya pembuatan buktinya yang gagal) — lihat `muatProfil`.
+    // Tanpa cabang ini, kegagalan jaringan/nyata membekukan layar di
+    // "Memuat…" selamanya, tanpa pesan dan tanpa jalan keluar (finding #1).
+    return (
+      <View style={[s.flex, s.root]}>
+        <Text>{loadError ?? "Memuat…"}</Text>
+        {loadError && <Button title="Coba lagi" onPress={() => void muatProfil()} />}
+      </View>
+    );
+  }
 
   return (
     // Alasan laporan itu multiline, jadi tombol return menyisipkan baris baru
@@ -214,10 +279,16 @@ export default function ProfileScreen() {
       )}
 
       <View style={s.section}>
-        {/* Angka publik (spec §8): selalu ada, tidak butuh bukti apa pun. */}
-        <Text style={s.angka}>
-          {p.inginBertemuCount ?? 0} orang ingin bertemu dia
-        </Text>
+        {/*
+          Angka publik (spec §8): selalu ada pada respons sukses, tidak
+          butuh bukti apa pun. Diperiksa dengan `!== undefined`, BUKAN
+          dirender dengan `?? 0` (finding #3) — satu-satunya jalan medan ini
+          hilang adalah badan galat yang lolos sebagai profil, dan pada saat
+          itu "0 orang" adalah karangan, bukan angka dari server.
+        */}
+        {p.inginBertemuCount !== undefined ? (
+          <Text style={s.angka}>{p.inginBertemuCount} orang ingin bertemu dia</Text>
+        ) : null}
         {p.salingMenandai ? <Text style={s.saling}>Kalian saling ingin bertemu.</Text> : null}
         {/*
           Tombolnya hanya muncul kalau `sudahKutandai` TERDEFINISI — yaitu
@@ -226,7 +297,8 @@ export default function ProfileScreen() {
         */}
         {!isOwnProfile && p.sudahKutandai !== undefined ? (
           <Button
-            title={p.sudahKutandai ? "Batal ingin bertemu" : "Ingin bertemu"}
+            title={meetBusy ? "Mengirim…" : (p.sudahKutandai ? "Batal ingin bertemu" : "Ingin bertemu")}
+            disabled={meetBusy}
             onPress={() => void toggleTanda()}
           />
         ) : null}

@@ -80,6 +80,22 @@ export function meetErrorMessage(code: string): string {
 }
 
 /**
+ * Konfirmasi setelah `aksiTanda` TERSIMPAN di server. Kartu feed dan layar
+ * profil menandai orang yang sama lewat fungsi yang sama (`aksiTanda`) — kalau
+ * masing-masing mengarang kalimatnya sendiri, keduanya bisa diam-diam mulai
+ * mengajarkan hal yang berbeda tentang aksi yang sama. Disatukan di sini
+ * supaya hanya ada satu kalimat untuk tiap arah, dipakai oleh kedua layar.
+ *
+ * `sudahDitandai` adalah keadaan SETELAH toggle, bukan sebelum — `true`
+ * berarti aksinya baru saja MENANDAI, `false` berarti baru saja MENCABUT.
+ */
+export function meetSuccessMessage(sudahDitandai: boolean): string {
+  return sudahDitandai
+    ? "Ditandai. Kalau dia menandaimu balik, kalian akan saling tahu."
+    : "Dibatalkan. Dia tidak lagi tahu kamu menandainya.";
+}
+
+/**
  * Teks lencana kecocokan baru. `null` berarti tidak ada lencana sama sekali —
  * memamerkan "0" akan membuat beranda terasa seperti papan skor yang kosong,
  * padahal yang benar adalah tidak ada apa-apa untuk diberitahukan.

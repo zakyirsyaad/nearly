@@ -15,7 +15,9 @@ import {
 } from "../../src/feed-actions";
 import { aksiTanda } from "../../src/meet-actions";
 import { mimeGambarDiterima, PESAN_FORMAT_TIDAK_DIDUKUNG } from "../../src/gambar";
-import { alasanMuncul, feedErrorMessage, meetErrorMessage } from "../../src/messages";
+import {
+  alasanMuncul, feedErrorMessage, meetErrorMessage, meetSuccessMessage,
+} from "../../src/messages";
 
 export default function FeedScreen() {
   const signer = useMemo(
@@ -29,6 +31,11 @@ export default function FeedScreen() {
   // postId, bukan boolean, supaya konfirmasi satu kartu tidak menyalakan
   // konfirmasi kartu lain.
   const [konfirmasiHapus, setKonfirmasiHapus] = useState<string | null>(null);
+  // postId yang sedang dalam proses ditandai, atau null. Dipakai untuk
+  // mencegah dua ketukan beruntun mengirim dua permintaan tanda tangan
+  // sekaligus untuk kartu yang sama, dan untuk memberi tahu pengguna bahwa
+  // ketukannya sudah terdaftar (finding #5).
+  const [tandaiBusyId, setTandaiBusyId] = useState<string | null>(null);
 
   const muat = useCallback(async () => {
     try {
@@ -121,15 +128,22 @@ export default function FeedScreen() {
   }, "Gagal mengunggah gambar.");
 
   async function tandai(p: FeedPost) {
+    // Sudah ada permintaan untuk kartu ini yang belum selesai — abaikan
+    // ketukan berikutnya alih-alih mengirim tanda tangan kedua yang
+    // hasilnya bisa datang duluan atau belakangan tanpa urutan pasti.
+    if (tandaiBusyId === p.postId) return;
+    setTandaiBusyId(p.postId);
     try {
       // Layar feed tidak tahu apakah kamu sudah menandai orang ini — bendera
       // itu hanya keluar dengan bukti baca di layar profil. Jadi dari sini
       // tombolnya SELALU menandai, tidak pernah mencabut. Mencabut dilakukan
       // dari layar profil, tempat keadaannya diketahui.
       await aksiTanda(signer, p.author as Address, false);
-      setPesan("Ditandai. Kalau dia menandaimu balik, kalian akan saling tahu.");
+      setPesan(meetSuccessMessage(true));
     } catch (e) {
       setPesan(e instanceof ApiError ? meetErrorMessage(e.code) : "Gagal menandai.");
+    } finally {
+      setTandaiBusyId(null);
     }
   }
 
@@ -176,10 +190,24 @@ export default function FeedScreen() {
                   penulisnya sudah kamu tandai (bendera itu butuh bukti baca,
                   hanya tersedia di layar profil), jadi tombol ini SELALU
                   menandai, tidak pernah mencabut.
+
+                  Disembunyikan untuk `milikku`: menandai diri sendiri hanya
+                  bisa gagal (server menolak dengan `tandai_diri`), jadi
+                  menawarkannya di sini adalah tombol yang menjanjikan aksi
+                  yang tidak bisa ia lakukan (finding #4) — kelas kebohongan
+                  yang sama yang ingin dihindari fase ini.
                 */}
-                <Pressable onPress={() => void tandai(p)} hitSlop={8}>
-                  <Text style={s.tombol}>Ingin bertemu</Text>
-                </Pressable>
+                {!milikku && (
+                  <Pressable
+                    onPress={() => void tandai(p)}
+                    hitSlop={8}
+                    disabled={tandaiBusyId === p.postId}
+                  >
+                    <Text style={s.tombol}>
+                      {tandaiBusyId === p.postId ? "Menandai…" : "Ingin bertemu"}
+                    </Text>
+                  </Pressable>
+                )}
 
                 {milikku && (
                   <Pressable
