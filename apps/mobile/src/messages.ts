@@ -63,6 +63,18 @@ export function feedErrorMessage(code: string): string {
   return FEED_MESSAGES[code] ?? "Gagal. Coba lagi sebentar.";
 }
 
+const MEET_MESSAGES: Record<string, string> = {
+  expired: "Permintaannya sudah kedaluwarsa. Coba lagi.",
+  bad_signature: "Tanda tangan tidak cocok. Coba lagi.",
+  tandai_diri: "Kamu tidak bisa menandai dirimu sendiri.",
+  butuh_bukti: "Perlu masuk sebagai dirimu untuk melihat ini.",
+  invalid_body: "Ada isian yang belum benar.",
+};
+
+export function meetErrorMessage(code: string): string {
+  return MEET_MESSAGES[code] ?? "Gagal. Coba lagi sebentar.";
+}
+
 /**
  * Baris alasan di setiap kartu feed (spec §10.3). Spec induk §8 memegang
  * prinsip bahwa peringkat tidak pernah tampil telanjang — selalu bersama
