@@ -8,6 +8,9 @@ import { createDevSigner } from "../../src/signer";
 import { ApiError } from "../../src/http";
 import { postImage, postPost } from "../../src/feed-api";
 import { feedErrorMessage } from "../../src/messages";
+import {
+  mimeGambarDiterima, PESAN_FORMAT_TIDAK_DIDUKUNG, type MimeGambar,
+} from "../../src/gambar";
 
 const MAKS = 500;
 
@@ -18,7 +21,8 @@ export default function TulisScreen() {
     [],
   );
   const [teks, setTeks] = useState("");
-  const [gambar, setGambar] = useState<{ uri: string; base64: string; mime: string } | null>(null);
+  const [gambar, setGambar] =
+    useState<{ uri: string; base64: string; mime: MimeGambar } | null>(null);
   const [sibuk, setSibuk] = useState(false);
   const [pesan, setPesan] = useState<string | null>(null);
 
@@ -33,7 +37,18 @@ export default function TulisScreen() {
     });
     const aset = hasil.assets?.[0];
     if (hasil.canceled || !aset?.base64) return;
-    const mime = aset.mimeType === "image/png" ? "image/png" : "image/jpeg";
+
+    // DITOLAK, bukan dilabeli ulang. Bentuk lamanya memaksa apa pun yang
+    // bukan PNG menjadi "image/jpeg", sehingga HEIC atau WebP dari galeri
+    // naik berlabel JPEG dan gambarnya tidak akan pernah tampil. `mime`
+    // diikat tanda tangan LampirGambar justru supaya tidak bisa
+    // diselewengkan — kliennya sendiri tidak boleh jadi yang menyelewengkan.
+    const mime = mimeGambarDiterima(aset.mimeType);
+    if (!mime) {
+      setPesan(PESAN_FORMAT_TIDAK_DIDUKUNG);
+      return;
+    }
+    setPesan(null);
     setGambar({ uri: aset.uri, base64: aset.base64, mime });
   }
 
