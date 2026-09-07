@@ -102,28 +102,45 @@ export function terlihat(c: FeedCandidate, viewer: Address | null): boolean {
  * Tahap 5 (spec §6.6). Batas bawah 1 koneksi WAJIB: posting terbuka untuk
  * siapa pun dan akun bot punya nol koneksi, jadi syarat "kurang dari 3" saja
  * akan menjadikan slot ini jalur cepat bagi bot.
+ *
+ * Ini PEMINDAHAN, bukan penyalinan. Kandidat pendatang diambil dari luar
+ * top-K (indeks ≥ FEED_LIMIT), dicabut dari posisi aslinya, lalu disisipkan
+ * di 5/12/20. Hasilnya permutasi dari masukan: himpunan dan panjangnya
+ * persis sama.
+ *
+ * Bentuk lama menyalin pendatang ke depan lalu memangkas ekornya. Selama
+ * feed hanya satu halaman itu tidak terlihat, tapi paginasi membuatnya
+ * merusak: unggahan yang terdorong keluar hilang dari SEMUA halaman, dan
+ * pendatang yang disalin muncul dua kali. Spec §11.5 mengakui pergeseran
+ * urutan akibat kebaruan yang meluruh — ia tidak mengakui yang ini.
+ *
+ * Karena slotnya berada di indeks < FEED_LIMIT, pendatang dengan sendirinya
+ * hanya muncul di halaman pertama, tanpa perlu rute tahu-menahu soal halaman.
  */
 export function sisipkanPendatang(
-  utama: FeedCandidate[], sisa: FeedCandidate[], nowMs: number,
+  peringkat: FeedCandidate[], nowMs: number,
 ): FeedCandidate[] {
-  const layak = sisa.filter(
-    (c) => c.authorConnections >= 1
-      && c.authorConnections < 3
-      && nowMs - c.createdAtMs < UMUR_PENDATANG_MS,
-  );
-  if (layak.length === 0) return utama;
+  const layak = peringkat
+    .slice(FEED_LIMIT)
+    .filter(
+      (c) => c.authorConnections >= 1
+        && c.authorConnections < 3
+        && nowMs - c.createdAtMs < UMUR_PENDATANG_MS,
+    )
+    .slice(0, SLOT_PENDATANG.length);
+  if (layak.length === 0) return peringkat;
 
-  const panjangAsli = utama.length;
-  const hasil = [...utama];
+  const dipromosikan = new Set(layak.map((c) => c.postId));
+  const hasil = peringkat.filter((c) => !dipromosikan.has(c.postId));
+
   let i = 0;
   for (const posisi of SLOT_PENDATANG) {
     if (i >= layak.length) break;
-    if (posisi >= hasil.length) break;
+    if (posisi > hasil.length) break;
     hasil.splice(posisi, 0, layak[i]!);
     i += 1;
   }
-  // Sisipan menggeser yang terbawah keluar; panjang halaman tetap.
-  return hasil.slice(0, panjangAsli);
+  return hasil;
 }
 
 function keRow(c: FeedCandidate, spEndpoint: string, viewer: Address | null): FeedRow {
@@ -175,9 +192,12 @@ export function rankFeed(
     })
     .sort(bandingkan);
 
-  const utama = akhir.slice(0, limit).map((x) => x.c);
-  const sisa = akhir.slice(limit).map((x) => x.c);
-
-  return sisipkanPendatang(utama, sisa, opts.nowMs)
+  // Slot pendatang disisipkan ke SELURUH peringkat lebih dulu, baru
+  // dipotong. `limit` di sini hanya membatasi panjang keluaran; batas top-K
+  // untuk kelayakan pendatang tetap FEED_LIMIT (spec §6.6), bukan `limit`.
+  // Kalau keduanya dicampur, jendela pendatang ikut berubah tiap halaman —
+  // dan itulah yang dulu menjatuhkan serta menggandakan unggahan.
+  return sisipkanPendatang(akhir.map((x) => x.c), opts.nowMs)
+    .slice(0, limit)
     .map((c) => keRow(c, opts.spEndpoint, opts.viewer));
 }

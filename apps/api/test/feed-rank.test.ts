@@ -146,15 +146,60 @@ describe("sisipkanPendatang (spec §6.6)", () => {
   const utama = () => Array.from({ length: FEED_LIMIT }, (_, i) =>
     kandidat({ author: `0x${String(i).padStart(40, "0")}` as Address, authorConnections: 9 }));
 
+  /** Top-K diikuti ekor; pendatang hanya diambil dari ekor. */
+  const daftar = (ekor: FeedCandidate[]) => [...utama(), ...ekor];
+
   it("menyisipkan pendatang layak di posisi yang disediakan", () => {
     const baru = kandidat({ authorConnections: 1, createdAtMs: NOW - JAM });
-    const hasil = sisipkanPendatang(utama(), [baru], NOW);
+    const hasil = sisipkanPendatang(daftar([baru]), NOW);
     expect(hasil[SLOT_PENDATANG[0]!]!.postId).toBe(baru.postId);
   });
 
-  it("panjang hasil tidak berubah — pendatang menggeser yang terbawah", () => {
-    const baru = kandidat({ authorConnections: 2, createdAtMs: NOW });
-    expect(sisipkanPendatang(utama(), [baru], NOW)).toHaveLength(FEED_LIMIT);
+  /**
+   * INVARIAN PALING PENTING dari perbaikan ini, dan yang menjadi merah kalau
+   * penyisipan kembali menyalin-lalu-memangkas: hasilnya wajib PERMUTASI
+   * masukan. Tidak ada unggahan yang boleh hilang, tidak ada yang boleh
+   * digandakan — kalau salah satu terjadi, paginasi ikut menjatuhkan dan
+   * menggandakan unggahan (spec §11.5 tidak mengakui itu).
+   */
+  it("hasilnya permutasi dari masukan — tanpa yang hilang, tanpa duplikat", () => {
+    const baru = [
+      kandidat({ authorConnections: 1, createdAtMs: NOW }),
+      kandidat({ authorConnections: 2, createdAtMs: NOW }),
+      kandidat({ authorConnections: 1, createdAtMs: NOW - JAM }),
+    ];
+    const masuk = daftar(baru);
+    const hasil = sisipkanPendatang(masuk, NOW);
+
+    expect(hasil).toHaveLength(masuk.length);
+    const id = hasil.map((c) => c.postId);
+    expect(new Set(id).size).toBe(id.length);
+    expect(new Set(id)).toEqual(new Set(masuk.map((c) => c.postId)));
+  });
+
+  // Slotnya semua berada di bawah FEED_LIMIT, jadi pendatang tidak pernah
+  // bisa muncul di halaman kedua dan seterusnya.
+  it("pendatang selalu mendarat di dalam FEED_LIMIT pertama", () => {
+    const baru = kandidat({ authorConnections: 1, createdAtMs: NOW });
+    const hasil = sisipkanPendatang(daftar([baru]), NOW);
+    expect(hasil.slice(0, FEED_LIMIT).map((c) => c.postId)).toContain(baru.postId);
+  });
+
+  // Kandidat yang SUDAH lolos top-K tidak butuh slot — ia sudah terlihat.
+  it("kandidat di dalam top-K tidak diambil sebagai pendatang", () => {
+    const dalam = utama();
+    dalam[20] = kandidat({ authorConnections: 1, createdAtMs: NOW });
+    expect(sisipkanPendatang(dalam, NOW).map((c) => c.postId))
+      .toEqual(dalam.map((c) => c.postId));
+  });
+
+  it("paling banyak tiga pendatang dipromosikan", () => {
+    const baru = Array.from({ length: 6 }, () =>
+      kandidat({ authorConnections: 1, createdAtMs: NOW }));
+    const hasil = sisipkanPendatang(daftar(baru), NOW);
+    const diPromosi = hasil.slice(0, FEED_LIMIT)
+      .filter((c) => baru.some((b) => b.postId === c.postId));
+    expect(diPromosi).toHaveLength(SLOT_PENDATANG.length);
   });
 
   /**
@@ -165,25 +210,25 @@ describe("sisipkanPendatang (spec §6.6)", () => {
    */
   it("penulis NOL koneksi tidak pernah mendapat slot", () => {
     const bot = kandidat({ authorConnections: 0, createdAtMs: NOW });
-    const hasil = sisipkanPendatang(utama(), [bot], NOW);
-    expect(hasil.map((c) => c.postId)).not.toContain(bot.postId);
+    const hasil = sisipkanPendatang(daftar([bot]), NOW);
+    expect(hasil.slice(0, FEED_LIMIT).map((c) => c.postId)).not.toContain(bot.postId);
   });
 
   it("penulis dengan 3 koneksi atau lebih tidak mendapat slot", () => {
     const mapan = kandidat({ authorConnections: 3, createdAtMs: NOW });
-    const hasil = sisipkanPendatang(utama(), [mapan], NOW);
-    expect(hasil.map((c) => c.postId)).not.toContain(mapan.postId);
+    const hasil = sisipkanPendatang(daftar([mapan]), NOW);
+    expect(hasil.slice(0, FEED_LIMIT).map((c) => c.postId)).not.toContain(mapan.postId);
   });
 
   it("unggahan lebih tua dari 48 jam tidak mendapat slot", () => {
     const basi = kandidat({ authorConnections: 1, createdAtMs: NOW - 49 * JAM });
-    const hasil = sisipkanPendatang(utama(), [basi], NOW);
-    expect(hasil.map((c) => c.postId)).not.toContain(basi.postId);
+    const hasil = sisipkanPendatang(daftar([basi]), NOW);
+    expect(hasil.slice(0, FEED_LIMIT).map((c) => c.postId)).not.toContain(basi.postId);
   });
 
   it("tanpa kandidat layak, hasilnya tidak berubah sama sekali", () => {
     const asal = utama();
-    expect(sisipkanPendatang(asal, [], NOW).map((c) => c.postId))
+    expect(sisipkanPendatang(asal, NOW).map((c) => c.postId))
       .toEqual(asal.map((c) => c.postId));
   });
 });

@@ -406,6 +406,18 @@ dengan fixture tetap, dan bisa dijelaskan dalam satu kalimat.
 Kalau tidak ada kandidat yang memenuhi syarat, slot itu diisi hasil peringkat biasa —
 posisinya tidak pernah dibiarkan kosong.
 
+**Slot pendatang hanya muncul di halaman pertama.** Ketiga posisinya (5, 12, 20) berada di
+dalam 30 pertama, dan penyisipannya adalah **pemindahan**: kandidat pendatang dicabut dari
+posisi aslinya di peringkat penuh lalu ditaruh di slot. Hasilnya permutasi dari peringkat
+penuh — himpunan dan panjangnya tidak berubah — sehingga halaman kedua dan seterusnya tidak
+pernah melihat pendatang yang sama untuk kedua kalinya, dan tidak ada unggahan yang
+terdorong keluar dari semua halaman.
+
+Bentuk yang salah, dan yang sempat terpasang: menyalin pendatang ke depan lalu memangkas
+ekor halaman. Selama feed hanya satu halaman itu tidak terlihat; begitu ada halaman kedua,
+ia menjatuhkan unggahan yang terdorong keluar dan menggandakan pendatang yang disalin —
+sesuatu yang §11.5 tidak pernah akui.
+
 ## 7. Penyaring Visibilitas
 
 Tahap **terpisah** dari penilaian, dijalankan sebelum skor dihitung. Sebuah unggahan dibuang
@@ -604,6 +616,18 @@ bisa mencoba ulang dari UI.
 permintaan lalu dipotong per halaman. Karena `kebaruan` terus meluruh, sebuah unggahan bisa
 bergeser antar halaman saat menggulir lama. Obatnya diketahui: bekukan peringkat per sesi di
 cache.
+
+**Yang diakui di sini hanya PERGESERAN URUTAN, dan hanya karena waktu berjalan.** Batas ini
+TIDAK mencakup unggahan yang hilang dari semua halaman, maupun unggahan yang muncul di dua
+halaman sekaligus. Keduanya adalah cacat, bukan konsekuensi. Ujinya sederhana dan dikunci
+tes: dengan `nowMs` **beku**, dua halaman berurutan wajib memuat setiap unggahan tepat satu
+kali. Kalau jam berhenti dan sesuatu masih hilang atau menggandakan diri, peluruhan kebaruan
+tidak punya kaitan dengannya.
+
+Konsekuensi teknisnya pada implementasi: seluruh jendela kandidat diperingkat **satu kali**
+dengan batas yang sama untuk setiap halaman, lalu halaman dipotong dari hasil itu. Batas
+peringkat tidak boleh ikut berubah mengikuti nomor halaman, dan penyisipan slot pendatang
+(§6.6) harus berupa **pemindahan**, bukan penyalinan-lalu-pemangkasan.
 
 **11.6 Jendela kandidat dibatasi 14 hari dan 500 unggahan.** Di luar itu tidak pernah ikut
 diperingkat, betapapun tinggi skornya.

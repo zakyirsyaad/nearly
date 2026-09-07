@@ -163,16 +163,22 @@ export function feedRoutes(deps: FeedDeps) {
       viewer,
     });
 
-    // Peringkat dihitung ulang tiap permintaan lalu dipotong per halaman.
-    // Konsekuensinya diakui di spec §11.5: unggahan bisa bergeser antar
-    // halaman saat menggulir lama, karena `kebaruan` terus meluruh.
+    // SELURUH jendela kandidat diperingkat sekali, lalu satu halaman dipotong
+    // darinya. Bukan `limit: offset + FEED_LIMIT`: kalau limit ikut berubah
+    // per halaman, jendela kandidat slot pendatang ikut bergeser, dan
+    // unggahan bisa hilang dari semua halaman sekaligus muncul dua kali.
+    //
+    // Yang diakui spec §11.5 hanyalah PERGESERAN URUTAN akibat `kebaruan`
+    // yang terus meluruh antar permintaan — bukan unggahan yang hilang atau
+    // duplikat. Slot pendatang berada di indeks 5/12/20, jadi ia hanya
+    // pernah muncul di halaman pertama (spec §6.6).
     const semua = rankFeed(kandidat, {
       nowMs: deps.nowMs(),
       viewer,
       spEndpoint: deps.greenfield.spEndpoint,
-      limit: offset + FEED_LIMIT,
+      limit: MAKS_KANDIDAT,
     });
-    const posts = semua.slice(offset);
+    const posts = semua.slice(offset, offset + FEED_LIMIT);
 
     return c.json({
       posts,

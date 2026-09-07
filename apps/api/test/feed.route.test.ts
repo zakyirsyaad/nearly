@@ -224,6 +224,68 @@ describe("POST /posts/:id/image — batas di tingkat HTTP", () => {
   });
 });
 
+/**
+ * Spec §11.5 mengakui PERGESERAN URUTAN akibat kebaruan yang meluruh. Ia
+ * TIDAK mengakui unggahan yang hilang dari semua halaman, maupun unggahan
+ * yang muncul dua kali. Dengan `nowMs` beku, tidak ada peluruhan sama sekali,
+ * jadi kedua hal itu tidak punya pembelaan.
+ */
+describe("GET /feed — paginasi dengan jam beku", () => {
+  // 33 kandidat berskor sama; urutannya ditentukan pemecah seri postId, jadi
+  // peringkatnya deterministik tanpa bergantung pada rumus skor.
+  function tigaPuluhTiga(): FeedCandidate[] {
+    return Array.from({ length: 33 }, (_, i) => kandidat({
+      postId: `0x${String(i + 10).padStart(64, "0")}` as Hex,
+      author: `0x${String(i + 10).padStart(40, "0")}` as Address,
+      // Satu-satunya yang memenuhi syarat slot pendatang, dan ia berada di
+      // luar 30 besar — persis kondisi yang menyalakan penyisipan.
+      authorConnections: i === 31 ? 1 : 9,
+      createdAtMs: NOW,
+      likeCount: 0,
+      authorRatio: 0.1,
+    }));
+  }
+
+  async function halaman(s: FeedStore, cursor?: string) {
+    const res = await app(s).request(`/feed${cursor ? `?cursor=${cursor}` : ""}`);
+    expect(res.status).toBe(200);
+    return await res.json() as { posts: { postId: string }[]; cursor: string | null };
+  }
+
+  it("tidak ada unggahan yang hilang maupun muncul dua kali antar dua halaman", async () => {
+    const semua = tigaPuluhTiga();
+    const s = store({ listCandidates: vi.fn(async () => semua) });
+
+    const h1 = await halaman(s);
+    expect(h1.posts).toHaveLength(30);
+    expect(h1.cursor).toBe("30");
+
+    const h2 = await halaman(s, h1.cursor!);
+
+    const terkumpul = [...h1.posts, ...h2.posts].map((p) => p.postId);
+
+    // Tanpa duplikat.
+    expect(new Set(terkumpul).size).toBe(terkumpul.length);
+
+    // Tanpa yang hilang: 33 kandidat, 33 baris terkumpul.
+    expect(new Set(terkumpul)).toEqual(new Set(semua.map((c) => c.postId)));
+  });
+
+  it("slot pendatang hanya muncul di halaman pertama", async () => {
+    const semua = tigaPuluhTiga();
+    const pendatang = semua[31]!.postId;
+    const s = store({ listCandidates: vi.fn(async () => semua) });
+
+    const h1 = await halaman(s);
+    const h2 = await halaman(s, "30");
+
+    // Dipromosikan ke slot pertama (indeks 5) di halaman satu...
+    expect(h1.posts[5]!.postId).toBe(pendatang);
+    // ...dan TIDAK muncul lagi di halaman dua.
+    expect(h2.posts.map((p) => p.postId)).not.toContain(pendatang);
+  });
+});
+
 describe("GET /feed", () => {
   it("mengembalikan baris terperingkat tanpa menuntut who", async () => {
     const s = store({ listCandidates: vi.fn(async () => [kandidat()]) });
