@@ -1,5 +1,5 @@
 import type { Address, Hex } from "viem";
-import { recoverHapusPostSigner, recoverPostSigner } from "@nearly/shared";
+import { recoverHapusPostSigner, recoverLikeSigner, recoverPostSigner } from "@nearly/shared";
 import type { FeedDeps } from "./ports";
 
 export type FeedFailure =
@@ -84,5 +84,50 @@ export async function deletePost(
   if (post.deleted) return { ok: true, value: undefined };
 
   await deps.feed.markDeleted(input.postId);
+  return { ok: true, value: undefined };
+}
+
+export type LikeInput = {
+  postId: Hex; who: Address; suka: boolean; expiresAt: bigint; sig: Hex;
+};
+
+export async function setLike(input: LikeInput, deps: FeedDeps): Promise<FeedResult<void>> {
+  if (sudahLewat(deps, input.expiresAt)) return fail({ code: "expired", httpStatus: 410 });
+
+  const post = await deps.feed.getPost(input.postId);
+  // Unggahan terhapus diperlakukan sama dengan tidak ada: menghapus berarti
+  // menghapus, termasuk bagi orang yang menyimpan tautannya.
+  if (!post || post.deleted) return fail({ code: "post_not_found", httpStatus: 404 });
+
+  // `suka` dari MASUKAN, bukan nilai karangan server. Ini yang membuat satu
+  // tanda tangan tidak bisa dipakai dua arah.
+  const signer = await recoverLikeSigner(
+    { postId: input.postId, who: input.who, suka: input.suka, expiresAt: input.expiresAt },
+    input.sig,
+    deps.verifyingContract,
+  );
+  if (!samaAlamat(signer, input.who)) {
+    return fail({ code: "bad_signature", httpStatus: 401 });
+  }
+
+  await deps.feed.setLike(input.postId, input.who, input.suka);
+  return { ok: true, value: undefined };
+}
+
+export type ReportPostInput = { postId: Hex; reporter: Address; reason: string };
+
+/**
+ * Laporan TIDAK bertanda tangan, berbeda dari suka. Suka mengklaim identitas
+ * sebagai izin ("aku yang menyukai"); laporan sekadar suara, dan primary key
+ * (post_id, reporter) sudah menutup pelaporan berulang. Sama seperti
+ * POST /report di Fase 2.
+ */
+export async function reportPost(
+  input: ReportPostInput, deps: FeedDeps,
+): Promise<FeedResult<void>> {
+  const post = await deps.feed.getPost(input.postId);
+  if (!post || post.deleted) return fail({ code: "post_not_found", httpStatus: 404 });
+
+  await deps.feed.addReport(input.postId, input.reporter, input.reason);
   return { ok: true, value: undefined };
 }
