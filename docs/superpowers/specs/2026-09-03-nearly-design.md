@@ -202,11 +202,14 @@ bukan jalur utama tindak lanjut.
 Setiap profil menampilkan **angka persis berapa orang yang ingin bertemu dia**, terlihat oleh
 semua orang. Ini social proof yang mudah dibaca dan mendorong orang datang ke event.
 
-- **Hanya bisa naik.** Tidak ada yang bisa menurunkan angka orang lain — konsisten dengan
-  prinsip di §6.
-- **Tap dari akun ber-trust nol tidak dihitung.** Angkanya tetap persis dan tetap publik;
-  ini semata supaya angka tidak bisa digelembungkan bot. Bot tidak bisa membangun graf, tapi
-  bot bisa menekan tombol — jadi penyaring ini perlu.
+- **Tidak ada yang bisa menurunkan angka orang lain** — konsisten dengan prinsip di §6.
+  Mencabut tandamu SENDIRI menurunkan angka, dan itu disengaja: kalau tanda permanen,
+  menandai berarti menyerahkan keputusan pengungkapan identitasmu kepada orang lain tanpa
+  batas waktu (Fase 3c §2.1).
+- **Semua tap dihitung; penyaring trust-nol TIDAK dipasang.** Keputusan pemilik project di
+  Fase 3c, menimpa rancangan awal di sini. Akibatnya angka ini bisa digelembungkan bot —
+  bot tidak bisa membangun graf, tapi bot bisa menekan tombol. Konsekuensi dan penawarnya
+  dicatat di `2026-09-07-nearly-fase-3c-ingin-bertemu-design.md` §11.1.
 - **Default anonim.** Yang ditandai tidak tahu siapa yang menandainya.
 - **Kalau saling menandai → keduanya terungkap dan diberi tahu.** Tidak creepy karena
   timbal-balik, dan ini dorongan paling kuat untuk benar-benar bertemu.
