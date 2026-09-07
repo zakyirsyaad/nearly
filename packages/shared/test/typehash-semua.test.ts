@@ -16,7 +16,8 @@ function encodeType(nama: string, fields: readonly Field[]): string {
 /**
  * Menyebar kelima keluarga ke SATU objek. Kalau dua keluarga memakai nama
  * tipe yang sama, penyebaran ini diam-diam menelan salah satunya dan
- * jumlahnya turun — itulah yang diperiksa asersi jumlah di bawah.
+ * jumlahnya turun — itulah yang diperiksa tes "SEMUA tidak kehilangan tipe"
+ * di bawah, sengaja dipisah dari tes jumlah per-keluarga.
  *
  * Tabrakan lintas keluarga justru yang paling mungkin lolos, karena tidak ada
  * satu berkas pun yang memuat semuanya.
@@ -30,11 +31,21 @@ const JUMLAH_TIPE = 19;
 const SOL_DIR = fileURLToPath(new URL("../../contracts/src/", import.meta.url));
 
 describe("typehash seluruh aplikasi", () => {
-  it("tidak ada nama tipe yang bertabrakan lintas keluarga", () => {
+  // Dipisah dari tes "SEMUA tidak kehilangan tipe" di bawah dengan sengaja.
+  // Vitest berhenti di `expect` pertama yang gagal dalam satu `it` — kalau
+  // kedua asersi ini digabung, tipe baru yang KEBETULAN bertabrakan nama
+  // dengan tipe di keluarga lain (jumlah per-keluarga naik, tapi SEMUA diam
+  // di tempat karena spread menelan salah satunya) akan berhenti di asersi
+  // ini duluan, dan asersi SEMUA di tes berikutnya tidak pernah sempat
+  // membuktikan ada tabrakan nama tersembunyi di baliknya.
+  it("jumlah tipe per keluarga sesuai jumlah yang diharapkan", () => {
     const total = Object.keys(HANDSHAKE_TYPES).length + Object.keys(VOUCH_TYPES).length
       + Object.keys(EVENT_TYPES).length + Object.keys(FEED_TYPES).length
       + Object.keys(MEET_TYPES).length;
     expect(total).toBe(JUMLAH_TIPE);
+  });
+
+  it("SEMUA tidak kehilangan tipe akibat tabrakan nama lintas keluarga", () => {
     expect(Object.keys(SEMUA)).toHaveLength(JUMLAH_TIPE);
   });
 
