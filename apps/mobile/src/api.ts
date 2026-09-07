@@ -1,28 +1,8 @@
 import type { Hex } from "viem";
-import { CONFIG } from "./config";
-
-export class ApiError extends Error {
-  constructor(public code: string, public status: number, public reason?: string) {
-    super(`${code}${reason ? ` (${reason})` : ""}`);
-  }
-}
-
-async function post<T>(path: string, body: unknown): Promise<T> {
-  const res = await fetch(`${CONFIG.apiUrl}${path}`, {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify(body),
-  });
-  const json = (await res.json().catch(() => ({}))) as Record<string, unknown>;
-  if (!res.ok) {
-    throw new ApiError(
-      typeof json.code === "string" ? json.code : "unknown",
-      res.status,
-      typeof json.reason === "string" ? json.reason : undefined,
-    );
-  }
-  return json as T;
-}
+import { postJson, ApiError } from "./http";
+// Di-re-export supaya impor `{ ApiError } from "./api"` yang sudah ada di
+// app/scan.tsx dan layar lain tidak perlu disentuh.
+export { ApiError };
 
 export type OfferBody = {
   initiator: string; nonce: string; expiresAt: string;
@@ -34,5 +14,5 @@ export type AcceptBody = {
   sigAccept: string; cell: string; atMs: number;
 };
 
-export const postOffer = (b: OfferBody) => post<{ ok: true }>("/handshake/offer", b);
-export const postAccept = (b: AcceptBody) => post<{ txHash: Hex }>("/handshake/accept", b);
+export const postOffer = (b: OfferBody) => postJson<{ ok: true }>("/handshake/offer", b);
+export const postAccept = (b: AcceptBody) => postJson<{ txHash: Hex }>("/handshake/accept", b);

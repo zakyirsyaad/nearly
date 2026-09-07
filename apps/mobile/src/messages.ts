@@ -47,3 +47,18 @@ export function eventErrorMessage(code: string, reason?: string): string {
   }
   return EVENT_MESSAGES[code] ?? "Gagal. Coba lagi.";
 }
+
+const FEED_MESSAGES: Record<string, string> = {
+  post_exists: "Unggahan dengan id itu sudah ada. Coba tulis ulang.",
+  post_not_found: "Unggahan ini sudah tidak ada.",
+  not_author: "Hanya penulisnya yang bisa mengubah unggahan ini.",
+  image_slot_taken: "Unggahan ini sudah punya gambar. Satu gambar per unggahan.",
+  image_too_large: "Gambarnya terlalu besar. Maksimal 2 MB.",
+  bad_signature: "Tanda tangan tidak cocok. Coba lagi.",
+  expired: "Permintaannya sudah kedaluwarsa. Coba lagi.",
+  invalid_body: "Ada isian yang belum benar.",
+};
+
+export function feedErrorMessage(code: string): string {
+  return FEED_MESSAGES[code] ?? "Gagal. Coba lagi sebentar.";
+}

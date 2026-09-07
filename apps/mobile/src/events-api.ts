@@ -1,6 +1,5 @@
 import type { Hex } from "viem";
-import { CONFIG } from "./config";
-import { ApiError } from "./api";
+import { req } from "./http";
 
 export type EventSummary = {
   eventId: Hex;
@@ -21,19 +20,6 @@ export type EventSummary = {
   sudahRsvp?: boolean;
   sudahCheckIn?: boolean;
 };
-
-async function req<T>(path: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(`${CONFIG.apiUrl}${path}`, init);
-  const json = (await res.json().catch(() => ({}))) as Record<string, unknown>;
-  if (!res.ok) {
-    throw new ApiError(
-      typeof json.code === "string" ? json.code : "unknown",
-      res.status,
-      typeof json.reason === "string" ? json.reason : undefined,
-    );
-  }
-  return json as T;
-}
 
 const postJson = (path: string, body: unknown) =>
   req<Record<string, unknown>>(path, {
