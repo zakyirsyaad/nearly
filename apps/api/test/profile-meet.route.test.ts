@@ -133,6 +133,33 @@ describe("GET /profile/:address — bendera pribadi", () => {
   });
 
   /**
+   * Ini persis replay yang dicegah field `target` di LihatProfil. Bukti ini
+   * sah di segala hal lain — penanda tangan benar (aku), `who` benar, belum
+   * kedaluwarsa — dan HANYA `target`-nya yang beda dari profil yang diminta.
+   * `target` juga disertakan di query (menyamai pesan yang ditandatangani)
+   * untuk membuktikan rute TIDAK PERNAH memakai `target` bawaan pemanggil
+   * sendiri — ia wajib memakai alamat dari parameter rute (`addr`). Kalau
+   * rute merekonstruksi pesan pakai `q.target`, satu tanda tangan ini akan
+   * membuka bendera pribadi di profil siapa pun, cukup dengan menyertakan
+   * `target` yang cocok dengan yang ditandatangani di query string.
+   */
+  it("bukti untuk target lain TIDAK berlaku di profil ini — replay silang ditolak", async () => {
+    const TARGET_LAIN = "0x000000000000000000000000000000000000cafe" as Address;
+    const pesan = { target: TARGET_LAIN, who: aku.address, expiresAt: EXP };
+    const sig = await aku.signTypedData(lihatProfilTypedData(pesan, KONTRAK));
+    const q = new URLSearchParams({
+      who: aku.address, expiresAt: EXP.toString(), sig, target: TARGET_LAIN,
+    });
+    const res = await app(meetStore({ adaTanda: vi.fn(async () => true) }))
+      .request(`/profile/${TARGET}?${q.toString()}`);
+    expect(res.status).toBe(200);
+    const json = await res.json() as Record<string, unknown>;
+    expect(json.inginBertemuCount).toBe(7);
+    expect(json.sudahKutandai).toBeUndefined();
+    expect(json.salingMenandai).toBeUndefined();
+  });
+
+  /**
    * Rute profil tidak boleh GAGAL untuk orang asing yang membuka tautan
    * (spec §5.1). Ini sengaja berbeda dari GET /kecocokan yang menolak 403.
    */
@@ -140,5 +167,22 @@ describe("GET /profile/:address — bendera pribadi", () => {
     const res = await app(meetStore()).request(await buktiBaca({ sig: "0xbukan" }));
     expect(res.status).toBe(200);
     expect((await res.json() as Record<string, unknown>).inginBertemuCount).toBe(7);
+  });
+
+  /**
+   * `0x` + 130 digit hex valid secara panjang tapi rusak isinya — jalur viem
+   * yang berbeda dari `"0xbukan"` di atas (recovery `v` tidak valid, bukan
+   * gagal parse hex). Bentuk tanda tangan yang sama persis pernah lolos jadi
+   * bug produksi 500 di Task 8 fase ini (recover yang tak terbungkus
+   * try/catch). Di sini juga harus tetap 200 dengan angka publik saja.
+   */
+  it("tanda tangan panjang sah tapi isinya rusak tetap 200, bukan galat", async () => {
+    const sigRusak = ("0x" + "9".repeat(130)) as Hex;
+    const res = await app(meetStore()).request(await buktiBaca({ sig: sigRusak }));
+    expect(res.status).toBe(200);
+    const json = await res.json() as Record<string, unknown>;
+    expect(json.inginBertemuCount).toBe(7);
+    expect(json.sudahKutandai).toBeUndefined();
+    expect(json.salingMenandai).toBeUndefined();
   });
 });
