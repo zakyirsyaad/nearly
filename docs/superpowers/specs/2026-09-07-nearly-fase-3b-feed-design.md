@@ -351,9 +351,16 @@ identik dengan penonton bernol koneksi. Yang berbeda hanya di respons: medan `ho
 20** — disisihkan untuk penulis yang
 memenuhi semuanya:
 
-- punya kurang dari 3 koneksi,
+- punya **minimal 1 dan kurang dari 3 koneksi**,
 - unggahannya berumur di bawah 48 jam,
 - unggahannya tidak lolos top-K.
+
+**Batas bawah 1 itu wajib, bukan kosmetik.** Posting terbuka untuk siapa pun (§2.1), dan
+akun bot punya nol koneksi. Syarat "kurang dari 3" saja akan menjadikan setiap bot memenuhi
+syarat, sehingga slot yang dipasang untuk menolong pendatang tulus berubah menjadi jalur
+cepat ke posisi tetap di feed. Bot bisa menekan tombol; bot tidak bisa membangun graf — jadi
+"pernah bertemu setidaknya satu orang" adalah garis yang memisahkan keduanya, sama seperti
+penyaring host tanpa koneksi di discovery Fase 3a.
 
 Kandidat diurutkan dengan skor yang sama dan diambil dari atas. Deterministik, bisa diuji
 dengan fixture tetap, dan bisa dijelaskan dalam satu kalimat.
