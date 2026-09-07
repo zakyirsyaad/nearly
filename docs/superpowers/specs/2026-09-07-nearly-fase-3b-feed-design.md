@@ -229,15 +229,32 @@ lama.
 
 ## 5. Tanda Tangan
 
-Dua tipe EIP-712 baru di `packages/shared/src/feed.ts`:
+Empat tipe EIP-712 baru di `packages/shared/src/feed.ts`:
 
 ```
-Post { postId: bytes32, author: address, body: string, expiresAt: uint64 }
-Like { postId: bytes32, who: address, suka: bool, expiresAt: uint64 }
+Post         { postId: bytes32, author: address, body: string, expiresAt: uint64 }
+Like         { postId: bytes32, who: address, suka: bool, expiresAt: uint64 }
+HapusPost    { postId: bytes32, author: address, expiresAt: uint64 }
+LampirGambar { postId: bytes32, author: address, mime: string, expiresAt: uint64 }
 ```
 
-Keduanya **tidak pernah naik ke chain**, dan karena itu tidak boleh punya pasangan typehash
-di Solidity mana pun — sama seperti `Rsvp` dan `LihatEvent` di Fase 3a.
+**Kenapa empat, bukan satu `Post` yang dipakai ulang.** Menghapus dan melampirkan gambar
+sama-sama membuktikan "aku penulis unggahan ini" — menggoda untuk memakai ulang tanda tangan
+`Post` yang sama. Itu lubang: tanda tangan yang seseorang buat untuk **memposting** akan sah
+pula sebagai perintah **menghapus**, sehingga siapa pun yang menangkapnya — dari log akses,
+proxy, atau badan permintaan — bisa menghapus unggahan orang itu dalam masa berlaku
+`expiresAt`.
+
+Ini kelas kesalahan yang sama dengan Ruling 23 di Fase 3a, ketika tipe `Rsvp` sempat dipakai
+sebagai bukti baca dan menjadi kredensial tulis yang bisa diputar ulang. Nama tipe yang
+berbeda menghasilkan digest yang berbeda, dan itulah satu-satunya hal yang memisahkan ketiga
+perintah tersebut.
+
+`LampirGambar` ikut mengikat `mime` supaya tanda tangan untuk melampirkan JPEG tidak bisa
+dipakai melampirkan tipe berkas lain.
+
+Keempatnya **tidak pernah naik ke chain**, dan karena itu tidak boleh punya pasangan
+typehash di Solidity mana pun — sama seperti `Rsvp` dan `LihatEvent` di Fase 3a.
 
 **Kenapa tetap ditandatangani.** Alasan identik dengan `Rsvp`: tanpa tanda tangan, `author`
 dan `who` datang telanjang dari body request, dan siapa pun bisa memposting atau menyukai
@@ -246,9 +263,9 @@ atas nama orang lain.
 **Domain** memakai `ConnectionRegistry` sebagai `verifyingContract`. Jangkar identitas feed
 adalah graf pertemuan, dan `ConnectionRegistry` adalah kontrak yang memegang graf itu.
 
-**Penjaga Ruling 23.** Nama tipe `Post` dan `Like` unik di seluruh aplikasi, jadi digest-nya
-berbeda dari `Accept`, `Vouch`, `Rsvp`, `LihatEvent`, dan setiap tipe lain — tidak ada tanda
-tangan yang bisa menyeberang ke jalur tulis lain. Ini dikunci tes typehash (§13.2).
+**Penjaga Ruling 23.** Keempat nama tipe unik di seluruh aplikasi, jadi digest-nya berbeda
+dari `Accept`, `Vouch`, `Rsvp`, `LihatEvent`, dan satu sama lain — tidak ada tanda tangan
+yang bisa menyeberang ke jalur tulis lain. Ini dikunci tes typehash (§13.2).
 
 **Satu batas jujur.** Tanda tangan `suka: true` yang tertangkap masih bisa diputar ulang
 untuk menyukai lagi setelah dibatalkan, selama `expiresAt` belum lewat. Sama seperti setiap
@@ -443,7 +460,7 @@ Kunci penandatangannya adalah `RELAYER_PRIVATE_KEY` yang sudah ada.
 | `POST /posts/:id/image` | Memicu unggah Greenfield asinkron, status jadi `pending` |
 | `POST /posts/:id/like` | Bertanda tangan `Like`, medan `suka` true/false |
 | `POST /posts/:id/report` | Menyembunyikan unggahan, bukan menghukum orang |
-| `POST /posts/:id/delete` | Bertanda tangan penulisnya |
+| `POST /posts/:id/delete` | Bertanda tangan `HapusPost` milik penulisnya |
 | `GET /feed?who=&cursor=` | Feed terperingkat; `who` opsional |
 
 `:id` di path **wajib** sama dengan `postId` di badan permintaan, dibandingkan
@@ -464,8 +481,8 @@ tidak sepadan untuk satu berkas.
   cukup untuk mematikan server.
 - Hanya diterima kalau `image_status` bernilai `none` atau `failed`. Nilai `failed` itulah
   yang membuat tombol coba-ulang di UI (§11.4) bisa bekerja.
-- Hanya penulis unggahan yang boleh memanggilnya, dibuktikan tanda tangan `Post` atas
-  `postId` yang sama.
+- Hanya penulis unggahan yang boleh memanggilnya, dibuktikan tanda tangan `LampirGambar`
+  atas `postId` dan `mime` yang sama.
 
 ### 9.2 Bentuk respons `GET /feed`
 
