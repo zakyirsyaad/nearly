@@ -25,6 +25,19 @@ function deps(): TrustDeps {
       ensName: vi.fn(async () => "ghost.eth"),
       txCount: vi.fn(async () => 42),
     },
+    // Stub Fase 3c: tidak diuji langsung di sini (lihat
+    // profile-meet.route.test.ts), hanya supaya bentuk TrustDeps lengkap.
+    meet: {
+      setTanda: vi.fn(async () => {}),
+      hitungTanda: vi.fn(async () => 0),
+      adaTanda: vi.fn(async () => false),
+      tandaOleh: vi.fn(async () => []),
+      tandaKe: vi.fn(async () => []),
+      cocokDilihatAtMs: vi.fn(async () => null),
+      setCocokDilihat: vi.fn(async () => {}),
+      profilRingkas: vi.fn(async () => new Map()),
+      hitungTandaBanyak: vi.fn(async () => new Map()),
+    },
     // Stub Fase 2: tidak dipakai langsung oleh test profil ini, hanya supaya
     // bentuk TrustDeps lengkap untuk onChanged() yang dipicu createApp.
     trust: {
@@ -78,6 +91,7 @@ describe("GET /profile/:address", () => {
       ens: "ghost.eth",
       txCount: 42,
       connectionCount: 1,
+      inginBertemuCount: 0,
     });
   });
 

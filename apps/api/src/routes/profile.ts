@@ -1,8 +1,50 @@
 import { Hono } from "hono";
-import { isAddress, type Address } from "viem";
-import type { GateDeps } from "../ports";
+import { isAddress, type Address, type Hex } from "viem";
+import { recoverLihatProfilSigner } from "@nearly/shared";
+import type { GateDeps, MeetStore } from "../ports";
 
-export function profileRoutes(deps: GateDeps) {
+type ProfileMeetDeps = {
+  meet: MeetStore;
+  verifyingContract: Address;
+  nowMs: () => number;
+};
+
+/**
+ * Mengembalikan alamat pemanggil HANYA kalau bukti LihatProfil-nya sah untuk
+ * `target` ini. Selain itu null.
+ *
+ * Tanda tangan cacat BUKAN galat (spec §5.1): rute profil tidak boleh gagal
+ * untuk orang asing yang membuka tautan. Yang terjadi hanya bendera tidak
+ * keluar. Ini sengaja berbeda dari GET /kecocokan yang menolak 403 — di sana
+ * yang dikembalikan adalah identitas orang lain.
+ *
+ * Tipe LihatProfil, BUKAN InginBertemu: yang kedua adalah perintah TULIS.
+ */
+async function pemanggilTerbukti(
+  q: Record<string, string>, target: Address, deps: ProfileMeetDeps,
+): Promise<Address | null> {
+  const { who, expiresAt, sig } = q;
+  if (!who || !expiresAt || !sig) return null;
+  if (!isAddress(who)) return null;
+  if (!/^\d+$/.test(expiresAt)) return null;
+  if (deps.nowMs() > Number(expiresAt) * 1000) return null;
+
+  try {
+    const signer = await recoverLihatProfilSigner(
+      { target, who: who as Address, expiresAt: BigInt(expiresAt) },
+      sig as Hex,
+      deps.verifyingContract,
+    );
+    if (signer.toLowerCase() !== who.toLowerCase()) return null;
+    return who.toLowerCase() as Address;
+  } catch {
+    // Tanda tangan cacat bentuknya membuat viem melempar. Itu tetap "tidak
+    // terbukti", bukan 500.
+    return null;
+  }
+}
+
+export function profileRoutes(deps: GateDeps & ProfileMeetDeps) {
   const r = new Hono();
 
   r.get("/connections/:address", async (c) => {
@@ -41,7 +83,23 @@ export function profileRoutes(deps: GateDeps) {
       deps.profiles.countConnections(addr).catch(() => 0),
     ]);
 
-    return c.json({ address: addr, displayName, ens, txCount, connectionCount });
+    // Angka publik (spec induk §7.6): selalu keluar, tanpa bukti apa pun.
+    const inginBertemuCount = await deps.meet.hitungTanda(addr).catch(() => 0);
+
+    const dasar = { address: addr, displayName, ens, txCount, connectionCount, inginBertemuCount };
+
+    const pemanggil = await pemanggilTerbukti(c.req.query(), addr, deps);
+    if (!pemanggil) return c.json(dasar);
+
+    const [sudahKutandai, diaMenandaiku] = await Promise.all([
+      deps.meet.adaTanda(addr, pemanggil),
+      deps.meet.adaTanda(pemanggil, addr),
+    ]);
+    return c.json({
+      ...dasar,
+      sudahKutandai,
+      salingMenandai: sudahKutandai && diaMenandaiku,
+    });
   });
 
   return r;
