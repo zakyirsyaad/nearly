@@ -5,7 +5,8 @@ import {
   CreateEventRequestSchema, recoverLihatEventSigner, RsvpRequestSchema,
 } from "@nearly/shared";
 import { acceptCheckIn, createEvent, rsvp, submitCheckInOffer } from "../event-gate";
-import type { EventDeps, EventRecord } from "../ports";
+import { irisan } from "../meet-rank";
+import type { EventDeps, EventRecord, MeetStore } from "../ports";
 
 const DISCOVERY_LIMIT = 50;
 
@@ -71,7 +72,9 @@ async function pemanggilTerbukti(
   }
 }
 
-export function eventRoutes(deps: EventDeps & { onChanged: () => Promise<void> }) {
+export function eventRoutes(
+  deps: EventDeps & { onChanged: () => Promise<void>; meet: MeetStore },
+) {
   const r = new Hono();
 
   r.post("/events", async (c) => {
@@ -129,11 +132,28 @@ export function eventRoutes(deps: EventDeps & { onChanged: () => Promise<void> }
 
     const addr = await pemanggilTerbukti(c.req.query(), ev.eventId, deps);
     if (addr) {
-      const [sudahRsvp, sudahCheckIn] = await Promise.all([
+      const [sudahRsvp, sudahCheckIn, tandaKe, tandaOleh, rsvp] = await Promise.all([
         deps.events.hasRsvp(ev.eventId, addr),
         deps.events.hasCheckIn(ev.eventId, addr),
+        deps.meet.tandaKe(addr),
+        deps.meet.tandaOleh(addr),
+        deps.events.rsvpAddresses(ev.eventId),
       ]);
-      return c.json({ ...eventToJson(ev), ...summary, sudahRsvp, sudahCheckIn });
+
+      // Spec §4.3: ANGKA, bukan daftar. Daftar akan membocorkan siapa
+      // menandai siapa, dan itu justru yang dijaga spec induk §7.6.
+      //
+      // Keduanya di dalam cabang TERBUKTI: tanpa itu, siapa pun bisa
+      // menanyakan "berapa orang yang ingin bertemu Alice akan datang ke
+      // acara ini", dan mengulanginya lintas banyak acara akan menyingkap
+      // pola tanda Alice tanpa satu nama pun terlihat (spec §5.3).
+      const penandaHadir = irisan(tandaKe.map((t) => t.address), rsvp);
+      const kutandaiHadir = irisan(tandaOleh.map((t) => t.address), rsvp);
+
+      return c.json({
+        ...eventToJson(ev), ...summary,
+        sudahRsvp, sudahCheckIn, penandaHadir, kutandaiHadir,
+      });
     }
 
     return c.json({ ...eventToJson(ev), ...summary });

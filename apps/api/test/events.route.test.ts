@@ -5,6 +5,7 @@ import {
   cellToBytes32, createEventTypedData, lihatEventTypedData, rsvpTypedData,
 } from "@nearly/shared";
 import { eventRoutes } from "../src/routes/events";
+import type { MeetStore } from "../src/ports";
 
 const NOW = 1_700_000_000_000;
 const NOW_SEC = BigInt(Math.floor(NOW / 1000));
@@ -17,6 +18,18 @@ const EVENT_ID = `0x${"1".repeat(64)}` as Hex;
 // benar-benar berarti — EVENT_ID sendiri semua digit, toUpperCase() atasnya
 // tidak mengubah apa-apa.
 const CASE_ID = `0x${"a".repeat(64)}` as Hex;
+
+/** Stub MeetStore — rute event tidak menandai apa pun, cuma membaca dua metodenya. */
+function meetStore(): MeetStore {
+  return {
+    setTanda: vi.fn(async () => {}), hitungTanda: vi.fn(async () => 0),
+    adaTanda: vi.fn(async () => false),
+    tandaOleh: vi.fn(async () => []), tandaKe: vi.fn(async () => []),
+    cocokDilihatAtMs: vi.fn(async () => null), setCocokDilihat: vi.fn(async () => {}),
+    profilRingkas: vi.fn(async () => new Map()),
+    hitungTandaBanyak: vi.fn(async () => new Map()),
+  };
+}
 
 function app(over: Record<string, unknown> = {}) {
   return eventRoutes({
@@ -32,6 +45,7 @@ function app(over: Record<string, unknown> = {}) {
       hasCheckIn: vi.fn(async () => false),
       recordCheckIn: vi.fn(async () => {}),
       attendanceSummary: vi.fn(async () => ({ rsvps: 3, checkins: 2, rsvpBelumHadir: 1 })),
+      rsvpAddresses: vi.fn(async () => []),
     },
     attendance: {
       submitCreateEvent: vi.fn(async (): Promise<Hex> => "0xtx" as Hex),
@@ -41,6 +55,7 @@ function app(over: Record<string, unknown> = {}) {
     attendanceContract: CONTRACT,
     nowMs: () => NOW,
     onChanged: vi.fn(async () => {}),
+    meet: meetStore(),
     ...over,
   } as never);
 }
@@ -80,6 +95,7 @@ function eventsWithFlags() {
     attendanceSummary: vi.fn(async () => ({ rsvps: 1, checkins: 1, rsvpBelumHadir: 0 })),
     hasRsvp: vi.fn(async () => true),
     hasCheckIn: vi.fn(async () => true),
+    rsvpAddresses: vi.fn(async () => []),
   };
 }
 
