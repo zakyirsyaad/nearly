@@ -139,9 +139,10 @@ balasan di feed (spec 3b §2.2).
 
 Layar detail event menampilkan dua angka, keduanya hanya untuk pemanggil yang terbukti:
 
-- **Berapa orang yang menandaimu sudah RSVP di acara ini** — irisan antara himpunan
-  penandamu dan himpunan RSVP acara.
-- **Berapa orang yang kamu tandai sudah RSVP di acara ini** — irisan sebaliknya.
+- **Berapa orang yang menandaimu sudah RSVP di acara ini** (`penandaHadir`) — irisan antara
+  himpunan penandamu dan himpunan RSVP acara.
+- **Berapa orang yang kamu tandai sudah RSVP di acara ini** (`kutandaiHadir`) — irisan
+  sebaliknya.
 
 Inilah yang spec induk §7.7 sebut sebagai alasan strategis seluruh fitur event: *"Luma
 memberi tahu kamu apa acaranya. Nearly memberi tahu siapa yang akan ada di sana dan kenapa
@@ -149,6 +150,22 @@ kamu harus datang."*
 
 Angka, bukan daftar. Daftar akan membocorkan siapa yang menandai siapa, dan itu justru yang
 dijaga §7.6.
+
+**Perbaikan yang ditemukan saat implementasi (bukan di rancangan awal fase ini):** cabang
+publik `GET /events/:id` sudah membocorkan jumlah RSVP event kepada siapa pun. Di event kecil
+— dua orang RSVP, misalnya — pemanggil yang tahu dirinya salah satu dari keduanya bisa
+membaca `penandaHadir: 1` sebagai "peserta satunya menandaiku", mengidentifikasi penandanya
+lewat eliminasi murni, tanpa pernah menandai balik. Itu tepat fakta "X menandai Y" yang dijaga
+spec induk §7.6, disusun ulang dari sebuah angka — dan seluruh premis fase ini adalah bahwa
+pengungkapan butuh KEDUA pihak.
+
+Perbaikannya: `penandaHadir` hanya disertakan saat jumlah RSVP event ≥ `PENANDA_HADIR_MIN_RSVP`
+(konstanta di `apps/api/src/routes/events.ts`, nilainya 5). Di bawah ambang itu kuncinya
+**dihilangkan sama sekali** dari respons — bukan `0`, bukan `null` — supaya ketiadaan angka
+tidak sendirinya jadi sinyal. `kutandaiHadir` sengaja **tidak** diberi ambang: ia hanya
+mencerminkan tanda pemanggil sendiri, jadi tidak membocorkan apa pun yang belum diketahuinya.
+
+Ini mengurangi risiko, bukan menghapusnya — lihat residunya di §11.7.
 
 ## 5. Tanda Tangan
 
@@ -370,6 +387,18 @@ bisa diuji tanpa perangkat asli.
 **11.6 Setiap muat layar profil butuh satu tanda tangan.** Itu ongkos bukti baca §5.1. Layar
 profil sudah punya signer, jadi tidak ada gesekan yang terlihat pengguna — tapi ia tetap satu
 operasi kriptografi per muat.
+
+**11.7 `penandaHadir` masih bisa disimpulkan lewat eliminasi di atas ambangnya.** Ditemukan
+saat implementasi (Task 10), bukan di rancangan awal fase ini — lihat §4.3. `GET /events/:id`
+menyembunyikan `penandaHadir` di bawah `PENANDA_HADIR_MIN_RSVP` (5) RSVP karena jumlah RSVP
+event itu sendiri sudah publik, dan di event kecil `penandaHadir: 1` cukup untuk menyingkap
+penanda lewat eliminasi murni — tanpa pemanggil pernah menandai balik. **Ambang ini mengurangi
+paparan, bukan menghapusnya:** pada jumlah peserta N berapa pun, `penandaHadir === N − 1`
+tetap berarti SEMUA peserta lain menandaimu, sesuatu yang bisa disimpulkan pemanggil sendiri
+tanpa bantuan siapa pun. Menaikkan ambang memperkecil peluang kebetulan seperti itu, tidak
+menutupnya — sama seperti k-anonimitas di mana saja: ia butuh kerumunan yang cukup besar,
+bukan jaminan matematis mutlak. Obat yang lebih kuat (mis. menyembunyikan jumlah RSVP itu
+sendiri) ditolak untuk fase ini karena mengubah kontrak publik yang sudah dipakai fitur lain.
 
 ## 12. Penundaan Sadar
 
