@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link } from "expo-router";
 import { StyleSheet, Text, View } from "react-native";
 import { CONFIG } from "../src/config";
@@ -19,7 +19,14 @@ export default function Home() {
     );
   }
 
-  const signer = createDevSigner(CONFIG.devPrivateKey, CONFIG.verifyingContract);
+  const signer = useMemo(
+    // Tanpa useMemo, createDevSigner mengembalikan objek baru tiap render —
+    // referensi signer berubah, efek di bawah jadi dianggap punya dependensi
+    // baru dan menembak ulang, dobel tanda tangan & fetch (lihat komentar di
+    // dalam useEffect). Sama seperti kecocokan.tsx.
+    () => createDevSigner(CONFIG.devPrivateKey!, CONFIG.verifyingContract),
+    [],
+  );
 
   const [baru, setBaru] = useState(0);
 
@@ -41,6 +48,8 @@ export default function Home() {
     })();
   }, [signer]);
 
+  const lencana = teksLencana(baru);
+
   return (
     <View style={s.root}>
       <Text style={s.h1}>Nearly</Text>
@@ -52,7 +61,7 @@ export default function Home() {
       <Link href="/events" style={s.link}>Acara</Link>
       <Link href="/feed" style={s.link}>Feed</Link>
       <Link href="/kecocokan" style={s.link}>
-        Saling ingin bertemu{teksLencana(baru) ? `  ${teksLencana(baru)}` : ""}
+        Saling ingin bertemu{lencana ? `  ${lencana}` : ""}
       </Link>
     </View>
   );
