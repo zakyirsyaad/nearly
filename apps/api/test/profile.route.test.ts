@@ -36,7 +36,6 @@ function deps(): TrustDeps {
       cocokDilihatAtMs: vi.fn(async () => null),
       setCocokDilihat: vi.fn(async () => {}),
       profilRingkas: vi.fn(async () => new Map()),
-      hitungTandaBanyak: vi.fn(async () => new Map()),
     },
     // Stub Fase 2: tidak dipakai langsung oleh test profil ini, hanya supaya
     // bentuk TrustDeps lengkap untuk onChanged() yang dipicu createApp.

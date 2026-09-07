@@ -3,6 +3,33 @@ import type { Address } from "viem";
 import { potongKelompok } from "./feed-store";
 import type { MeetStore, ProfilRingkas, Tanda } from "./ports";
 
+/**
+ * Batas baris eksplisit untuk `tandaOleh`/`tandaKe`.
+ *
+ * Tanpa ini keduanya bergantung pada `db-max-rows` PostgREST — angka yang
+ * tidak terlihat di kode ini dan bisa berubah tanpa satu baris pun ikut
+ * berubah di sini. Diamnya itu yang berbahaya: `tandaOleh` yang terpotong
+ * MENJATUHKAN kecocokan sungguhan dari `GET /kecocokan`, jadi dua orang yang
+ * sudah saling menandai tidak pernah diberi tahu — kegagalan senyap tepat
+ * pada janji utama fitur ini.
+ *
+ * Batasnya dibuat eksplisit supaya keterpotongan bisa DILIHAT, bukan ditebak:
+ * kalau jumlah baris yang kembali persis sama dengan batas ini, ada
+ * kemungkinan besar masih ada baris lain di belakangnya dan itu dicatat
+ * sebagai peringatan. Nilainya jauh di atas jumlah tanda yang masuk akal
+ * untuk satu orang, jadi peringatan ini semestinya tidak pernah muncul —
+ * kalau muncul, ia menandai bahwa paginasi sungguhan sudah dibutuhkan.
+ */
+const BATAS_TANDA = 1000;
+
+function peringatkanKalauTerpotong(arah: string, alamat: string, jumlah: number) {
+  if (jumlah < BATAS_TANDA) return;
+  console.warn(
+    `${arah} untuk ${alamat} mencapai batas ${BATAS_TANDA} baris — daftar tanda`
+    + " kemungkinan terpotong dan kecocokan bisa hilang. Paginasi dibutuhkan.",
+  );
+}
+
 export type TandaDbRow = {
   target: string;
   who: string;
@@ -69,16 +96,22 @@ export function createMeetStore(db: SupabaseClient): MeetStore {
 
     async tandaOleh(who) {
       const { data, error } = await db.from("ingin_bertemu")
-        .select("target, who, created_at").eq("who", who.toLowerCase());
+        .select("target, who, created_at").eq("who", who.toLowerCase())
+        .limit(BATAS_TANDA);
       if (error) throw new Error(`baca tanda keluar gagal: ${error.message}`);
-      return (data ?? []).map((r) => rowToTanda(r as TandaDbRow, "target"));
+      const baris = data ?? [];
+      peringatkanKalauTerpotong("tandaOleh", who.toLowerCase(), baris.length);
+      return baris.map((r) => rowToTanda(r as TandaDbRow, "target"));
     },
 
     async tandaKe(target) {
       const { data, error } = await db.from("ingin_bertemu")
-        .select("target, who, created_at").eq("target", target.toLowerCase());
+        .select("target, who, created_at").eq("target", target.toLowerCase())
+        .limit(BATAS_TANDA);
       if (error) throw new Error(`baca tanda masuk gagal: ${error.message}`);
-      return (data ?? []).map((r) => rowToTanda(r as TandaDbRow, "who"));
+      const baris = data ?? [];
+      peringatkanKalauTerpotong("tandaKe", target.toLowerCase(), baris.length);
+      return baris.map((r) => rowToTanda(r as TandaDbRow, "who"));
     },
 
     async cocokDilihatAtMs(who) {
@@ -128,30 +161,6 @@ export function createMeetStore(db: SupabaseClient): MeetStore {
       const keluar = new Map<string, ProfilRingkas>();
       for (const a of unik) {
         keluar.set(a, { displayName: nama.get(a) ?? "", tier: tier.get(a) ?? 0 });
-      }
-      return keluar;
-    },
-
-    /**
-     * Sama seperti profilRingkas: dipotong per kelompok, bukan satu `.in()`
-     * dengan seluruh daftar target sekaligus.
-     */
-    async hitungTandaBanyak(targets) {
-      const unik = [...new Set(targets.map((a) => a.toLowerCase()))];
-      if (unik.length === 0) return new Map();
-
-      const kelompok = potongKelompok(unik);
-      const hasil = await Promise.all(kelompok.map((bagian) =>
-        db.from("ingin_bertemu").select("target").in("target", bagian)));
-
-      const keluar = new Map<string, number>();
-      for (const a of unik) keluar.set(a, 0);
-      for (const r of hasil) {
-        if (r.error) throw new Error(`hitung tanda banyak gagal: ${r.error.message}`);
-        for (const baris of (r.data ?? []) as { target: string }[]) {
-          const t = baris.target.toLowerCase();
-          keluar.set(t, (keluar.get(t) ?? 0) + 1);
-        }
       }
       return keluar;
     },

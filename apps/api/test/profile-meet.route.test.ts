@@ -22,7 +22,6 @@ function meetStore(over: Partial<MeetStore> = {}): MeetStore {
     cocokDilihatAtMs: vi.fn(async () => null),
     setCocokDilihat: vi.fn(async () => {}),
     profilRingkas: vi.fn(async () => new Map()),
-    hitungTandaBanyak: vi.fn(async () => new Map()),
     ...over,
   };
 }
@@ -58,6 +57,35 @@ describe("GET /profile/:address — angka publik", () => {
     const res = await app(meetStore()).request(`/profile/${TARGET}`);
     expect(res.status).toBe(200);
     expect(await res.json()).toMatchObject({ inginBertemuCount: 7 });
+  });
+
+  /**
+   * Store mati BUKAN "nol orang". Layar profil mencetak angka ini sebagai
+   * "0 orang ingin bertemu dia" — klaim faktual tentang orang lain, lahir
+   * dari store yang sedang tersendat. Klien sudah merender ketiadaan kunci
+   * ini dengan benar (tidak menampilkan apa-apa), jadi kegagalan harus
+   * MENGHILANGKAN kuncinya, bukan mengarang nol.
+   */
+  it("kunci HILANG kalau store gagal, bukan jadi 0", async () => {
+    const s = meetStore({
+      hitungTanda: vi.fn(async () => { throw new Error("store mati"); }),
+    });
+    const res = await app(s).request(`/profile/${TARGET}`);
+    expect(res.status).toBe(200);
+    const json = await res.json() as Record<string, unknown>;
+    expect(Object.prototype.hasOwnProperty.call(json, "inginBertemuCount")).toBe(false);
+    expect(json.inginBertemuCount).toBeUndefined();
+    // Sisa profil publiknya tetap keluar — kegagalan satu angka tidak boleh
+    // menjatuhkan seluruh layar.
+    expect(json.address).toBe(TARGET.toLowerCase());
+    expect(json.connectionCount).toBe(3);
+  });
+
+  it("0 sungguhan tetap keluar sebagai 0", async () => {
+    const res = await app(meetStore({ hitungTanda: vi.fn(async () => 0) }))
+      .request(`/profile/${TARGET}`);
+    const json = await res.json() as Record<string, unknown>;
+    expect(json.inginBertemuCount).toBe(0);
   });
 
   it("medan lama tidak berubah", async () => {

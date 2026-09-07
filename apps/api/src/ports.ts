@@ -305,8 +305,6 @@ export type MeetStore = {
   cocokDilihatAtMs(who: Address): Promise<number | null>;
   setCocokDilihat(who: Address, atMs: number): Promise<void>;
   profilRingkas(addresses: Address[]): Promise<Map<string, ProfilRingkas>>;
-  /** Hitungan tanda untuk BANYAK target sekaligus, dipotong per kelompok. */
-  hitungTandaBanyak(targets: Address[]): Promise<Map<string, number>>;
 };
 
 /**
@@ -324,7 +322,7 @@ export type MeetStore = {
  */
 export const METODE_MEET_STORE = [
   "setTanda", "hitungTanda", "adaTanda", "tandaOleh", "tandaKe",
-  "cocokDilihatAtMs", "setCocokDilihat", "profilRingkas", "hitungTandaBanyak",
+  "cocokDilihatAtMs", "setCocokDilihat", "profilRingkas",
 ] as const satisfies readonly (keyof MeetStore)[];
 
 type SisaMetodeMeetStore = Exclude<keyof MeetStore, (typeof METODE_MEET_STORE)[number]>;

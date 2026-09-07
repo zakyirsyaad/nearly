@@ -83,10 +83,24 @@ export function profileRoutes(deps: GateDeps & ProfileMeetDeps) {
       deps.profiles.countConnections(addr).catch(() => 0),
     ]);
 
-    // Angka publik (spec induk §7.6): selalu keluar, tanpa bukti apa pun.
-    const inginBertemuCount = await deps.meet.hitungTanda(addr).catch(() => 0);
+    // Angka publik (spec induk §7.6): keluar tanpa bukti apa pun — TAPI hanya
+    // kalau store benar-benar menjawab.
+    //
+    // Sengaja BUKAN `.catch(() => 0)` seperti tiga panggilan di atas. Di sana
+    // `null`/`0` adalah kebenaran: anon tanpa ENS memang tidak punya nama, dan
+    // alamat baru memang punya nol transaksi. Di sini `0` adalah KARANGAN —
+    // layar profil mencetaknya sebagai "0 orang ingin bertemu dia", sebuah
+    // klaim faktual tentang orang lain yang lahir dari store yang sedang mati.
+    // Klien sudah merender ketiadaan kunci ini dengan benar (tidak menampilkan
+    // apa-apa), jadi kegagalan menghilangkan kuncinya, bukan memalsukan nol.
+    const inginBertemuCount = await deps.meet.hitungTanda(addr)
+      .then((n): number | undefined => n)
+      .catch(() => undefined);
 
-    const dasar = { address: addr, displayName, ens, txCount, connectionCount, inginBertemuCount };
+    const dasar = {
+      address: addr, displayName, ens, txCount, connectionCount,
+      ...(inginBertemuCount !== undefined ? { inginBertemuCount } : {}),
+    };
 
     const pemanggil = await pemanggilTerbukti(c.req.query(), addr, deps);
     if (!pemanggil) return c.json(dasar);

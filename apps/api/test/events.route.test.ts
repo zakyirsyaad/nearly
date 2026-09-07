@@ -27,7 +27,6 @@ function meetStore(): MeetStore {
     tandaOleh: vi.fn(async () => []), tandaKe: vi.fn(async () => []),
     cocokDilihatAtMs: vi.fn(async () => null), setCocokDilihat: vi.fn(async () => {}),
     profilRingkas: vi.fn(async () => new Map()),
-    hitungTandaBanyak: vi.fn(async () => new Map()),
   };
 }
 

@@ -120,3 +120,71 @@ export function alasanMuncul(hop: 0 | 1 | 2 | null, displayName: string): string
   if (hop === 2) return `Kenalanmu pernah bertemu ${nama}.`;
   return "Di luar jaringanmu.";
 }
+
+/**
+ * Baris "N orang ingin bertemu dia" di layar profil, atau `null` kalau tidak
+ * ada yang boleh dikatakan.
+ *
+ * `undefined` BUKAN nol. Server menghilangkan kunci ini kalau store-nya gagal
+ * menjawab (lihat GET /profile/:address) — dan pada saat itu "0 orang ingin
+ * bertemu dia" adalah karangan tentang orang lain, bukan fakta. Nol
+ * SUNGGUHAN tetap ditampilkan: itu angka yang benar-benar dikirim server.
+ *
+ * Diekstrak dari JSX supaya bisa diuji tanpa merender apa pun — gerbang ini
+ * regresinya kelas Critical dan sebelumnya tidak dijaga tes mana pun.
+ */
+export function teksInginBertemuCount(jumlah: number | undefined): string | null {
+  if (jumlah === undefined) return null;
+  return `${jumlah} orang ingin bertemu dia`;
+}
+
+/**
+ * Judul tombol ingin bertemu di layar profil, atau `null` kalau tombolnya
+ * tidak boleh muncul sama sekali.
+ *
+ * `sudahKutandai` ABSEN berarti "tidak diketahui", BUKAN "belum kamu tandai":
+ * server hanya menyertakan bendera itu untuk pemanggil yang buktinya
+ * berhasil. Tombol dua-arah yang menebak akan menampilkan "Ingin bertemu"
+ * untuk orang yang SUDAH ditandai — satu ketukan lalu mencabut tanda yang
+ * dikira sedang dibuat. Karena itu absen = tidak ada tombol.
+ */
+export function tombolTandaLabel(
+  sudahKutandai: boolean | undefined,
+  opsi: { milikSendiri: boolean; sibuk: boolean },
+): string | null {
+  if (opsi.milikSendiri) return null;
+  if (sudahKutandai === undefined) return null;
+  if (opsi.sibuk) return "Mengirim…";
+  return sudahKutandai ? "Batal ingin bertemu" : "Ingin bertemu";
+}
+
+/**
+ * Baris "N orang yang ingin bertemu kamu sudah RSVP" di layar acara, atau
+ * `null`.
+ *
+ * `undefined` di sini adalah keadaan NORMAL, bukan nol: server SENGAJA
+ * menghilangkan angkanya di bawah ambang k-anonimitas (acara terlalu kecil,
+ * atau angkanya sendiri terlalu kecil untuk tidak menunjuk orang tertentu).
+ * Merendernya sebagai "0 orang" mengubah penyembunyian yang disengaja menjadi
+ * klaim "tidak ada yang menandaimu" — yang bisa saja bohong, dan justru
+ * kebalikan dari yang sedang dilindungi.
+ */
+export function teksPenandaHadir(jumlah: number | undefined): string | null {
+  if (jumlah === undefined) return null;
+  return `${jumlah} orang yang ingin bertemu kamu sudah RSVP.`;
+}
+
+/**
+ * Baris pasangan di layar acara: berapa orang yang SALING ingin bertemu
+ * denganmu sudah RSVP.
+ *
+ * Kalimatnya menyebut "saling" karena server memotong KECOCOKAN, bukan tanda
+ * sepihak — versi sepihak dulu menjadikan angka ini oracle keanggotaan RSVP
+ * (tandai siapa pun, lihat angkanya bergerak). Kalimat lama, "orang yang kamu
+ * tandai", sekarang akan salah: orang yang kamu tandai tapi belum menandaimu
+ * balik tidak pernah ikut terhitung.
+ */
+export function teksKutandaiHadir(jumlah: number | undefined): string | null {
+  if (jumlah === undefined) return null;
+  return `${jumlah} orang yang saling ingin bertemu denganmu sudah RSVP.`;
+}

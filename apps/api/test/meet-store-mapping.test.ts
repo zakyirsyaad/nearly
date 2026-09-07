@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import type { Address } from "viem";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { createMeetStore, rowToTanda, type TandaDbRow } from "../src/meet-store";
@@ -47,26 +47,29 @@ describe("potongKelompok dipakai ulang dari feed-store", () => {
  * 2. `setTanda` bisa kehilangan salah satu dari dua `ensureProfile` —
  *    kompail lulus, tipe lulus, tapi FK violation muncul lagi di kasus
  *    paling umum fitur ini: menandai orang yang belum pernah handshake.
- * 3. `profilRingkas`/`hitungTandaBanyak` bisa kehilangan `potongKelompok`
- *    di satu titik — hasil tetap benar melawan fake, tapi proksi Supabase
- *    sungguhan menolak `.in()` beruas ratusan nilai (lihat komentar di
- *    `meet-store.ts`).
+ * 3. `profilRingkas` bisa kehilangan `potongKelompok` — hasil tetap benar
+ *    melawan fake, tapi proksi Supabase sungguhan menolak `.in()` beruas
+ *    ratusan nilai (lihat komentar di `meet-store.ts`).
  */
 
 describe("tandaOleh dan tandaKe: arah filter dan sisi ekstraksi", () => {
-  type PanggilanEq = { tabel: string; eq: [string, string][] };
+  type PanggilanEq = { tabel: string; eq: [string, string][]; limit: number | null };
 
   // Fake dangkal: hanya meniru `.from(tabel).select(...).eq(kolom, nilai)`
   // yang di-await langsung (thenable), cukup untuk membuktikan kolom filter
   // DAN baris yang dibalas, tanpa mensimulasikan Postgres sungguhan.
+  // `.limit()` ikut dijejaki karena tanpa batas eksplisit kedua pembacaan ini
+  // bergantung pada `db-max-rows` PostgREST — dan `tandaOleh` yang terpotong
+  // diam-diam menjatuhkan kecocokan sungguhan dari GET /kecocokan.
   function dbPalsuEq(baris: TandaDbRow[]) {
     const jejak: PanggilanEq[] = [];
     const buat = (tabel: string) => {
-      const rec: PanggilanEq = { tabel, eq: [] };
+      const rec: PanggilanEq = { tabel, eq: [], limit: null };
       jejak.push(rec);
       const b = {
         select: () => b,
         eq: (kolom: string, nilai: string) => { rec.eq.push([kolom, nilai]); return b; },
+        limit: (n: number) => { rec.limit = n; return b; },
         then: (teruskan: (h: { data: unknown[]; error: null }) => unknown) =>
           teruskan({ data: baris, error: null }),
       };
@@ -97,6 +100,53 @@ describe("tandaOleh dan tandaKe: arah filter dan sisi ekstraksi", () => {
     // tertukar ke sini ikut tertangkap meski hasil baris masih sama.
     expect(rec?.eq).toEqual([["who", WHO.toLowerCase()]]);
     expect(hasil).toEqual([{ address: BARIS.target, atMs: Date.parse(BARIS.created_at) }]);
+  });
+
+  /**
+   * Batas baris EKSPLISIT, bukan `db-max-rows` PostgREST yang tak terlihat di
+   * kode. Keduanya diuji karena akibat terpotongnya berbeda-beda tapi
+   * sama-sama senyap: `tandaOleh` yang terpotong menjatuhkan kecocokan
+   * sungguhan dari GET /kecocokan — dua orang yang sudah saling menandai
+   * tidak pernah diberi tahu.
+   */
+  it("tandaOleh dan tandaKe memasang batas baris eksplisit", async () => {
+    const a = dbPalsuEq([BARIS]);
+    await createMeetStore(a.db).tandaOleh(WHO);
+    expect(a.jejak[0]?.limit).toBeGreaterThan(0);
+
+    const b = dbPalsuEq([BARIS]);
+    await createMeetStore(b.db).tandaKe(TARGET);
+    expect(b.jejak[0]?.limit).toBe(a.jejak[0]?.limit);
+  });
+
+  /**
+   * Terpotong harus TERLIHAT, bukan senyap. Kalau jumlah baris yang kembali
+   * persis sama dengan batasnya, kemungkinan besar masih ada baris lain di
+   * belakangnya — dan itulah momen kecocokan mulai hilang tanpa jejak.
+   */
+  it("memperingatkan kalau jumlah baris menyentuh batasnya", async () => {
+    const batas = (() => {
+      const { db, jejak } = dbPalsuEq([]);
+      void createMeetStore(db).tandaOleh(WHO);
+      return jejak[0]?.limit ?? 0;
+    })();
+    expect(batas).toBeGreaterThan(0);
+
+    const penuh = Array.from({ length: batas }, () => BARIS);
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    try {
+      await createMeetStore(dbPalsuEq(penuh).db).tandaOleh(WHO);
+      expect(warn).toHaveBeenCalledTimes(1);
+      expect(String(warn.mock.calls[0]?.[0])).toContain("tandaOleh");
+
+      warn.mockClear();
+      await createMeetStore(dbPalsuEq([BARIS]).db).tandaOleh(WHO);
+      // Di bawah batas TIDAK boleh berisik — peringatan yang muncul setiap
+      // hari berhenti dibaca, dan justru saat penting ia ikut terlewat.
+      expect(warn).not.toHaveBeenCalled();
+    } finally {
+      warn.mockRestore();
+    }
   });
 
   it("tandaKe menyaring kolom target dan mengekstrak alamat dari who", async () => {
@@ -164,7 +214,7 @@ describe("setTanda memastikan profil KEDUA pihak sebelum menandai", () => {
   });
 });
 
-describe("profilRingkas dan hitungTandaBanyak memotong .in() lewat store sungguhan", () => {
+describe("profilRingkas memotong .in() lewat store sungguhan", () => {
   type PanggilanIn = { tabel: string; in: [string, string[]][] };
 
   function dbPalsuIn(rows: Record<string, unknown[]>) {
@@ -204,19 +254,6 @@ describe("profilRingkas dan hitungTandaBanyak memotong .in() lewat store sungguh
     expect(inProfiles).toHaveLength(3);
     expect(inTrust).toHaveLength(3);
     for (const [, nilai] of [...inProfiles, ...inTrust]) {
-      expect(nilai.length).toBeLessThanOrEqual(100);
-    }
-  });
-
-  it("hitungTandaBanyak mengirim tepat tiga .in() untuk 250 alamat", async () => {
-    const { db, jejak } = dbPalsuIn({ ingin_bertemu: [] });
-    const store = createMeetStore(db);
-
-    await store.hitungTandaBanyak(ALAMAT);
-
-    const inTanda = jejak.filter((p) => p.tabel === "ingin_bertemu").flatMap((p) => p.in);
-    expect(inTanda).toHaveLength(3);
-    for (const [, nilai] of inTanda) {
       expect(nilai.length).toBeLessThanOrEqual(100);
     }
   });

@@ -7,30 +7,28 @@ import { getKecocokan, kueriBuktiKecocokan } from "../src/meet-api";
 import { teksLencana } from "../src/messages";
 
 export default function Home() {
-  if (!CONFIG.devPrivateKey) {
-    return (
-      <View style={s.root}>
-        <Text style={s.h1}>Nearly</Text>
-        <Text style={s.p}>
-          Isi EXPO_PUBLIC_DEV_PRIVATE_KEY untuk mode pengembangan. Connect wallet sungguhan
-          menyusul setelah alur handshake terbukti jalan.
-        </Text>
-      </View>
-    );
-  }
-
+  // Signer null kalau kunci pengembangan belum diisi — layar bantuan di bawah
+  // yang menanganinya. Kondisinya SENGAJA tidak dicabang sebelum titik ini:
+  // hook tidak boleh dilewati secara kondisional. `CONFIG` memang konstanta
+  // modul sehingga cabangnya stabil hari ini, tapi layar ini sekarang punya
+  // tiga hook sungguhan di belakangnya, dan `return` lebih awal menjadikan
+  // urutan hook bergantung pada nilai konfigurasi — persis kelas bug yang
+  // aturan hook ada untuk mencegahnya.
   const signer = useMemo(
     // Tanpa useMemo, createDevSigner mengembalikan objek baru tiap render —
     // referensi signer berubah, efek di bawah jadi dianggap punya dependensi
     // baru dan menembak ulang, dobel tanda tangan & fetch (lihat komentar di
     // dalam useEffect). Sama seperti kecocokan.tsx.
-    () => createDevSigner(CONFIG.devPrivateKey!, CONFIG.verifyingContract),
+    () => (CONFIG.devPrivateKey
+      ? createDevSigner(CONFIG.devPrivateKey, CONFIG.verifyingContract)
+      : null),
     [],
   );
 
   const [baru, setBaru] = useState(0);
 
   useEffect(() => {
+    if (!signer) return;
     // Satu tanda tangan per pembukaan beranda, hanya untuk angka lencana.
     // Ongkos yang dipilih sadar (spec §6.2): endpoint hitung tanpa autentikasi
     // akan membocorkan berapa kecocokan dimiliki sebuah alamat.
@@ -49,6 +47,18 @@ export default function Home() {
   }, [signer]);
 
   const lencana = teksLencana(baru);
+
+  if (!signer) {
+    return (
+      <View style={s.root}>
+        <Text style={s.h1}>Nearly</Text>
+        <Text style={s.p}>
+          Isi EXPO_PUBLIC_DEV_PRIVATE_KEY untuk mode pengembangan. Connect wallet sungguhan
+          menyusul setelah alur handshake terbukti jalan.
+        </Text>
+      </View>
+    );
+  }
 
   return (
     <View style={s.root}>

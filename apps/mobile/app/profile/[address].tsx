@@ -9,7 +9,9 @@ import { pesanGagal } from "../../src/errors";
 import { ApiError, req } from "../../src/http";
 import { aksiTanda } from "../../src/meet-actions";
 import { kueriBuktiProfil } from "../../src/meet-api";
-import { meetErrorMessage, meetSuccessMessage } from "../../src/messages";
+import {
+  meetErrorMessage, meetSuccessMessage, teksInginBertemuCount, tombolTandaLabel,
+} from "../../src/messages";
 import { createDevSigner } from "../../src/signer";
 import { SUGGESTED_TAGS, tierView } from "../../src/tier";
 import { fetchTrust, sendReport, sendVouch, type TrustResponse } from "../../src/trust-api";
@@ -18,12 +20,12 @@ type Profile = {
   address: string; displayName: string; ens: string | null;
   txCount: number; connectionCount: number;
   /**
-   * Angka publik (spec §8) — server selalu menyertakannya pada respons
-   * sukses, tanpa perlu bukti apa pun. Tetap ditandai opsional dan dirender
-   * dengan `!== undefined` (bukan `?? 0`): satu-satunya cara medan ini bisa
-   * benar-benar hilang adalah kalau `req` di bawah gagal dan badan JSON-nya
-   * bukan profil sama sekali — dan pada saat itu, `0` adalah karangan, bukan
-   * fakta dari server.
+   * Angka publik (spec §8) — tidak butuh bukti apa pun. Tapi BENAR-BENAR
+   * opsional: server menghilangkan kuncinya kalau store gagal menjawab,
+   * justru supaya kegagalan itu tidak menyamar sebagai `0` (lihat GET
+   * /profile/:address). Dirender lewat `teksInginBertemuCount`, bukan
+   * `?? 0` — "0 orang ingin bertemu dia" adalah klaim faktual tentang orang
+   * lain, dan mengarangnya dari store yang mati adalah bohong.
    */
   inginBertemuCount?: number;
   /**
@@ -237,6 +239,11 @@ export default function ProfileScreen() {
     );
   }
 
+  const teksInginBertemu = teksInginBertemuCount(p.inginBertemuCount);
+  const labelTombolTanda = tombolTandaLabel(
+    p.sudahKutandai, { milikSendiri: isOwnProfile, sibuk: meetBusy },
+  );
+
   return (
     // Alasan laporan itu multiline, jadi tombol return menyisipkan baris baru
     // dan TIDAK menutup keyboard. iOS juga TIDAK mendukung inputAccessoryViewID
@@ -280,24 +287,19 @@ export default function ProfileScreen() {
 
       <View style={s.section}>
         {/*
-          Angka publik (spec §8): selalu ada pada respons sukses, tidak
-          butuh bukti apa pun. Diperiksa dengan `!== undefined`, BUKAN
-          dirender dengan `?? 0` (finding #3) — satu-satunya jalan medan ini
-          hilang adalah badan galat yang lolos sebagai profil, dan pada saat
-          itu "0 orang" adalah karangan, bukan angka dari server.
+          Kedua gerbang absen-lawan-nol di layar ini dipindahkan ke fungsi
+          murni di src/messages.ts dan diuji di sana (finding #7). Regresi
+          keduanya berkelas Critical — angka yang dikarang, dan tombol yang
+          menebak keadaan yang tidak diketahui — dan sebagai JSX sebaris
+          keduanya tidak bisa diuji tanpa harness render yang belum ada.
         */}
-        {p.inginBertemuCount !== undefined ? (
-          <Text style={s.angka}>{p.inginBertemuCount} orang ingin bertemu dia</Text>
+        {teksInginBertemu !== null ? (
+          <Text style={s.angka}>{teksInginBertemu}</Text>
         ) : null}
         {p.salingMenandai ? <Text style={s.saling}>Kalian saling ingin bertemu.</Text> : null}
-        {/*
-          Tombolnya hanya muncul kalau `sudahKutandai` TERDEFINISI — yaitu
-          kalau bukti bacanya berhasil. Tanpa bukti, keadaannya tidak
-          diketahui, dan tombol dua-arah (tandai/batal) akan menebak.
-        */}
-        {!isOwnProfile && p.sudahKutandai !== undefined ? (
+        {labelTombolTanda !== null ? (
           <Button
-            title={meetBusy ? "Mengirim…" : (p.sudahKutandai ? "Batal ingin bertemu" : "Ingin bertemu")}
+            title={labelTombolTanda}
             disabled={meetBusy}
             onPress={() => void toggleTanda()}
           />

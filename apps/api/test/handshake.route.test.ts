@@ -116,7 +116,6 @@ function deps(over: { saveSnapshots?: ReturnType<typeof vi.fn> } = {}): TrustDep
       cocokDilihatAtMs: async () => null,
       setCocokDilihat: async () => {},
       profilRingkas: async () => new Map(),
-      hitungTandaBanyak: async () => new Map(),
     },
   };
 }

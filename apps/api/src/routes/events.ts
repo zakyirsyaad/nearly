@@ -5,23 +5,48 @@ import {
   CreateEventRequestSchema, recoverLihatEventSigner, RsvpRequestSchema,
 } from "@nearly/shared";
 import { acceptCheckIn, createEvent, rsvp, submitCheckInOffer } from "../event-gate";
-import { irisan } from "../meet-rank";
+import { irisan, kecocokanDari } from "../meet-rank";
 import type { EventDeps, EventRecord, MeetStore } from "../ports";
 
 const DISCOVERY_LIMIT = 50;
 
 /**
- * Ambang k-anonimitas untuk `penandaHadir`.
+ * Ambang k-anonimitas untuk `penandaHadir`, lapis pertama: ukuran kerumunan.
  *
  * Di event kecil, pemanggil yang sudah terbukti dan tahu jumlah RSVP event
  * ini bisa menyimpulkan SIAPA menandainya lewat eliminasi murni — bukan
  * dengan melihat nama, hanya dengan berhitung. Itu adalah reveal SEPIHAK,
  * dan aturan inti aplikasi ini mensyaratkan KEDUA pihak sama-sama menandai
- * sebelum identitas siapa pun terungkap. Ambang ini menahan angkanya sampai
- * kerumunan cukup besar agar eliminasi semacam itu tidak lagi trivial — ia
- * mengurangi risiko itu, bukan menghapusnya.
+ * sebelum identitas siapa pun terungkap.
+ *
+ * Ambang ini LUNAK, dan harus dibaca begitu: `rsvp()` di event-gate.ts tidak
+ * meminta tier, koneksi, ongkos, maupun tulisan on-chain — RSVP gratis dibuat.
+ * Penyerang di acara berdua cukup menambahkan empat alamat miliknya sendiri
+ * untuk membuat `summary.rsvps` melewati ambang ini, padahal kerumunan
+ * sebenarnya tidak bertambah seorang pun. Karena itu ia BUKAN penjaga utama;
+ * yang benar-benar menutup identifikasi adalah PENANDA_HADIR_MIN_NILAI di
+ * bawah. Ambang ini dipertahankan sebagai lapis kedua, bukan sebagai jaminan.
  */
 const PENANDA_HADIR_MIN_RSVP = 5;
+
+/**
+ * Ambang k-anonimitas untuk `penandaHadir`, lapis kedua: NILAI angkanya.
+ *
+ * Kasus yang benar-benar mengidentifikasi orang adalah angka KECIL, bukan
+ * kerumunan kecil. `penandaHadir: 1` menyebut satu orang tertentu lewat
+ * eliminasi berapa pun besar acaranya, dan `2` masih menyisakan himpunan
+ * yang bisa ditebak di kerumunan yang saling kenal. Ambang pada nilai
+ * menutup itu tanpa bergantung pada jumlah RSVP sama sekali.
+ *
+ * Justru inilah yang membuat ambang ini kebal terhadap serangan yang
+ * melumpuhkan PENANDA_HADIR_MIN_RSVP: menggelembungkan RSVP dengan alamat
+ * sendiri TIDAK menaikkan `penandaHadir` — angka itu hanya naik kalau orang
+ * sungguhan menandai pemanggil, dan penyerang tidak bisa memaksa siapa pun
+ * menandai orang lain. Sybil bisa membuka gerbang pertama; gerbang ini tidak.
+ *
+ * Keduanya harus terpenuhi sebelum angkanya keluar.
+ */
+const PENANDA_HADIR_MIN_NILAI = 3;
 
 /**
  * `:id` di path harus sama dengan `eventId` di badan permintaan — kalau
@@ -161,13 +186,40 @@ export function eventRoutes(
       // acara ini", dan mengulanginya lintas banyak acara akan menyingkap
       // pola tanda Alice tanpa satu nama pun terlihat (spec §5.3).
       //
-      // `kutandaiHadir` hanya mencerminkan tanda pemanggil SENDIRI — tidak
-      // membocorkan apa pun yang belum diketahuinya, jadi tidak diberi
-      // ambang. `penandaHadir` beda: lihat PENANDA_HADIR_MIN_RSVP di atas.
-      const kutandaiHadir = irisan(tandaOleh.map((t) => t.address), alamatRsvp);
-      const penandaHadir = summary.rsvps >= PENANDA_HADIR_MIN_RSVP
-        ? irisan(tandaKe.map((t) => t.address), alamatRsvp)
-        : undefined;
+      // `kutandaiHadir` memotong KECOCOKAN dengan daftar RSVP, bukan tanda
+      // sepihak. Bedanya bukan kosmetik.
+      //
+      // Versi sepihak — |tandaOleh ∩ RSVP| — adalah oracle keanggotaan RSVP.
+      // Menandai orang itu gratis, sepihak, tidak butuh kontak sebelumnya,
+      // dan senyap. Jadi siapa pun yang bisa membuat bukti LihatEvent (cukup
+      // tanda tangan atas namanya sendiri; tidak perlu RSVP, check-in, atau
+      // hubungan apa pun dengan acaranya) bisa: baca `kutandaiHadir`, tandai
+      // X, baca lagi. Selisih 1 berarti X RSVP di acara ini. Cabut tandanya,
+      // barisnya terhapus, angkanya kembali seperti semula — dan X tidak
+      // pernah tahu. Diulang lintas hasil penemuan acara, itu memberi kalender
+      // X ke depan: sinyal lokasi fisik, di aplikasi yang justru
+      // mempertemukan orang asing secara fisik, kepada orang yang belum
+      // pernah ditemui X.
+      //
+      // Memotong dengan kecocokan menutup itu karena KEDUA pihak sudah
+      // sepakat saling terlihat: agar RSVP X ikut terhitung, X harus lebih
+      // dulu menandai pemanggil balik — pilihan X sendiri, bukan pilihan
+      // pemanggil. Tanpa persetujuan kedua arah itu angkanya tidak bergerak
+      // sedikit pun, jadi tidak ada yang bisa dipancing dari luar. Itulah
+      // sebabnya kunci ini tidak diberi ambang: yang ditampilkannya sudah
+      // berada di dalam batas pengungkapan yang dibuka kedua orang sendiri.
+      //
+      // `penandaHadir` beda: ia menghitung tanda sepihak ke arah pemanggil,
+      // jadi ia digerbangi dua ambang di atas.
+      const kecocokan = kecocokanDari(tandaOleh, tandaKe);
+      const kutandaiHadir = irisan(kecocokan.map((k) => k.address), alamatRsvp);
+
+      const penandaHadirMentah = irisan(tandaKe.map((t) => t.address), alamatRsvp);
+      const penandaHadir =
+        summary.rsvps >= PENANDA_HADIR_MIN_RSVP
+        && penandaHadirMentah >= PENANDA_HADIR_MIN_NILAI
+          ? penandaHadirMentah
+          : undefined;
 
       return c.json({
         ...eventToJson(ev), ...summary,

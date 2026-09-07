@@ -141,8 +141,8 @@ Layar detail event menampilkan dua angka, keduanya hanya untuk pemanggil yang te
 
 - **Berapa orang yang menandaimu sudah RSVP di acara ini** (`penandaHadir`) — irisan antara
   himpunan penandamu dan himpunan RSVP acara.
-- **Berapa orang yang kamu tandai sudah RSVP di acara ini** (`kutandaiHadir`) — irisan
-  sebaliknya.
+- **Berapa orang yang SALING ingin bertemu denganmu sudah RSVP di acara ini**
+  (`kutandaiHadir`) — irisan antara himpunan **kecocokan**-mu dan himpunan RSVP acara.
 
 Inilah yang spec induk §7.7 sebut sebagai alasan strategis seluruh fitur event: *"Luma
 memberi tahu kamu apa acaranya. Nearly memberi tahu siapa yang akan ada di sana dan kenapa
@@ -159,11 +159,43 @@ lewat eliminasi murni, tanpa pernah menandai balik. Itu tepat fakta "X menandai 
 spec induk §7.6, disusun ulang dari sebuah angka — dan seluruh premis fase ini adalah bahwa
 pengungkapan butuh KEDUA pihak.
 
-Perbaikannya: `penandaHadir` hanya disertakan saat jumlah RSVP event ≥ `PENANDA_HADIR_MIN_RSVP`
-(konstanta di `apps/api/src/routes/events.ts`, nilainya 5). Di bawah ambang itu kuncinya
-**dihilangkan sama sekali** dari respons — bukan `0`, bukan `null` — supaya ketiadaan angka
-tidak sendirinya jadi sinyal. `kutandaiHadir` sengaja **tidak** diberi ambang: ia hanya
-mencerminkan tanda pemanggil sendiri, jadi tidak membocorkan apa pun yang belum diketahuinya.
+Perbaikannya: `penandaHadir` hanya disertakan saat DUA ambang terpenuhi sekaligus —
+`summary.rsvps ≥ PENANDA_HADIR_MIN_RSVP` (5) **dan** nilai angkanya sendiri
+`≥ PENANDA_HADIR_MIN_NILAI` (3), keduanya konstanta di `apps/api/src/routes/events.ts`.
+Kalau salah satu tidak terpenuhi, kuncinya **dihilangkan sama sekali** dari respons — bukan
+`0`, bukan `null` — supaya ketiadaan angka tidak sendirinya jadi klaim faktual. Ambang RSVP
+itu **lunak** dan ambang nilai itu yang mengikat; alasannya dieja di §11.7.
+
+**Perbaikan kedua, ditemukan pada review akhir cabang: `kutandaiHadir` versi sepihak adalah
+oracle keanggotaan RSVP.** Rancangan awal menghitungnya sebagai `|tandaOleh ∩ RSVP(acara)|`.
+Operan kedua itu baris privat orang lain, dan tiga langkah berikut seluruhnya berada di dalam
+kemampuan klien yang sudah dikirim:
+
+1. Baca `kutandaiHadir` untuk acara E. Cabang terbukti hanya meminta bukti `LihatEvent` yang
+   ditandatangani sendiri — tidak perlu RSVP, check-in, atau hubungan apa pun dengan E.
+2. `POST /ingin-bertemu` menandai korban X. Menandai itu gratis, sepihak, tidak butuh kontak
+   sebelumnya, dan **senyap**: X melihat `inginBertemuCount` publiknya naik satu, tapi tidak
+   pernah tahu oleh siapa.
+3. Baca `kutandaiHadir` lagi. Selisih 1 berarti **X sudah RSVP di E**. Cabut tandanya —
+   barisnya terhapus dan angkanya kembali seperti semula.
+
+Diulang lintas hasil penemuan acara, itu memberi kalender X ke depan. Status RSVP per orang
+privat di seluruh bagian aplikasi lain; ini menjadikannya oracle lokasi fisik di aplikasi yang
+justru mempertemukan orang asing secara fisik, dan bisa dijalankan orang yang belum pernah
+ditemui atau disadari X.
+
+Perbaikannya: memotong **kecocokan**, bukan tanda sepihak — `kecocokanDari(tandaOleh, tandaKe)`
+lalu `irisan(...)`, keduanya fungsi murni yang sudah ada di `apps/api/src/meet-rank.ts`. Kedua
+pihak dalam sebuah kecocokan sudah sepakat saling terlihat, jadi angkanya tidak mengungkap apa
+pun yang baru: agar RSVP X ikut terhitung, X harus lebih dulu menandai pemanggil balik —
+pilihan X sendiri. Tanpa persetujuan dua arah itu angkanya tidak bergerak sedikit pun, jadi
+tidak ada yang bisa dipancing dari luar. Karena itu `kutandaiHadir` tetap **tidak** diberi
+ambang: yang ditampilkannya sudah berada di dalam batas pengungkapan yang dibuka kedua orang
+itu sendiri.
+
+Konsekuensi yang disengaja: orang yang kamu tandai tapi belum menandaimu balik **tidak** ikut
+terhitung. Kalimat di layar acara ikut berubah menjadi "N orang yang saling ingin bertemu
+denganmu sudah RSVP" — kalimat lama akan mengklaim lebih banyak daripada yang dihitung.
 
 Ini mengurangi risiko, bukan menghapusnya — lihat residunya di §11.7.
 
@@ -269,10 +301,18 @@ Medan yang sudah ada (`address`, `displayName`, `ens`, `txCount`, `connectionCou
 berubah. Tiga tambahan:
 
 ```
-inginBertemuCount   selalu keluar — angka publik (spec induk §7.6)
+inginBertemuCount   tanpa bukti apa pun — angka publik (spec induk §7.6);
+                    HILANG (bukan 0) kalau store gagal menjawab
 sudahKutandai       HANYA dengan bukti LihatProfil
 salingMenandai      HANYA dengan bukti LihatProfil
 ```
+
+`inginBertemuCount` tidak butuh bukti, tapi ia juga **bukan** medan yang selalu ada. Kalau
+`hitungTanda` gagal, kuncinya dihilangkan alih-alih dijatuhkan ke `0`: layar profil mencetak
+angka ini sebagai "0 orang ingin bertemu dia", klaim faktual tentang orang lain yang lahir
+dari store yang sedang mati. Klien sudah merender ketiadaannya dengan benar (tidak
+menampilkan apa-apa), jadi ketiadaan itulah jawaban yang jujur — bandingkan dengan `ens: null`
+dan `txCount: 0` di respons yang sama, yang memang benar untuk anon tanpa ENS.
 
 ### 6.2 Bentuk respons `GET /kecocokan`
 
@@ -388,17 +428,38 @@ bisa diuji tanpa perangkat asli.
 profil sudah punya signer, jadi tidak ada gesekan yang terlihat pengguna — tapi ia tetap satu
 operasi kriptografi per muat.
 
-**11.7 `penandaHadir` masih bisa disimpulkan lewat eliminasi di atas ambangnya.** Ditemukan
-saat implementasi (Task 10), bukan di rancangan awal fase ini — lihat §4.3. `GET /events/:id`
-menyembunyikan `penandaHadir` di bawah `PENANDA_HADIR_MIN_RSVP` (5) RSVP karena jumlah RSVP
-event itu sendiri sudah publik, dan di event kecil `penandaHadir: 1` cukup untuk menyingkap
-penanda lewat eliminasi murni — tanpa pemanggil pernah menandai balik. **Ambang ini mengurangi
-paparan, bukan menghapusnya:** pada jumlah peserta N berapa pun, `penandaHadir === N − 1`
-tetap berarti SEMUA peserta lain menandaimu, sesuatu yang bisa disimpulkan pemanggil sendiri
-tanpa bantuan siapa pun. Menaikkan ambang memperkecil peluang kebetulan seperti itu, tidak
-menutupnya — sama seperti k-anonimitas di mana saja: ia butuh kerumunan yang cukup besar,
-bukan jaminan matematis mutlak. Obat yang lebih kuat (mis. menyembunyikan jumlah RSVP itu
-sendiri) ditolak untuk fase ini karena mengubah kontrak publik yang sudah dipakai fitur lain.
+**11.7 Dua ambang `penandaHadir`: yang satu lunak, yang satu mengikat, dan residunya tetap
+ada.** Ditemukan saat implementasi (Task 10) lalu diperbaiki lagi pada review akhir cabang —
+lihat §4.3. Jujurnya begini, satu per satu:
+
+**Ambang RSVP (`PENANDA_HADIR_MIN_RSVP`, 5) LUNAK.** Ia mengandaikan bahwa `summary.rsvps`
+mengukur besar kerumunan. Itu tidak benar: `rsvp()` di `apps/api/src/event-gate.ts` hanya
+memeriksa kedaluwarsa, keberadaan acara, acara belum usai, tanda tangan, dan duplikat — tidak
+ada tier, tidak ada syarat koneksi, tidak ada ongkos, tidak ada tulisan on-chain. **Baris RSVP
+gratis dibuat.** Penyerang di acara berdua cukup menambahkan empat alamat miliknya sendiri:
+`summary.rsvps` jadi 6, gerbangnya terbuka, dan `penandaHadir: 1` tetap berarti "satu-satunya
+peserta sungguhan yang lain menandaiku". Himpunan anonimitasnya tidak bertambah seorang pun.
+Ambang ini dipertahankan sebagai lapis kedua, bukan sebagai jaminan.
+
+**Ambang nilai (`PENANDA_HADIR_MIN_NILAI`, 3) yang benar-benar menutup identifikasi.** Kasus
+yang menunjuk orang adalah angka KECIL, bukan kerumunan kecil: `penandaHadir: 1` menyebut satu
+orang lewat eliminasi berapa pun besar acaranya. Ambang pada nilai menutup itu tanpa
+bergantung pada jumlah RSVP sama sekali — dan justru itu yang membuatnya kebal terhadap
+serangan di atas: **menggelembungkan RSVP tidak menaikkan `penandaHadir`.** Angka itu hanya
+naik kalau orang sungguhan menandai pemanggil, dan penyerang tidak punya cara memaksa siapa
+pun melakukannya. Sybil bisa membuka gerbang pertama; gerbang ini tidak.
+
+**Residunya tetap berdiri, dan tidak boleh dibaca sebagai selesai.** Pada jumlah peserta N
+berapa pun, `penandaHadir === N − 1` tetap berarti SEMUA peserta lain menandaimu — kesimpulan
+yang bisa ditarik pemanggil sendiri tanpa bantuan siapa pun, dan yang tidak ditutup oleh
+ambang mana pun di atas. Menaikkan ambang memperkecil peluang kebetulan seperti itu, tidak
+menutupnya; ini k-anonimitas seperti di mana saja — butuh kerumunan yang cukup besar, bukan
+jaminan matematis. Obat yang lebih kuat (mis. menyembunyikan jumlah RSVP itu sendiri) ditolak
+untuk fase ini karena mengubah kontrak publik yang sudah dipakai fitur lain.
+
+Perhatikan bahwa `kutandaiHadir` **tidak** punya residu sejenis setelah perbaikan §4.3: ia
+memotong kecocokan, jadi setiap angkanya sudah berada di dalam pengungkapan yang dibuka kedua
+pihak sendiri.
 
 ## 12. Penundaan Sadar
 

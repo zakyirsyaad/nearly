@@ -7,7 +7,9 @@ import { CONFIG } from "../../src/config";
 import { createDevSigner } from "../../src/signer";
 import { ApiError } from "../../src/api";
 import { getEvent, postRsvp, type EventSummary } from "../../src/events-api";
-import { eventErrorMessage } from "../../src/messages";
+import {
+  eventErrorMessage, teksKutandaiHadir, teksPenandaHadir,
+} from "../../src/messages";
 
 export default function EventDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -95,6 +97,9 @@ export default function EventDetailScreen() {
         ? "Check-in terbuka saat acara berlangsung."
         : null;
 
+  const barisPenandaHadir = teksPenandaHadir(ev.penandaHadir);
+  const barisKutandaiHadir = teksKutandaiHadir(ev.kutandaiHadir);
+
   return (
     <View style={s.root}>
       <Text style={s.judul}>{ev.title}</Text>
@@ -109,19 +114,16 @@ export default function EventDetailScreen() {
       {/*
         `undefined` untuk keduanya adalah keadaan NORMAL, bukan nol — untuk
         orang yang membuka tautan tanpa signer, dan untuk penandaHadir juga
-        pada acara yang RSVP-nya belum sampai ambang k-anonimitas (spec).
-        Karena itu keduanya diperiksa dengan `!== undefined`, bukan dirender
-        dengan `?? 0`.
+        pada acara yang belum melewati kedua ambang k-anonimitas (spec §4.3).
+        Gerbangnya dipindahkan ke fungsi murni di src/messages.ts supaya bisa
+        diuji tanpa merender apa pun (finding #7) — regresi "0" di sini
+        mengubah penyembunyian yang disengaja menjadi klaim yang bisa bohong.
       */}
-      {ev.penandaHadir !== undefined ? (
-        <Text style={s.meta}>
-          {ev.penandaHadir} orang yang ingin bertemu kamu sudah RSVP.
-        </Text>
+      {barisPenandaHadir !== null ? (
+        <Text style={s.meta}>{barisPenandaHadir}</Text>
       ) : null}
-      {ev.kutandaiHadir !== undefined ? (
-        <Text style={s.meta}>
-          {ev.kutandaiHadir} orang yang kamu tandai sudah RSVP.
-        </Text>
+      {barisKutandaiHadir !== null ? (
+        <Text style={s.meta}>{barisKutandaiHadir}</Text>
       ) : null}
 
       {!sudahRsvp && (

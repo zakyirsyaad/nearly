@@ -11,7 +11,7 @@ describe("bentuk MeetStore", () => {
   it("punya sembilan metode dengan nama yang tepat", () => {
     expect(METODE_MEET_STORE).toEqual([
       "setTanda", "hitungTanda", "adaTanda", "tandaOleh", "tandaKe",
-      "cocokDilihatAtMs", "setCocokDilihat", "profilRingkas", "hitungTandaBanyak",
+      "cocokDilihatAtMs", "setCocokDilihat", "profilRingkas",
     ]);
   });
 });

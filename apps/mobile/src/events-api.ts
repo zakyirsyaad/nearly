@@ -20,15 +20,17 @@ export type EventSummary = {
   sudahRsvp?: boolean;
   sudahCheckIn?: boolean;
   /**
-   * Hanya ada kalau bukti bacanya berhasil DAN acara ini punya minimal 5
-   * RSVP (ambang k-anonimitas di server) — di bawah itu, angkanya sendiri
-   * bisa membocorkan siapa menandaimu lewat eliminasi. `undefined` di sini
-   * adalah keadaan NORMAL untuk acara kecil, bukan nol.
+   * Hanya ada kalau bukti bacanya berhasil DAN acara ini melewati KEDUA
+   * ambang k-anonimitas di server: jumlah RSVP acara, dan nilai angkanya
+   * sendiri (angka kecil menunjuk orang tertentu lewat eliminasi berapa pun
+   * besar acaranya). `undefined` di sini adalah keadaan NORMAL, bukan nol.
    */
   penandaHadir?: number;
   /**
-   * Hanya ada kalau bukti bacanya berhasil. Tidak punya ambang k-anonimitas
-   * karena hanya mencerminkan tanda pemanggil sendiri.
+   * Berapa KECOCOKAN (tanda dua arah) milik pemanggil yang sudah RSVP —
+   * bukan tanda sepihaknya. Hanya ada kalau bukti bacanya berhasil, dan
+   * tidak diberi ambang: kedua pihak sudah sepakat saling terlihat, jadi
+   * angkanya tidak bisa dipancing dari luar.
    */
   kutandaiHadir?: number;
 };
