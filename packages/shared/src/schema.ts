@@ -163,3 +163,55 @@ export type CreateEventRequest = z.infer<typeof CreateEventRequestSchema>;
 export type RsvpRequest = z.infer<typeof RsvpRequestSchema>;
 export type CheckInOfferRequest = z.infer<typeof CheckInOfferRequestSchema>;
 export type CheckInRequest = z.infer<typeof CheckInRequestSchema>;
+
+/** Spec §2: teks 1–500 karakter. */
+const postBody = z.string().min(1).max(500);
+
+export const CreatePostRequestSchema = z.object({
+  postId: bytes32,
+  author: address,
+  body: postBody,
+  expiresAt: unixSeconds,
+  sig: signature,
+});
+
+export const LikeRequestSchema = z.object({
+  postId: bytes32,
+  who: address,
+  // Wajib boolean asli: tipe EIP-712-nya `bool`, dan "true" berupa string
+  // akan menghasilkan digest yang berbeda tanpa suara.
+  suka: z.boolean(),
+  expiresAt: unixSeconds,
+  sig: signature,
+});
+
+export const ReportPostRequestSchema = z.object({
+  postId: bytes32,
+  reporter: address,
+  reason: z.string().min(10).max(1000),
+});
+
+/**
+ * Hapus memakai tipe EIP-712 `HapusPost` yang TERPISAH dari `Post` (spec §5).
+ * Kalau memakai ulang `Post`, tanda tangan yang dibuat untuk memposting akan
+ * sah sebagai perintah menghapus.
+ */
+export const DeletePostRequestSchema = z.object({
+  postId: bytes32,
+  author: address,
+  expiresAt: unixSeconds,
+  sig: signature,
+});
+
+/** Daftar putih mime. Tanpa ini, apa pun bisa disajikan dari domain SP. */
+const imageMime = z.enum(["image/jpeg", "image/png"]);
+
+/** Memakai tipe `LampirGambar`, yang mengikat `mime` juga (spec §5). */
+export const AttachImageRequestSchema = z.object({
+  postId: bytes32,
+  author: address,
+  expiresAt: unixSeconds,
+  sig: signature,
+  mime: imageMime,
+  dataBase64: z.string().min(1),
+});
