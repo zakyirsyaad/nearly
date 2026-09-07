@@ -79,6 +79,52 @@ export function petaHop(viewer: Address, tepi1: Tepi[], tepi2: Tepi[]): Map<stri
   return peta;
 }
 
+/**
+ * PostgREST mengirim `.in(...)` sebagai query string di URL GET. Dengan
+ * MAKS_KANDIDAT 500 dan post_id sepanjang 66 karakter, satu `.in("post_id",
+ * ids)` menghasilkan sekitar 33 KB query string dalam SATU permintaan GET —
+ * dan proksi di depan Supabase menolaknya. Akibatnya listCandidates melempar
+ * dan GET /feed mengembalikan 500: feed mati total, dan hanya setelah cukup
+ * banyak unggahan menumpuk, jadi ia lolos demo lalu gagal belakangan.
+ *
+ * 100 dipilih supaya kelompok terpanjang (post_id 66 karakter) tetap jauh di
+ * bawah batas URL mana pun yang wajar: 100 x ~70 = ~7 KB.
+ */
+export const UKURAN_KELOMPOK = 100;
+
+/** Murni, dan diuji sendiri. */
+export function potongKelompok<T>(items: T[], ukuran = UKURAN_KELOMPOK): T[][] {
+  if (ukuran < 1) throw new Error("ukuran kelompok minimal 1");
+  const keluar: T[][] = [];
+  for (let i = 0; i < items.length; i += ukuran) {
+    keluar.push(items.slice(i, i + ukuran));
+  }
+  return keluar;
+}
+
+type HasilKueri = { data: unknown[] | null; error: { message: string } | null };
+
+/**
+ * Menjalankan satu kueri PER KELOMPOK lalu menggabungkan hasilnya di memori.
+ *
+ * Ini TIDAK melanggar aturan "jangan N+1": jumlah kuerinya terikat pada
+ * jumlah kelompok (maksimal 5 untuk 500 kandidat), bukan pada jumlah kandidat
+ * satu per satu. Kelompok-kelompoknya berjalan bersamaan.
+ */
+async function gabungPerKelompok(
+  kelompok: string[][],
+  jalankan: (bagian: string[]) => PromiseLike<HasilKueri>,
+  konteks: string,
+): Promise<unknown[]> {
+  const hasil = await Promise.all(kelompok.map(jalankan));
+  const keluar: unknown[] = [];
+  for (const r of hasil) {
+    if (r.error) throw new Error(`${konteks} gagal: ${r.error.message}`);
+    keluar.push(...(r.data ?? []));
+  }
+  return keluar;
+}
+
 export function createFeedStore(db: SupabaseClient): FeedStore {
   async function ensureProfile(address: Address): Promise<void> {
     const { error } = await db
@@ -167,9 +213,11 @@ export function createFeedStore(db: SupabaseClient): FeedStore {
     },
 
     /**
-     * Jumlah kueri di sini TETAP — tidak tumbuh mengikuti jumlah kandidat.
-     * Satu kueri per tabel pendukung, lalu digabung di memori. Jangan pernah
-     * menaruh kueri di dalam map/for atas kandidat.
+     * Jumlah kueri di sini terikat pada jumlah KELOMPOK, bukan pada jumlah
+     * kandidat satu per satu — jadi ia tetap memenuhi aturan "jangan N+1".
+     * Satu kueri per tabel pendukung per kelompok maksimal UKURAN_KELOMPOK,
+     * lalu digabung di memori. Jangan pernah menaruh kueri di dalam map/for
+     * atas kandidat.
      */
     async listCandidates({ sinceMs, limit, viewer }) {
       const { data: postRows, error: e1 } = await db
@@ -187,45 +235,58 @@ export function createFeedStore(db: SupabaseClient): FeedStore {
       const penulis = [...new Set(posts.map((p) => p.author.toLowerCase()))];
       const aku = viewer ? viewer.toLowerCase() : null;
 
+      // Setiap `.in()` dipotong jadi kelompok maksimal UKURAN_KELOMPOK id.
+      const kelompokId = potongKelompok(ids);
+      const kelompokPenulis = potongKelompok(penulis);
+
       const [likes, reports, snapshots, slashed, profiles] = await Promise.all([
-        db.from("post_likes").select("post_id, address").in("post_id", ids),
-        db.from("post_reports").select("post_id, reporter").in("post_id", ids),
-        db.from("trust_snapshots").select("address, ratio, tier, connections").in("address", penulis),
-        db.from("slashes").select("subject").in("subject", penulis),
-        db.from("profiles").select("address, display_name").in("address", penulis),
+        gabungPerKelompok(kelompokId, (bagian) =>
+          db.from("post_likes").select("post_id, address").in("post_id", bagian),
+        "hidrasi feed"),
+        gabungPerKelompok(kelompokId, (bagian) =>
+          db.from("post_reports").select("post_id, reporter").in("post_id", bagian),
+        "hidrasi feed"),
+        gabungPerKelompok(kelompokPenulis, (bagian) =>
+          db.from("trust_snapshots").select("address, ratio, tier, connections").in("address", bagian),
+        "hidrasi feed"),
+        gabungPerKelompok(kelompokPenulis, (bagian) =>
+          db.from("slashes").select("subject").in("subject", bagian),
+        "hidrasi feed"),
+        gabungPerKelompok(kelompokPenulis, (bagian) =>
+          db.from("profiles").select("address, display_name").in("address", bagian),
+        "hidrasi feed"),
       ]);
-      for (const r of [likes, reports, snapshots, slashed, profiles]) {
-        if (r.error) throw new Error(`hidrasi feed gagal: ${r.error.message}`);
-      }
 
       const jumlahSuka = new Map<string, number>();
       const sukaAku = new Set<string>();
-      for (const r of (likes.data ?? []) as { post_id: string; address: string }[]) {
+      for (const r of likes as { post_id: string; address: string }[]) {
         jumlahSuka.set(r.post_id, (jumlahSuka.get(r.post_id) ?? 0) + 1);
         if (aku && r.address.toLowerCase() === aku) sukaAku.add(r.post_id);
       }
 
       const jumlahLapor = new Map<string, number>();
-      for (const r of (reports.data ?? []) as { post_id: string }[]) {
+      for (const r of reports as { post_id: string }[]) {
         jumlahLapor.set(r.post_id, (jumlahLapor.get(r.post_id) ?? 0) + 1);
       }
 
       const snap = new Map<string, { ratio: number; tier: number; connections: number }>();
-      for (const r of (snapshots.data ?? []) as
+      for (const r of snapshots as
         { address: string; ratio: number; tier: number; connections: number }[]) {
         snap.set(r.address.toLowerCase(), r);
       }
 
       const kenaSlash = new Set(
-        ((slashed.data ?? []) as { subject: string }[]).map((r) => r.subject.toLowerCase()),
+        (slashed as { subject: string }[]).map((r) => r.subject.toLowerCase()),
       );
 
       const nama = new Map<string, string>();
-      for (const r of (profiles.data ?? []) as { address: string; display_name: string }[]) {
+      for (const r of profiles as { address: string; display_name: string }[]) {
         nama.set(r.address.toLowerCase(), r.display_name);
       }
 
-      // DUA kueri untuk seluruh graf penonton, bukan satu per unggahan.
+      // Graf penonton diambil dengan jumlah kueri TETAP — satu untuk lapis
+      // satu, lalu satu per kelompok untuk lapis dua — bukan satu kueri per
+      // unggahan.
       let hop = new Map<string, 0 | 1 | 2>();
       if (aku) {
         const { data: t1, error: e2 } = await db
@@ -237,14 +298,14 @@ export function createFeedStore(db: SupabaseClient): FeedStore {
           .flatMap((t) => [t.addr_a.toLowerCase(), t.addr_b.toLowerCase()])
           .filter((a) => a !== aku))];
 
-        let t2: { addr_a: string; addr_b: string }[] = [];
-        if (satu.length > 0) {
-          const { data, error: e3 } = await db
-            .from("connections").select("addr_a, addr_b")
-            .or(`addr_a.in.(${satu.join(",")}),addr_b.in.(${satu.join(",")})`);
-          if (e3) throw new Error(`ambil koneksi lapis dua gagal: ${e3.message}`);
-          t2 = (data ?? []) as { addr_a: string; addr_b: string }[];
-        }
+        // `.or(...in...)` juga masuk query string, dan orang dengan banyak
+        // koneksi membuatnya sama panjangnya. Dipotong dengan aturan sama.
+        const t2 = await gabungPerKelompok(
+          potongKelompok(satu),
+          (bagian) => db.from("connections").select("addr_a, addr_b")
+            .or(`addr_a.in.(${bagian.join(",")}),addr_b.in.(${bagian.join(",")})`),
+          "ambil koneksi lapis dua",
+        ) as { addr_a: string; addr_b: string }[];
         hop = petaHop(viewer as Address, (t1 ?? []) as Tepi[], t2);
       }
 
