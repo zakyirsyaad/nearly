@@ -8,3 +8,4 @@ export * from "./qr";
 export * from "./vouch";
 export * from "./event";
 export * from "./feed";
+export * from "./meet";
