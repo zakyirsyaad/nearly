@@ -1872,7 +1872,9 @@ Expected: PASS
 
 - [ ] **Step 5: Buktikan invarian benar-benar terkunci**
 
-Ganti sementara `recoverHapusPostSigner` di `deletePost` menjadi `recoverPostSigner` (dan tambahkan `body: ""` agar mengkompilasi). Jalankan `pnpm --filter @nearly/api test feed-gate-post` dan pastikan tes "tanda tangan Post TIDAK diterima sebagai perintah hapus" MERAH. Kembalikan setelahnya.
+Ganti sementara `recoverHapusPostSigner` di `deletePost` menjadi `recoverPostSigner`, dan lengkapi pesannya dengan **`body: post.body`** — bukan `body: ""`. Jalankan `pnpm --filter @nearly/api test feed-gate-post` dan pastikan tes "tanda tangan Post TIDAK diterima sebagai perintah hapus" MERAH. Kembalikan setelahnya.
+
+**Kenapa `body: post.body`, bukan `body: ""`.** Dengan body kosong, pemulihan meleset di jalur yang benar MAUPUN yang salah, sehingga tes itu tetap hijau karena alasan yang keliru — mutasi yang tidak membuktikan apa pun. `post.body` adalah isi yang benar-benar ditandatangani, jadi jalur yang salah akan memulihkan penulis dengan sukses dan tes itu benar-benar merah.
 
 - [ ] **Step 6: Commit**
 
