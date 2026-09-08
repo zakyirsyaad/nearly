@@ -204,10 +204,19 @@ export function eventRoutes(
       // Memotong dengan kecocokan menutup itu karena KEDUA pihak sudah
       // sepakat saling terlihat: agar RSVP X ikut terhitung, X harus lebih
       // dulu menandai pemanggil balik — pilihan X sendiri, bukan pilihan
-      // pemanggil. Tanpa persetujuan kedua arah itu angkanya tidak bergerak
-      // sedikit pun, jadi tidak ada yang bisa dipancing dari luar. Itulah
-      // sebabnya kunci ini tidak diberi ambang: yang ditampilkannya sudah
-      // berada di dalam batas pengungkapan yang dibuka kedua orang sendiri.
+      // pemanggil. Itulah sebabnya kunci ini tidak diberi ambang: yang
+      // ditampilkannya sudah berada di dalam batas pengungkapan yang dibuka
+      // kedua orang sendiri.
+      //
+      // Yang tertutup adalah serangan terhadap ORANG ASING, bukan seluruh
+      // probe. Terhadap X yang sudah mencocokimu, pemanggil masih bisa
+      // mencabut tandanya (kecocokan bubar, angkanya turun kalau X RSVP) lalu
+      // memasangnya lagi. Bedanya dengan versi sepihak: himpunan yang bisa
+      // disurvei menyusut jadi orang yang memang sudah menandai pemanggil,
+      // dan probenya meninggalkan jejak — memasang ulang tanda memajukan
+      // `sejakMs` kecocokan itu (Math.max kedua tanda), jadi ia menyala lagi
+      // sebagai "baru" di lencana X. Jangan baca ini sebagai selesai; spec
+      // §11.8 mencatat residunya.
       //
       // `penandaHadir` beda: ia menghitung tanda sepihak ke arah pemanggil,
       // jadi ia digerbangi dua ambang di atas.

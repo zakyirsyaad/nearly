@@ -187,11 +187,14 @@ ditemui atau disadari X.
 Perbaikannya: memotong **kecocokan**, bukan tanda sepihak — `kecocokanDari(tandaOleh, tandaKe)`
 lalu `irisan(...)`, keduanya fungsi murni yang sudah ada di `apps/api/src/meet-rank.ts`. Kedua
 pihak dalam sebuah kecocokan sudah sepakat saling terlihat, jadi angkanya tidak mengungkap apa
-pun yang baru: agar RSVP X ikut terhitung, X harus lebih dulu menandai pemanggil balik —
-pilihan X sendiri. Tanpa persetujuan dua arah itu angkanya tidak bergerak sedikit pun, jadi
-tidak ada yang bisa dipancing dari luar. Karena itu `kutandaiHadir` tetap **tidak** diberi
-ambang: yang ditampilkannya sudah berada di dalam batas pengungkapan yang dibuka kedua orang
-itu sendiri.
+pun yang baru tentang orang asing: agar RSVP X ikut terhitung, X harus lebih dulu menandai
+pemanggil balik — pilihan X sendiri, bukan pilihan pemanggil. Karena itu `kutandaiHadir` tetap
+**tidak** diberi ambang: yang ditampilkannya sudah berada di dalam batas pengungkapan yang
+dibuka kedua orang itu sendiri.
+
+Itu menutup serangannya terhadap orang asing, **bukan** terhadap orang yang sudah mencocokimu.
+Probe yang lebih sempit masih ada — cabut lalu pasang lagi tandamu pada X dan bacalah
+selisihnya — dan §11.8 mencatatnya beserta apa yang membatasinya.
 
 Konsekuensi yang disengaja: orang yang kamu tandai tapi belum menandaimu balik **tidak** ikut
 terhitung. Kalimat di layar acara ikut berubah menjadi "N orang yang saling ingin bertemu
@@ -457,9 +460,40 @@ menutupnya; ini k-anonimitas seperti di mana saja — butuh kerumunan yang cukup
 jaminan matematis. Obat yang lebih kuat (mis. menyembunyikan jumlah RSVP itu sendiri) ditolak
 untuk fase ini karena mengubah kontrak publik yang sudah dipakai fitur lain.
 
-Perhatikan bahwa `kutandaiHadir` **tidak** punya residu sejenis setelah perbaikan §4.3: ia
-memotong kecocokan, jadi setiap angkanya sudah berada di dalam pengungkapan yang dibuka kedua
-pihak sendiri.
+**11.8 `kutandaiHadir` masih bisa dipakai memprobe kehadiran orang yang sudah mencocokimu.**
+Versi sebelumnya dari catatan ini menulis bahwa `kutandaiHadir` "tidak punya residu sejenis"
+setelah perbaikan §4.3. Itu terlalu percaya diri dan dicabut di sini.
+
+Yang benar: perbaikan §4.3 menutup serangan aslinya — menandai orang asing mana pun lalu
+membaca selisihnya — karena angkanya kini memotong kecocokan, dan kecocokan butuh tanda dari
+kedua belah pihak. Tapi terhadap orang yang **sudah menandaimu balik**, probenya masih ada,
+cuma bentuknya berubah: cabut tandamu pada X (kecocokannya bubar, dan angkanya turun satu
+kalau X sudah RSVP ke acara itu), lalu tandai lagi. Selisihnya menjawab pertanyaan yang sama.
+X menyetujui terlihat sebagai kecocokan; ia tidak menyetujui kehadirannya disurvei per acara.
+
+Dua hal membatasi ini, dan keduanya membuatnya jauh lebih sempit daripada serangan asli —
+tapi tidak satu pun menutupnya:
+
+**Penyerang tidak bisa memilih korbannya.** Probenya hanya bekerja pada orang yang sudah
+menandai balik atas kemauannya sendiri. Serangan asli bekerja pada siapa pun yang alamatnya
+bisa ditemukan. Himpunan yang bisa disurvei menyusut dari seluruh aplikasi menjadi orang-orang
+yang memang sudah ingin bertemu penyerang.
+
+**Probenya meninggalkan jejak, tidak seperti yang asli.** Mencabut menghapus barisnya; menandai
+lagi menyisipkan baris baru dengan `created_at` baru, jadi `sejakMs` kecocokan itu — yang
+diambil dari `Math.max` kedua tanda (§4.1) — ikut maju. Karena `hitungBaru` menghitung
+kecocokan dengan `sejakMs` lebih baru daripada `cocok_dilihat_at`, kecocokan yang sudah pernah
+dilihat X **menyala kembali sebagai baru** di lencana berandanya, dan sempat hilang dari layar
+kecocokannya selama jendela pencabutan. Serangan asli tidak meninggalkan apa pun sama sekali.
+
+Kenapa itu tetap bukan penutupan: sinyalnya ambigu — X tidak bisa membedakan "seseorang
+memprobeku" dari "ada kecocokan baru" — dan penyerang memilih waktunya. X yang jarang membuka
+aplikasi tidak akan melihat apa pun.
+
+Obat yang diketahui dan tidak diambil untuk fase ini: mempertahankan `sejakMs` kecocokan pada
+tanda pertama yang pernah ada alih-alih tanda saat ini (menghilangkan menyala-kembali, tapi
+juga menghilangkan jejaknya), atau memberi jeda sebelum tanda yang dicabut boleh dipasang lagi
+ke orang yang sama. Keduanya keputusan tersendiri, bukan tambalan.
 
 ## 12. Penundaan Sadar
 
