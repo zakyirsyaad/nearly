@@ -9,6 +9,15 @@
         "set -a; . ./.env; set +a; exec pnpm --filter @nearly/api dev"
       ],
       "port": 8787
+    },
+    {
+      "name": "nearly-api-verifikasi",
+      "runtimeExecutable": "sh",
+      "runtimeArgs": [
+        "-c",
+        "set -a; . ./.env; set +a; export GREENFIELD_RPC=${GREENFIELD_RPC:-https://gnfd-testnet-fullnode-tendermint-us.bnbchain.org}; export GREENFIELD_CHAIN_ID=${GREENFIELD_CHAIN_ID:-5600}; export GREENFIELD_BUCKET=${GREENFIELD_BUCKET:-placeholder-verifikasi}; export GREENFIELD_SP_ENDPOINT=${GREENFIELD_SP_ENDPOINT:-https://gnfd-testnet-sp1.bnbchain.org}; exec pnpm --filter @nearly/api dev"
+      ],
+      "port": 8787
     }
   ]
 }
