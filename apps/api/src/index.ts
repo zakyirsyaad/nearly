@@ -10,7 +10,7 @@ import { createVouchRelayer } from "./vouch-relayer";
 import { createEventStore } from "./event-store";
 import { createAttendanceRelayer } from "./attendance-relayer";
 import { createFeedStore } from "./feed-store";
-import { createGreenfield } from "./greenfield";
+import { bacaKonfigurasiGreenfield, createGreenfield } from "./greenfield";
 import { createMeetStore } from "./meet-store";
 
 function required(name: string): string {
@@ -23,6 +23,23 @@ const registry = required("CONNECTION_REGISTRY_ADDRESS") as Address;
 const vouchRegistry = required("VOUCH_REGISTRY_ADDRESS") as Address;
 const trustAttestorAddress = required("TRUST_ATTESTOR_ADDRESS") as Address;
 const attendanceRegistry = required("ATTENDANCE_REGISTRY_ADDRESS") as Address;
+
+// Greenfield OPSIONAL saat boot. Kosong semua berarti penyebaran tanpa
+// lampiran gambar dan API menyala normal; terisi separuh berarti salah ketik
+// dan bacaKonfigurasiGreenfield melempar. Lihat alasannya di greenfield.ts.
+const gf = bacaKonfigurasiGreenfield(process.env);
+const greenfield = gf.mode === "aktif"
+  ? createGreenfield({ ...gf.cfg, privateKey: required("RELAYER_PRIVATE_KEY") as Hex })
+  : null;
+if (greenfield === null) {
+  // Berisik dengan sengaja: mode terdegradasi yang senyap persis bahaya yang
+  // aturan boot lama coba cegah, dan itu kekhawatiran yang sah.
+  console.warn(
+    "[greenfield] TIDAK dikonfigurasi — lampiran gambar dinonaktifkan. "
+    + "Semua fitur lain berjalan normal; POST /posts/:id/image membalas 503 "
+    + "image_unavailable, dan gambar lama tampil tanpa URL.",
+  );
+}
 
 const supabase = createSupabase(
   required("SUPABASE_URL"),
@@ -63,13 +80,7 @@ const app = createApp({
   }),
   attendanceContract: attendanceRegistry,
   feed: createFeedStore(supabase),
-  greenfield: createGreenfield({
-    rpcUrl: required("GREENFIELD_RPC"),
-    chainId: required("GREENFIELD_CHAIN_ID"),
-    bucket: required("GREENFIELD_BUCKET"),
-    spEndpoint: required("GREENFIELD_SP_ENDPOINT"),
-    privateKey: required("RELAYER_PRIVATE_KEY") as Hex,
-  }),
+  greenfield,
   meet: createMeetStore(supabase),
 });
 

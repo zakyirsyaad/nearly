@@ -149,7 +149,7 @@ export function sisipkanPendatang(
   return hasil;
 }
 
-function keRow(c: FeedCandidate, spEndpoint: string, viewer: Address | null): FeedRow {
+function keRow(c: FeedCandidate, spEndpoint: string | null, viewer: Address | null): FeedRow {
   return {
     postId: c.postId,
     author: c.author,
@@ -175,7 +175,9 @@ function bandingkan(a: { skor: number; c: FeedCandidate }, b: { skor: number; c:
 
 export function rankFeed(
   candidates: FeedCandidate[],
-  opts: { nowMs: number; viewer: Address | null; spEndpoint: string; limit?: number },
+  // `spEndpoint` null saat Greenfield tidak dikonfigurasi: kartu tetap keluar,
+  // hanya tanpa imageUrl.
+  opts: { nowMs: number; viewer: Address | null; spEndpoint: string | null; limit?: number },
 ): FeedRow[] {
   const limit = opts.limit ?? FEED_LIMIT;
 

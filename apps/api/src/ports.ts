@@ -242,9 +242,13 @@ export type FeedRow = {
  * endpoint storage provider bisa berubah tanpa membusukkan baris lama.
  */
 export function imageUrlOf(
-  spEndpoint: string, bucket: string | null, objectName: string | null,
+  spEndpoint: string | null, bucket: string | null, objectName: string | null,
 ): string | null {
-  if (!bucket || !objectName) return null;
+  // `spEndpoint` null berarti Greenfield tidak dikonfigurasi. Tanpa endpoint
+  // kita TIDAK TAHU di mana byte-nya bisa dibaca, jadi jawaban yang jujur
+  // adalah "tidak ada URL" — bukan URL cacat tanpa host, yang akan tampil di
+  // klien sebagai gambar rusak dan terbaca seperti bug penyimpanan.
+  if (!spEndpoint || !bucket || !objectName) return null;
   return `${spEndpoint.replace(/\/+$/, "")}/view/${bucket}/${objectName}`;
 }
 
@@ -276,7 +280,13 @@ export type GreenfieldPort = {
 
 export type FeedDeps = {
   feed: FeedStore;
-  greenfield: GreenfieldPort;
+  /**
+   * `null` saat Greenfield tidak dikonfigurasi. Sengaja nullable, bukan port
+   * tiruan yang selalu gagal: tipenya memaksa SETIAP pemanggil memutuskan apa
+   * yang terjadi tanpa Greenfield, dan typecheck yang menangkapnya jauh lebih
+   * murah daripada menemukannya lewat unggahan yang gagal diam-diam.
+   */
+  greenfield: GreenfieldPort | null;
   /** Alamat ConnectionRegistry — domain EIP-712 feed terikat padanya (spec §5). */
   verifyingContract: Address;
   nowMs: () => number;

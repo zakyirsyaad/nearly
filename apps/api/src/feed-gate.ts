@@ -13,7 +13,8 @@ export type FeedFailure =
   | { code: "post_not_found"; httpStatus: 404 }
   | { code: "not_author"; httpStatus: 403 }
   | { code: "image_slot_taken"; httpStatus: 409 }
-  | { code: "image_too_large"; httpStatus: 413 };
+  | { code: "image_too_large"; httpStatus: 413 }
+  | { code: "image_unavailable"; httpStatus: 503 };
 
 export type FeedResult<T> = { ok: true; value: T } | { ok: false; failure: FeedFailure };
 
@@ -193,6 +194,19 @@ export type AttachImageInput = {
 export async function attachImage(
   input: AttachImageInput, deps: FeedDeps,
 ): Promise<FeedResult<{ objectName: string; bytes: Uint8Array }>> {
+  // Diperiksa PALING AWAL, dan 503 bukan 4xx: tanpa Greenfield endpoint ini
+  // tidak bisa memenuhi permintaan siapa pun, dan itu keadaan server — bukan
+  // kesalahan pemanggil. Ia juga tidak membocorkan apa pun, karena jawabannya
+  // sama untuk setiap unggahan dan setiap penanya.
+  //
+  // Wajib mendahului setImagePending di bawah. Kalau tidak, baris akan
+  // ditinggalkan `pending` selamanya untuk unggahan yang tidak pernah punya
+  // kesempatan berjalan, dan penulisnya melihat pemintal yang tak pernah
+  // selesai alih-alih jawaban.
+  if (deps.greenfield === null) {
+    return fail({ code: "image_unavailable", httpStatus: 503 });
+  }
+
   if (sudahLewat(deps, input.expiresAt)) return fail({ code: "expired", httpStatus: 410 });
 
   const post = await deps.feed.getPost(input.postId);
@@ -238,9 +252,19 @@ export async function attachImage(
 export async function prosesUnggahGambar(
   deps: FeedDeps, postId: Hex, objectName: string, mime: string, bytes: Uint8Array,
 ): Promise<void> {
+  const gf = deps.greenfield;
+  if (gf === null) {
+    // Tidak terjangkau lewat rute — attachImage sudah menolak lebih dulu.
+    // Ada supaya kalau suatu saat terjangkau, yang tercatat adalah sebabnya,
+    // bukan TypeError "cannot read properties of null" yang menyesatkan.
+    console.error("unggah gambar dilewati: Greenfield tidak dikonfigurasi");
+    await deps.feed.setImageFailed(postId).catch(() => {});
+    return;
+  }
+
   try {
-    await deps.greenfield.upload({ objectName, mime, bytes });
-    await deps.feed.setImageDone(postId, deps.greenfield.bucket);
+    await gf.upload({ objectName, mime, bytes });
+    await deps.feed.setImageDone(postId, gf.bucket);
   } catch (e) {
     console.error("unggah gambar gagal:", e);
     try {

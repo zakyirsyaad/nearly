@@ -77,7 +77,7 @@ describe("attachImage", () => {
     const hasil = await attachImage(await masukan(), d);
     expect(hasil.ok).toBe(true);
     expect(s.setImagePending).toHaveBeenCalledWith(ID, objectNameOf(ID, "image/jpeg"), "image/jpeg");
-    expect(d.greenfield.upload).not.toHaveBeenCalled();
+    expect(d.greenfield!.upload).not.toHaveBeenCalled();
   });
 
   it("mengembalikan objectName dan bytes untuk diproses pemanggil", async () => {
@@ -162,7 +162,7 @@ describe("prosesUnggahGambar", () => {
     const s = store();
     const d = deps(s);
     await prosesUnggahGambar(d, ID, "abc.jpg", "image/jpeg", bytes);
-    expect(d.greenfield.upload).toHaveBeenCalledWith({
+    expect(d.greenfield!.upload).toHaveBeenCalledWith({
       objectName: "abc.jpg", mime: "image/jpeg", bytes,
     });
     expect(s.setImageDone).toHaveBeenCalledWith(ID, "nearly-feed");

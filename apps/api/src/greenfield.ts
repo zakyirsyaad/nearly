@@ -150,6 +150,64 @@ export async function unggahLewatKlien(
   pastikanSpSukses(unggah, "uploadObject");
 }
 
+/** Keempat nama env Greenfield, sebagai satu unit. */
+export const ENV_GREENFIELD = [
+  "GREENFIELD_RPC", "GREENFIELD_CHAIN_ID", "GREENFIELD_BUCKET", "GREENFIELD_SP_ENDPOINT",
+] as const;
+
+export type HasilKonfigurasiGreenfield =
+  | { mode: "aktif"; cfg: Omit<GreenfieldConfig, "privateKey"> }
+  | { mode: "nonaktif" };
+
+/**
+ * Memutuskan apakah API menyala DENGAN atau TANPA lampiran gambar.
+ *
+ * Kenapa ini ada. Sebelumnya keempat env ini wajib saat boot, jadi Greenfield
+ * yang tidak dikonfigurasi mematikan SELURUH API — handshake, trust, vouch,
+ * event, teks feed, dan meet, yang tidak satu pun menyentuh Greenfield. Itu
+ * radius ledakan yang tidak sebanding untuk satu fitur pinggiran, dan ia
+ * bertentangan dengan prinsip yang spec 3b §8.2 nyatakan sendiri: "Greenfield
+ * mati tidak mematikan feed". Desainnya sudah memperlakukan Greenfield yang
+ * tidak tersedia sebagai keadaan normal DI RUNTIME; aturan boot memperlakukan
+ * keadaan yang sama sebagai fatal.
+ *
+ * Yang TIDAK dibuang: gagal-cepat untuk salah konfigurasi. Aturan lama
+ * menyamakan dua hal yang berbeda —
+ *
+ *   kosong semua  → penyebaran yang memang tidak memakai fitur gambar (CI,
+ *                   mesin kedua, kontributor baru). Bukan kesalahan.
+ *   terisi separuh → salah ketik. Harus ketahuan saat API menyala, bukan
+ *                   berjam-jam kemudian saat orang pertama mengunggah gambar.
+ *
+ * Jadi yang dilempar hanya kasus kedua, dan pesannya menyebut persis mana yang
+ * kurang.
+ */
+export function bacaKonfigurasiGreenfield(
+  env: Record<string, string | undefined>,
+): HasilKonfigurasiGreenfield {
+  const isi = (k: string) => (env[k] ?? "").trim();
+  const terisi = ENV_GREENFIELD.filter((k) => isi(k) !== "");
+
+  if (terisi.length === 0) return { mode: "nonaktif" };
+  if (terisi.length < ENV_GREENFIELD.length) {
+    const kurang = ENV_GREENFIELD.filter((k) => isi(k) === "");
+    throw new Error(
+      `Konfigurasi Greenfield separuh: ${terisi.join(", ")} terisi, `
+      + `tapi ${kurang.join(", ")} kosong. Isi keempatnya, atau kosongkan `
+      + `keempatnya untuk menjalankan API tanpa lampiran gambar.`,
+    );
+  }
+  return {
+    mode: "aktif",
+    cfg: {
+      rpcUrl: isi("GREENFIELD_RPC"),
+      chainId: isi("GREENFIELD_CHAIN_ID"),
+      bucket: isi("GREENFIELD_BUCKET"),
+      spEndpoint: isi("GREENFIELD_SP_ENDPOINT"),
+    },
+  };
+}
+
 export function createGreenfield(cfg: GreenfieldConfig): GreenfieldPort {
   // Divalidasi saat pembuatan, bukan saat unggahan pertama: salah konfigurasi
   // harus ketahuan waktu API menyala, bukan berjam-jam kemudian ketika

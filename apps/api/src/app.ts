@@ -27,7 +27,7 @@ export type TrustDeps = GateDeps & {
   attendance: AttendanceChainPort;
   attendanceContract: Address;
   feed: FeedStore;
-  greenfield: GreenfieldPort;
+  greenfield: GreenfieldPort | null;
   meet: MeetStore;
 };
 

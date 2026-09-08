@@ -175,7 +175,7 @@ export function feedRoutes(deps: FeedDeps) {
     const semua = rankFeed(kandidat, {
       nowMs: deps.nowMs(),
       viewer,
-      spEndpoint: deps.greenfield.spEndpoint,
+      spEndpoint: deps.greenfield?.spEndpoint ?? null,
       limit: MAKS_KANDIDAT,
     });
     const posts = semua.slice(offset, offset + FEED_LIMIT);

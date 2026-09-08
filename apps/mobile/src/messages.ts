@@ -54,6 +54,9 @@ const FEED_MESSAGES: Record<string, string> = {
   not_author: "Hanya penulisnya yang bisa mengubah unggahan ini.",
   image_slot_taken: "Unggahan ini sudah punya gambar. Satu gambar per unggahan.",
   image_too_large: "Gambarnya terlalu besar. Maksimal 2 MB.",
+  // Bukan salah penulisnya, dan mencoba ulang tidak akan menolong sampai
+  // servernya dikonfigurasi — jadi kalimatnya tidak menyuruh coba lagi.
+  image_unavailable: "Lampiran gambar sedang tidak tersedia. Teksmu tetap terbit.",
   bad_signature: "Tanda tangan tidak cocok. Coba lagi.",
   expired: "Permintaannya sudah kedaluwarsa. Coba lagi.",
   invalid_body: "Ada isian yang belum benar.",

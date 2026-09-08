@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { meetErrorMessage, meetSuccessMessage } from "../src/messages";
+import { feedErrorMessage, meetErrorMessage, meetSuccessMessage } from "../src/messages";
 
 describe("meetErrorMessage", () => {
   it("menerjemahkan setiap kode gerbang meet ke bahasa Indonesia", () => {
@@ -31,5 +31,19 @@ describe("meetSuccessMessage", () => {
     const dicabut = meetSuccessMessage(false);
     expect(dicabut).not.toBe(meetSuccessMessage(true));
     expect(dicabut.length).toBeGreaterThan(10);
+  });
+});
+
+describe("feedErrorMessage: image_unavailable", () => {
+  it("punya pesan sendiri, bukan kalimat cadangan", () => {
+    const pesan = feedErrorMessage("image_unavailable");
+    expect(pesan).not.toBe(feedErrorMessage("kode-yang-tidak-ada"));
+    expect(pesan).toContain("tidak tersedia");
+  });
+
+  // Mencoba ulang tidak menolong sampai servernya dikonfigurasi; menyuruhnya
+  // akan membuat pengguna mengetuk tombol yang tidak bisa berhasil.
+  it("TIDAK menyuruh coba lagi", () => {
+    expect(feedErrorMessage("image_unavailable").toLowerCase()).not.toContain("coba lagi");
   });
 });
