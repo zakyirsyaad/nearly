@@ -4,6 +4,7 @@ import {
   recoverCheckInOfferSigner, recoverCreateEventSigner, recoverRsvpSigner, verifyColocation,
 } from "@nearly/shared";
 import type { EventDeps } from "./ports";
+import { pulihkanTandaTangan } from "./pulihkan-tanda-tangan";
 
 export type EventFailure =
   | { code: "expired"; httpStatus: 410 }
@@ -44,15 +45,15 @@ export async function createEvent(
   }
 
   const centerCell = cellToBytes32(input.cell);
-  const signer = await recoverCreateEventSigner(
-    {
-      eventId: input.eventId, host: input.host, startsAt: input.startsAt,
-      endsAt: input.endsAt, centerCell, expiresAt: input.expiresAt,
-    },
-    input.sigHost,
-    deps.attendanceContract,
-  );
-  if (signer.toLowerCase() !== input.host.toLowerCase()) {
+  const signer = await pulihkanTandaTangan(() => recoverCreateEventSigner(
+      {
+        eventId: input.eventId, host: input.host, startsAt: input.startsAt,
+        endsAt: input.endsAt, centerCell, expiresAt: input.expiresAt,
+      },
+      input.sigHost,
+      deps.attendanceContract,
+  ));
+  if (signer === null || signer.toLowerCase() !== input.host.toLowerCase()) {
     return fail({ code: "bad_signature", httpStatus: 401 });
   }
 
@@ -95,12 +96,12 @@ export async function rsvp(input: RsvpInput, deps: EventDeps): Promise<EventResu
     return fail({ code: "event_over", httpStatus: 410 });
   }
 
-  const signer = await recoverRsvpSigner(
-    { eventId: input.eventId, who: input.who, expiresAt: input.expiresAt },
-    input.sig,
-    deps.attendanceContract,
-  );
-  if (signer.toLowerCase() !== input.who.toLowerCase()) {
+  const signer = await pulihkanTandaTangan(() => recoverRsvpSigner(
+      { eventId: input.eventId, who: input.who, expiresAt: input.expiresAt },
+      input.sig,
+      deps.attendanceContract,
+  ));
+  if (signer === null || signer.toLowerCase() !== input.who.toLowerCase()) {
     return fail({ code: "bad_signature", httpStatus: 401 });
   }
 
@@ -140,12 +141,12 @@ export async function submitCheckInOffer(
     return fail({ code: "nonce_used", httpStatus: 409 });
   }
 
-  const signer = await recoverCheckInOfferSigner(
-    { eventId: input.eventId, nonce: input.nonce, expiresAt: input.expiresAt },
-    input.sigHost,
-    deps.attendanceContract,
-  );
-  if (signer.toLowerCase() !== input.host.toLowerCase()) {
+  const signer = await pulihkanTandaTangan(() => recoverCheckInOfferSigner(
+      { eventId: input.eventId, nonce: input.nonce, expiresAt: input.expiresAt },
+      input.sigHost,
+      deps.attendanceContract,
+  ));
+  if (signer === null || signer.toLowerCase() !== input.host.toLowerCase()) {
     return fail({ code: "bad_signature", httpStatus: 401 });
   }
 
@@ -214,15 +215,15 @@ export async function acceptCheckIn(
   );
   if (!colo.ok) return fail({ code: "not_colocated", reason: colo.reason, httpStatus: 422 });
 
-  const signer = await recoverCheckInAcceptSigner(
-    {
-      eventId: input.eventId, nonce: input.nonce,
-      attendee: input.attendee, expiresAt: offer.expiresAt,
-    },
-    input.sigAttendee,
-    deps.attendanceContract,
-  );
-  if (signer.toLowerCase() !== input.attendee.toLowerCase()) {
+  const signer = await pulihkanTandaTangan(() => recoverCheckInAcceptSigner(
+      {
+        eventId: input.eventId, nonce: input.nonce,
+        attendee: input.attendee, expiresAt: offer.expiresAt,
+      },
+      input.sigAttendee,
+      deps.attendanceContract,
+  ));
+  if (signer === null || signer.toLowerCase() !== input.attendee.toLowerCase()) {
     return fail({ code: "bad_signature", httpStatus: 401 });
   }
 

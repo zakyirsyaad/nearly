@@ -2,6 +2,7 @@ import { Hono } from "hono";
 import type { Address, Hex } from "viem";
 import { reasonHashOf, recoverReportSigner, ReportRequestSchema } from "@nearly/shared";
 import type { ReportStore } from "../ports";
+import { pulihkanTandaTangan } from "../pulihkan-tanda-tangan";
 
 export function reportRoutes(
   deps: { reports: ReportStore; vouchContract: Address; nowMs: () => number },
@@ -20,7 +21,7 @@ export function reportRoutes(
     // TETAP off-chain; tanda tangan ini murni untuk otentikasi ke server.
     if (deps.nowMs() > Number(expiresAt) * 1000) return c.json({ code: "expired" }, 410);
 
-    const signer = await recoverReportSigner(
+    const signer = await pulihkanTandaTangan(() => recoverReportSigner(
       {
         reporter: b.reporter as Address,
         subject: b.subject as Address,
@@ -29,8 +30,8 @@ export function reportRoutes(
       },
       b.sig as Hex,
       deps.vouchContract,
-    );
-    if (signer.toLowerCase() !== b.reporter.toLowerCase()) {
+    ));
+    if (signer === null || signer.toLowerCase() !== b.reporter.toLowerCase()) {
       return c.json({ code: "bad_signature" }, 401);
     }
 

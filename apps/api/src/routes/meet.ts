@@ -5,6 +5,7 @@ import {
 } from "@nearly/shared";
 import { daftarKecocokan, setTanda, tandaiDilihat } from "../meet-gate";
 import type { MeetDeps } from "../ports";
+import { pulihkanTandaTangan } from "../pulihkan-tanda-tangan";
 
 /**
  * Mengembalikan alamat pemanggil HANYA kalau `who`, `expiresAt`, dan `sig`
@@ -28,19 +29,15 @@ async function pemanggilTerbukti(
   if (!/^\d+$/.test(expiresAt)) return null;
   if (deps.nowMs() > Number(expiresAt) * 1000) return null;
 
-  try {
-    const signer = await recoverLihatKecocokanSigner(
+  // Lewat pulihkanTandaTangan: tanda tangan yang cacat bentuknya membuat viem
+  // melempar. Itu tetap "tidak terbukti", bukan 500.
+  const signer = await pulihkanTandaTangan(() => recoverLihatKecocokanSigner(
       { who: who as Address, expiresAt: BigInt(expiresAt) },
-      sig as Hex,
-      deps.verifyingContract,
-    );
-    if (signer.toLowerCase() !== who.toLowerCase()) return null;
-    return who.toLowerCase() as Address;
-  } catch {
-    // Tanda tangan cacat bentuknya membuat viem melempar. Itu tetap "tidak
-    // terbukti", bukan 500.
-    return null;
-  }
+    sig as Hex,
+    deps.verifyingContract,
+  ));
+  if (signer === null || signer.toLowerCase() !== who.toLowerCase()) return null;
+  return who.toLowerCase() as Address;
 }
 
 export function meetRoutes(deps: MeetDeps) {

@@ -2,6 +2,7 @@ import { Hono } from "hono";
 import { isAddress, type Address, type Hex } from "viem";
 import { recoverLihatProfilSigner } from "@nearly/shared";
 import type { GateDeps, MeetStore } from "../ports";
+import { pulihkanTandaTangan } from "../pulihkan-tanda-tangan";
 
 type ProfileMeetDeps = {
   meet: MeetStore;
@@ -29,19 +30,15 @@ async function pemanggilTerbukti(
   if (!/^\d+$/.test(expiresAt)) return null;
   if (deps.nowMs() > Number(expiresAt) * 1000) return null;
 
-  try {
-    const signer = await recoverLihatProfilSigner(
+  // Lewat pulihkanTandaTangan: tanda tangan yang cacat bentuknya membuat viem
+  // melempar. Itu tetap "tidak terbukti", bukan 500.
+  const signer = await pulihkanTandaTangan(() => recoverLihatProfilSigner(
       { target, who: who as Address, expiresAt: BigInt(expiresAt) },
-      sig as Hex,
-      deps.verifyingContract,
-    );
-    if (signer.toLowerCase() !== who.toLowerCase()) return null;
-    return who.toLowerCase() as Address;
-  } catch {
-    // Tanda tangan cacat bentuknya membuat viem melempar. Itu tetap "tidak
-    // terbukti", bukan 500.
-    return null;
-  }
+    sig as Hex,
+    deps.verifyingContract,
+  ));
+  if (signer === null || signer.toLowerCase() !== who.toLowerCase()) return null;
+  return who.toLowerCase() as Address;
 }
 
 export function profileRoutes(deps: GateDeps & ProfileMeetDeps) {

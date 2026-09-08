@@ -4,6 +4,7 @@ import {
   recoverLikeSigner, recoverPostSigner,
 } from "@nearly/shared";
 import type { FeedDeps } from "./ports";
+import { pulihkanTandaTangan } from "./pulihkan-tanda-tangan";
 
 export type FeedFailure =
   | { code: "expired"; httpStatus: 410 }
@@ -37,12 +38,12 @@ export async function createPost(
     return fail({ code: "post_exists", httpStatus: 409 });
   }
 
-  const signer = await recoverPostSigner(
-    { postId: input.postId, author: input.author, body: input.body, expiresAt: input.expiresAt },
-    input.sig,
-    deps.verifyingContract,
-  );
-  if (!samaAlamat(signer, input.author)) {
+  const signer = await pulihkanTandaTangan(() => recoverPostSigner(
+      { postId: input.postId, author: input.author, body: input.body, expiresAt: input.expiresAt },
+      input.sig,
+      deps.verifyingContract,
+  ));
+  if (signer === null || !samaAlamat(signer, input.author)) {
     return fail({ code: "bad_signature", httpStatus: 401 });
   }
 
@@ -70,12 +71,12 @@ export async function deletePost(
   // {postId, author, expiresAt}; kalau dipakai di sini, tanda tangan yang
   // dibuat untuk MEMPOSTING akan sah pula sebagai perintah MENGHAPUS. Kelas
   // kesalahan Ruling 23, dan dikunci tes.
-  const signer = await recoverHapusPostSigner(
-    { postId: input.postId, author: input.author, expiresAt: input.expiresAt },
-    input.sig,
-    deps.verifyingContract,
-  );
-  if (!samaAlamat(signer, input.author)) {
+  const signer = await pulihkanTandaTangan(() => recoverHapusPostSigner(
+      { postId: input.postId, author: input.author, expiresAt: input.expiresAt },
+      input.sig,
+      deps.verifyingContract,
+  ));
+  if (signer === null || !samaAlamat(signer, input.author)) {
     return fail({ code: "bad_signature", httpStatus: 401 });
   }
 
@@ -104,12 +105,12 @@ export async function setLike(input: LikeInput, deps: FeedDeps): Promise<FeedRes
 
   // `suka` dari MASUKAN, bukan nilai karangan server. Ini yang membuat satu
   // tanda tangan tidak bisa dipakai dua arah.
-  const signer = await recoverLikeSigner(
-    { postId: input.postId, who: input.who, suka: input.suka, expiresAt: input.expiresAt },
-    input.sig,
-    deps.verifyingContract,
-  );
-  if (!samaAlamat(signer, input.who)) {
+  const signer = await pulihkanTandaTangan(() => recoverLikeSigner(
+      { postId: input.postId, who: input.who, suka: input.suka, expiresAt: input.expiresAt },
+      input.sig,
+      deps.verifyingContract,
+  ));
+  if (signer === null || !samaAlamat(signer, input.who)) {
     return fail({ code: "bad_signature", httpStatus: 401 });
   }
 
@@ -147,15 +148,15 @@ export async function reportPost(
   const post = await deps.feed.getPost(input.postId);
   if (!post || post.deleted) return fail({ code: "post_not_found", httpStatus: 404 });
 
-  const signer = await recoverLaporPostSigner(
-    {
-      postId: input.postId, reporter: input.reporter,
-      reason: input.reason, expiresAt: input.expiresAt,
-    },
-    input.sig,
-    deps.verifyingContract,
-  );
-  if (!samaAlamat(signer, input.reporter)) {
+  const signer = await pulihkanTandaTangan(() => recoverLaporPostSigner(
+      {
+        postId: input.postId, reporter: input.reporter,
+        reason: input.reason, expiresAt: input.expiresAt,
+      },
+      input.sig,
+      deps.verifyingContract,
+  ));
+  if (signer === null || !samaAlamat(signer, input.reporter)) {
     return fail({ code: "bad_signature", httpStatus: 401 });
   }
 
@@ -197,12 +198,12 @@ export async function attachImage(
   const post = await deps.feed.getPost(input.postId);
   if (!post || post.deleted) return fail({ code: "post_not_found", httpStatus: 404 });
 
-  const signer = await recoverLampirGambarSigner(
-    { postId: input.postId, author: input.author, mime: input.mime, expiresAt: input.expiresAt },
-    input.sig,
-    deps.verifyingContract,
-  );
-  if (!samaAlamat(signer, input.author)) {
+  const signer = await pulihkanTandaTangan(() => recoverLampirGambarSigner(
+      { postId: input.postId, author: input.author, mime: input.mime, expiresAt: input.expiresAt },
+      input.sig,
+      deps.verifyingContract,
+  ));
+  if (signer === null || !samaAlamat(signer, input.author)) {
     return fail({ code: "bad_signature", httpStatus: 401 });
   }
 

@@ -1,6 +1,7 @@
 import type { Address, Hex } from "viem";
 import { recoverAcceptSigner, recoverOfferSigner, verifyColocation } from "@nearly/shared";
 import type { GateDeps } from "./ports";
+import { pulihkanTandaTangan } from "./pulihkan-tanda-tangan";
 
 /** Spec §11.1 butir 8 diterapkan sama untuk koneksi: kuota harian global. */
 export const DAILY_CONNECTION_QUOTA = 30;
@@ -32,12 +33,12 @@ export async function submitOffer(input: OfferInput, deps: GateDeps): Promise<Ga
 
   if (await deps.store.getOffer(input.nonce)) return fail({ code: "nonce_used", httpStatus: 409 });
 
-  const signer = await recoverOfferSigner(
-    { initiator: input.initiator, nonce: input.nonce, expiresAt: input.expiresAt },
-    input.sigOffer,
-    deps.verifyingContract,
-  );
-  if (signer.toLowerCase() !== input.initiator.toLowerCase()) {
+  const signer = await pulihkanTandaTangan(() => recoverOfferSigner(
+      { initiator: input.initiator, nonce: input.nonce, expiresAt: input.expiresAt },
+      input.sigOffer,
+      deps.verifyingContract,
+  ));
+  if (signer === null || signer.toLowerCase() !== input.initiator.toLowerCase()) {
     return fail({ code: "bad_offer_signature", httpStatus: 401 });
   }
 
@@ -70,15 +71,15 @@ export async function acceptHandshake(
   );
   if (!colo.ok) return fail({ code: "not_colocated", reason: colo.reason, httpStatus: 422 });
 
-  const acceptSigner = await recoverAcceptSigner(
-    {
-      initiator: offer.initiator, counterparty: input.counterparty,
-      nonce: input.nonce, expiresAt: offer.expiresAt,
-    },
-    input.sigAccept,
-    deps.verifyingContract,
-  );
-  if (acceptSigner.toLowerCase() !== input.counterparty.toLowerCase()) {
+  const acceptSigner = await pulihkanTandaTangan(() => recoverAcceptSigner(
+      {
+        initiator: offer.initiator, counterparty: input.counterparty,
+        nonce: input.nonce, expiresAt: offer.expiresAt,
+      },
+      input.sigAccept,
+      deps.verifyingContract,
+  ));
+  if (acceptSigner === null || acceptSigner.toLowerCase() !== input.counterparty.toLowerCase()) {
     return fail({ code: "bad_accept_signature", httpStatus: 401 });
   }
 

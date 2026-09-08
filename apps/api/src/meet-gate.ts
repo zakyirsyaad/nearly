@@ -2,6 +2,7 @@ import type { Address, Hex } from "viem";
 import { recoverInginBertemuSigner, recoverTandaiDilihatSigner } from "@nearly/shared";
 import { hitungBaru, kecocokanDari } from "./meet-rank";
 import type { MeetDeps } from "./ports";
+import { pulihkanTandaTangan } from "./pulihkan-tanda-tangan";
 
 export type MeetFailure =
   | { code: "expired"; httpStatus: 410 }
@@ -42,25 +43,18 @@ export async function setTanda(
   // sini, siapa pun yang menangkapnya bisa menandai orang atas nama korban —
   // lalu menandai memicu pengungkapan identitas. Kelas kesalahan Ruling 23.
   //
-  // Dibungkus try/catch: byte `v` yang cacat bentuknya (tapi lolos regex
-  // panjang skema Zod) membuat viem melempar synchronously, bukan
-  // mengembalikan alamat yang salah. Tanpa ini badan permintaan seperti
-  // sig 0x99...99 membuat rute berakhir 500, bukan 401 seperti kegagalan
-  // tanda tangan lainnya.
-  let signer: Address;
-  try {
-    signer = await recoverInginBertemuSigner(
-      {
-        target: input.target, who: input.who,
-        ingin: input.ingin, expiresAt: input.expiresAt,
-      },
-      input.sig,
-      deps.verifyingContract,
-    );
-  } catch {
-    return fail({ code: "bad_signature", httpStatus: 401 });
-  }
-  if (!samaAlamat(signer, input.who)) {
+  // Lewat pulihkanTandaTangan: byte `v` yang cacat bentuknya lolos regex
+  // panjang skema Zod lalu membuat viem melempar, bukan mengembalikan alamat
+  // yang salah. Lihat alasan lengkapnya di berkas helper-nya.
+  const signer = await pulihkanTandaTangan(() => recoverInginBertemuSigner(
+    {
+      target: input.target, who: input.who,
+      ingin: input.ingin, expiresAt: input.expiresAt,
+    },
+    input.sig,
+    deps.verifyingContract,
+  ));
+  if (signer === null || !samaAlamat(signer, input.who)) {
     return fail({ code: "bad_signature", httpStatus: 401 });
   }
 
@@ -75,19 +69,13 @@ export async function tandaiDilihat(
 ): Promise<MeetResult<void>> {
   if (sudahLewat(deps, input.expiresAt)) return fail({ code: "expired", httpStatus: 410 });
 
-  // Sama seperti di setTanda: byte `v` yang cacat bentuknya membuat viem
-  // melempar, bukan mengembalikan alamat yang salah.
-  let signer: Address;
-  try {
-    signer = await recoverTandaiDilihatSigner(
-      { who: input.who, expiresAt: input.expiresAt },
-      input.sig,
-      deps.verifyingContract,
-    );
-  } catch {
-    return fail({ code: "bad_signature", httpStatus: 401 });
-  }
-  if (!samaAlamat(signer, input.who)) {
+  // Sama seperti di setTanda.
+  const signer = await pulihkanTandaTangan(() => recoverTandaiDilihatSigner(
+    { who: input.who, expiresAt: input.expiresAt },
+    input.sig,
+    deps.verifyingContract,
+  ));
+  if (signer === null || !samaAlamat(signer, input.who)) {
     return fail({ code: "bad_signature", httpStatus: 401 });
   }
 

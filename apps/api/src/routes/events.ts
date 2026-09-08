@@ -7,6 +7,7 @@ import {
 import { acceptCheckIn, createEvent, rsvp, submitCheckInOffer } from "../event-gate";
 import { irisan, kecocokanDari } from "../meet-rank";
 import type { EventDeps, EventRecord, MeetStore } from "../ports";
+import { pulihkanTandaTangan } from "../pulihkan-tanda-tangan";
 
 const DISCOVERY_LIMIT = 50;
 
@@ -95,19 +96,15 @@ async function pemanggilTerbukti(
   if (!/^\d+$/.test(expiresAt)) return null;
   if (deps.nowMs() > Number(expiresAt) * 1000) return null;
 
-  try {
-    const signer = await recoverLihatEventSigner(
+  // Lewat pulihkanTandaTangan: tanda tangan yang cacat bentuknya membuat viem
+  // melempar. Itu tetap "tidak terbukti", bukan 500.
+  const signer = await pulihkanTandaTangan(() => recoverLihatEventSigner(
       { eventId, who: who as Address, expiresAt: BigInt(expiresAt) },
-      sig as Hex,
-      deps.attendanceContract,
-    );
-    if (signer.toLowerCase() !== who.toLowerCase()) return null;
-    return who.toLowerCase() as Address;
-  } catch {
-    // Tanda tangan cacat bentuknya membuat viem melempar. Itu tetap "tidak
-    // terbukti", bukan 500.
-    return null;
-  }
+    sig as Hex,
+    deps.attendanceContract,
+  ));
+  if (signer === null || signer.toLowerCase() !== who.toLowerCase()) return null;
+  return who.toLowerCase() as Address;
 }
 
 export function eventRoutes(

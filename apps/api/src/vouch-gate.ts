@@ -4,6 +4,7 @@ import { reportGate, type Report } from "@nearly/trust";
 import type {
   AttestorPort, HandshakeStore, ReportStore, TrustStore, VouchChainPort, VouchStore,
 } from "./ports";
+import { pulihkanTandaTangan } from "./pulihkan-tanda-tangan";
 
 /** Spec induk §11.1 butir 8: kuota harian global, bukan per-event. */
 export const DAILY_VOUCH_QUOTA = 3;
@@ -60,12 +61,12 @@ export async function submitVouch(
   // membuktikan apa-apa tentang isi sebenarnya, membatalkan janji spec §5).
   const tags = normalizeTags(input.tags);
   const tagsHash = tagsHashOf(tags);
-  const signer = await recoverVouchSigner(
-    { from: input.from, to: input.to, tagsHash, expiresAt: input.expiresAt },
-    input.sig,
-    deps.vouchContract,
-  );
-  if (signer.toLowerCase() !== input.from.toLowerCase()) {
+  const signer = await pulihkanTandaTangan(() => recoverVouchSigner(
+      { from: input.from, to: input.to, tagsHash, expiresAt: input.expiresAt },
+      input.sig,
+      deps.vouchContract,
+  ));
+  if (signer === null || signer.toLowerCase() !== input.from.toLowerCase()) {
     return fail({ code: "bad_signature", httpStatus: 401 });
   }
 
@@ -102,12 +103,12 @@ export async function revokeVouch(
     return fail({ code: "expired", httpStatus: 410 });
   }
 
-  const signer = await recoverRevokeSigner(
-    { from: input.from, to: input.to, expiresAt: input.expiresAt },
-    input.sig,
-    deps.vouchContract,
-  );
-  if (signer.toLowerCase() !== input.from.toLowerCase()) {
+  const signer = await pulihkanTandaTangan(() => recoverRevokeSigner(
+      { from: input.from, to: input.to, expiresAt: input.expiresAt },
+      input.sig,
+      deps.vouchContract,
+  ));
+  if (signer === null || signer.toLowerCase() !== input.from.toLowerCase()) {
     return fail({ code: "bad_signature", httpStatus: 401 });
   }
 
