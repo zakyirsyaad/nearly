@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { Link, useFocusEffect } from "expo-router";
 import {
   ActivityIndicator, FlatList, Image, Pressable, StyleSheet, Text, View,
@@ -48,7 +48,10 @@ export default function FeedScreen() {
     }
   }, [signer.address]);
 
-  useEffect(() => { void muat(); }, [muat]);
+  // useFocusEffect SENDIRIAN, bukan berpasangan dengan useEffect: ia sudah
+  // menyala saat layar pertama kali fokus — yaitu saat mount — jadi useEffect
+  // di sebelahnya cuma menggandakan `GET /feed` setiap kali layar dibuka.
+  // Pola yang benar sudah ada di events/index.tsx sejak Fase 3a.
   useFocusEffect(useCallback(() => { void muat(); }, [muat]));
 
   /**
