@@ -232,8 +232,16 @@ RSVP. Sengaja sederhana — batasannya ada di §4.
    sama. Tanpa fitur ini kita bergantung pada event yang diadakan orang lain di platform lain
    — padahal kedekatan fisik adalah bahan bakar utama kita.
 2. **Ini menyambungkan loop "ingin bertemu" menjadi lengkap:**
-   > *"12 orang yang ingin bertemu kamu akan hadir di event ini."*
-   > *"4 orang yang kamu tandai sudah RSVP."*
+   > *"12 orang yang ingin bertemu kamu sudah RSVP."*
+   > *"4 orang yang saling ingin bertemu denganmu sudah RSVP."*
+
+   Baris kedua dulu berbunyi *"4 orang yang kamu tandai sudah RSVP."* Fase 3c
+   mengubahnya: angka itu kini memotong **kecocokan**, bukan tanda sepihak,
+   karena versi sepihaknya adalah oracle keanggotaan RSVP — tandai siapa pun,
+   baca selisihnya, dan kamu tahu dia akan hadir di mana. Kedua angka juga
+   bisa **hilang sama sekali** di acara kecil; itu penyembunyian yang
+   disengaja, bukan nol. Perilaku yang mengikat ada di spec Fase 3c §4.3,
+   §11.7, dan §11.8.
 
    Luma memberi tahu kamu *apa* acaranya. Nearly memberi tahu **siapa yang akan ada di sana
    dan kenapa kamu harus datang.**

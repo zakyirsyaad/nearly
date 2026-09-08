@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { Link, useFocusEffect } from "expo-router";
 import { ActivityIndicator, FlatList, StyleSheet, Text, View } from "react-native";
 import { TIER_LABELS } from "@nearly/trust";
@@ -33,12 +33,19 @@ export default function KecocokanScreen() {
     }
   }, [signer]);
 
-  useEffect(() => { void muat(); }, [muat]);
-  // Pesan `butuh_bukti` menjanjikan "muat ulang layar ini untuk mencoba
-  // lagi", tapi `muat` memoized pada `signer` yang tidak pernah berubah —
-  // efek di atas TIDAK menembak ulang, dan tidak ada tombol coba lagi. Tanpa
-  // baris ini janji itu bohong: satu-satunya jalan keluar adalah menutup
-  // aplikasi. Pola yang sama sudah dipakai feed/index.tsx.
+  // SATU pemicu, bukan dua. `useFocusEffect` sudah menyala saat layar pertama
+  // kali fokus — yaitu saat mount — jadi `useEffect` di sini akan menjadi
+  // duplikat, bukan pelengkap: dua tanda tangan `LihatKecocokan`, dua
+  // `GET /kecocokan`, dan dua `POST /kecocokan/dilihat` yang berlomba setiap
+  // kali layar dibuka. Di feed duplikat semacam itu cuma GET yang mubazir; di
+  // sini ia menggandakan operasi kripto dan tulisan, ongkos yang di tempat
+  // lain repo ini perlakukan sebagai sengaja ("satu tanda tangan per
+  // pembukaan").
+  //
+  // Fokus juga yang membuat pesan `butuh_bukti` jujur: ia menjanjikan "muat
+  // ulang layar ini untuk mencoba lagi", dan `muat` memoized pada `signer`
+  // yang tidak pernah berubah, jadi tanpa pemicu fokus tidak ada jalan keluar
+  // selain menutup aplikasi.
   useFocusEffect(useCallback(() => { void muat(); }, [muat]));
 
   if (baris === null) return <ActivityIndicator style={s.tengah} />;

@@ -3135,6 +3135,11 @@ Di `apps/mobile/app/events/[id].tsx`, di bawah baris ringkasan RSVP yang sudah a
       {ev.kutandaiHadir !== undefined ? (
         <Text style={s.meta}>
           {ev.kutandaiHadir} orang yang kamu tandai sudah RSVP.
+          {/* CATATAN HISTORIS: kalimat dan semantik ini diubah pada review
+              akhir cabang — angkanya kini memotong kecocokan, dan teksnya
+              berbunyi "saling ingin bertemu denganmu". Lihat spec Fase 3c
+              §4.3. Cuplikan di bawah dibiarkan apa adanya sebagai catatan
+              apa yang DIRENCANAKAN, bukan apa yang dikirim. */}
         </Text>
       ) : null}
 ```
@@ -3223,8 +3228,24 @@ Sisanya **dikerjakan pemilik project**, dan controller berhenti di sini:
    - A membuka feed, menekan "Ingin bertemu" pada unggahan B → angka di profil B naik
    - B membuka profil A dan menandai balik → **kedua perangkat** menampilkan "Kalian saling ingin bertemu"
    - Beranda kedua perangkat menampilkan lencana; membuka layar kecocokan menghilangkannya
-   - A mencabut tandanya → kecocokan hilang dari kedua daftar, dan angka di profil B turun
-   - A membuat acara, B RSVP → layar acara di perangkat A menampilkan "1 orang yang kamu tandai sudah RSVP"
+   - A membuat acara, B RSVP → **selagi keduanya masih saling menandai**, layar acara di perangkat A menampilkan "1 orang yang saling ingin bertemu denganmu sudah RSVP"
+   - A mencabut tandanya → kecocokan hilang dari kedua daftar, angka di profil B turun, **dan baris acara tadi ikut hilang** karena kecocokannya sudah bubar
+
+> **Dua koreksi setelah review akhir cabang — baca sebelum menguji, kalau tidak
+> kamu akan mengejar bug yang tidak ada.**
+>
+> **`kutandaiHadir` menghitung KECOCOKAN, bukan tanda sepihak.** Versi sepihak
+> ternyata oracle keanggotaan RSVP (tandai siapa pun, baca selisihnya, dan kamu
+> tahu dia akan hadir di mana). Jadi menandai B saja tidak cukup — B harus
+> menandai balik, dan urutan langkah di atas sudah disesuaikan. Kalimatnya pun
+> berubah jadi "saling ingin bertemu denganmu".
+>
+> **`penandaHadir` tidak akan muncul sama sekali di uji dua perangkat.** Ia
+> butuh acara dengan minimal 5 RSVP DAN angkanya sendiri minimal 3
+> (`PENANDA_HADIR_MIN_RSVP` dan `PENANDA_HADIR_MIN_NILAI` di
+> `apps/api/src/routes/events.ts`). Kunci yang hilang itu **benar**, bukan
+> rusak — merendernya sebagai "0" justru yang akan jadi bug. Untuk melihatnya
+> hidup kamu butuh acara sungguhan dengan cukup banyak orang.
 
 3. **Uji penjaga privasi lewat curl**, karena inilah yang tidak bisa dibuktikan tes:
    - `GET /profile/<alamat>` tanpa parameter → `inginBertemuCount` ADA, `sudahKutandai` TIDAK ADA
