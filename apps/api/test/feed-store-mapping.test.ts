@@ -216,3 +216,86 @@ describe("listCandidates memotong setiap .in()", () => {
     expect(new Set(idTerkirim).size).toBe(250);
   });
 });
+
+/**
+ * Tes ini menjalankan penyaringan blokir yang SEBENARNYA lewat
+ * createFeedStore(...).listCandidates(...) dengan viewer terisi dan
+ * himpunanUntuk yang TIDAK kosong — bukan lewat petaHop secara langsung.
+ * Tanpa tes ini, menghapus `.filter(...)` di listCandidates tidak akan
+ * membuat tes mana pun merah (lihat temuan review Task 9).
+ */
+describe("listCandidates menyaring blokir dua arah", () => {
+  type Panggilan = { tabel: string; in: [string, string[]][]; or: string[] };
+
+  function dbPalsu(baris: Record<string, unknown[]>, jejak: Panggilan[]): SupabaseClient {
+    const buat = (tabel: string) => {
+      const rec: Panggilan = { tabel, in: [], or: [] };
+      jejak.push(rec);
+      const b = {
+        select: () => b,
+        gte: () => b,
+        is: () => b,
+        order: () => b,
+        limit: () => b,
+        in: (kolom: string, nilai: string[]) => { rec.in.push([kolom, nilai]); return b; },
+        or: (ekspresi: string) => { rec.or.push(ekspresi); return b; },
+        then: (teruskan: (h: { data: unknown[]; error: null }) => unknown) =>
+          teruskan({ data: baris[tabel] ?? [], error: null }),
+      };
+      return b;
+    };
+    return { from: (tabel: string) => buat(tabel) } as unknown as SupabaseClient;
+  }
+
+  function blokirPalsuDengan(himpunan: Set<string>): BlokirStore {
+    return {
+      setBlokir: async () => {},
+      adaBlokir: async () => false,
+      diblokirOleh: async () => [],
+      himpunanUntuk: async () => himpunan,
+    };
+  }
+
+  const VIEWER = "0x00000000000000000000000000000000000000aa" as Address;
+  // Penonton memblokir dia.
+  const DIBLOKIR = "0x00000000000000000000000000000000000000bb";
+  // Dia memblokir penonton — arah sebaliknya, dan himpunanUntuk (Task 5)
+  // sudah simetris, jadi keduanya berakhir di himpunan yang sama.
+  const MEMBLOKIR = "0x00000000000000000000000000000000000000cc";
+  // Tidak terkait blokir sama sekali — wajib tetap ada di hasil.
+  const LAIN = "0x00000000000000000000000000000000000000dd";
+
+  function postDari(author: string, idAngka: number): PostDbRow {
+    return {
+      post_id: `0x${String(idAngka).padStart(64, "0")}`,
+      author,
+      body: "halo",
+      image_bucket: null, image_object: null, image_mime: null, image_status: "none",
+      created_at: "2026-09-07T00:00:00.000Z",
+      deleted_at: null,
+    };
+  }
+
+  it("membuang unggahan dari kedua arah blokir tapi menyisakan penonton sendiri dan orang tak terkait", async () => {
+    const posts: PostDbRow[] = [
+      postDari(VIEWER, 1), // milik penonton sendiri — wajib tetap
+      // Huruf besar di baris DB: membuktikan penyaringan menormalkan huruf
+      // sebelum dibandingkan dengan himpunan terblokir (yang selalu huruf kecil).
+      postDari(DIBLOKIR.toUpperCase(), 2),
+      postDari(MEMBLOKIR, 3),
+      postDari(LAIN, 4), // tak terkait — wajib tetap
+    ];
+
+    const jejak: Panggilan[] = [];
+    const terblokir = new Set([DIBLOKIR.toLowerCase(), MEMBLOKIR.toLowerCase()]);
+    const store = createFeedStore(dbPalsu({ posts }, jejak), blokirPalsuDengan(terblokir));
+    const hasil = await store.listCandidates({ sinceMs: 0, limit: 10, viewer: VIEWER });
+
+    const penulisTersisa = hasil.map((p) => p.author.toLowerCase());
+    expect(penulisTersisa).toContain(VIEWER.toLowerCase());
+    expect(penulisTersisa).toContain(LAIN.toLowerCase());
+    expect(penulisTersisa).not.toContain(DIBLOKIR.toLowerCase());
+    expect(penulisTersisa).not.toContain(MEMBLOKIR.toLowerCase());
+    expect(hasil).toHaveLength(2);
+  });
+});
