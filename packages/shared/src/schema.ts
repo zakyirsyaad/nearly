@@ -258,3 +258,19 @@ export const TandaiDilihatRequestSchema = z.object({
   expiresAt: unixSeconds,
   sig: signature,
 });
+
+/**
+ * `target` boleh sama dengan `who`. Penolakan memblokir diri sendiri hidup di
+ * gerbang (spec §7.1), bukan di sini — kalau skema ikut menolaknya,
+ * pemeriksaan gerbang tidak akan pernah terjangkau lewat rute dan membusuk
+ * jadi kode mati yang tidak ada tesnya bisa menjangkau.
+ */
+export const BlokirRequestSchema = z.object({
+  target: address,
+  who: address,
+  // Wajib boolean asli: tipe EIP-712-nya `bool`, dan "true" berupa string
+  // menghasilkan digest berbeda tanpa suara.
+  blokir: z.boolean(),
+  expiresAt: unixSeconds,
+  sig: signature,
+});
