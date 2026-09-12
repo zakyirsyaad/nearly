@@ -116,14 +116,23 @@ export function profileRoutes(deps: GateDeps & ProfileMeetDeps) {
     // sebagai 500 — pemanggil sudah membuktikan dirinya, jadi tidak ada
     // orang asing yang menerima jawaban yang dikarang untuknya.
     const kecuali = [...await deps.blokir.himpunanUntuk(pemanggil)];
-    const [sudahKutandai, diaMenandaiku] = await Promise.all([
+    // `sudahKublokir` diambil DALAM Promise.all yang sama dengan dua bendera
+    // di atas — bukan sequential round-trip tambahan. `adaBlokir` hanya satu
+    // arah ("apakah blocker memblokir blocked"), jadi urutan argumennya di
+    // sini menentukan: (pemanggil, addr) berarti "apakah AKU memblokir DIA".
+    // Kalau dibalik, korban blokir sepihak (dia memblokir aku, bukan aku dia)
+    // akan salah melihat tombol "Cabut blokir" untuk blokir yang tidak pernah
+    // dipasangnya.
+    const [sudahKutandai, diaMenandaiku, sudahKublokir] = await Promise.all([
       deps.meet.adaTanda(addr, pemanggil, kecuali),
       deps.meet.adaTanda(pemanggil, addr, kecuali),
+      deps.blokir.adaBlokir(pemanggil, addr),
     ]);
     return c.json({
       ...dasar,
       sudahKutandai,
       salingMenandai: sudahKutandai && diaMenandaiku,
+      sudahKublokir,
     });
   });
 

@@ -7,9 +7,11 @@ import type { Address } from "viem";
 import { CONFIG } from "../../src/config";
 import { pesanGagal } from "../../src/errors";
 import { ApiError, req } from "../../src/http";
+import { aksiBlokir } from "../../src/blokir-actions";
 import { aksiTanda } from "../../src/meet-actions";
 import { kueriBuktiProfil } from "../../src/meet-api";
 import {
+  blokirErrorMessage, blokirTombolLabel,
   meetErrorMessage, meetSuccessMessage, teksInginBertemuCount, tombolTandaLabel,
 } from "../../src/messages";
 import { createDevSigner } from "../../src/signer";
@@ -37,6 +39,15 @@ type Profile = {
    */
   sudahKutandai?: boolean;
   salingMenandai?: boolean;
+  /**
+   * ABSEN (bukan `false`) untuk alasan yang sama persis dengan
+   * `sudahKutandai`: siapa memblokir siapa bukan informasi publik, jadi
+   * server hanya menyertakannya untuk pemanggil yang bukti bacanya berhasil.
+   * Absen berarti "tidak diketahui" — layar ini WAJIB memeriksa
+   * `!== undefined`, bukan truthiness, atau "tidak diketahui" akan diam-diam
+   * dibaca sebagai "belum diblokir".
+   */
+  sudahKublokir?: boolean;
 };
 
 export default function ProfileScreen() {
@@ -82,6 +93,12 @@ export default function ProfileScreen() {
   // yang pertama selesai (finding #5) dan untuk memberi tahu pengguna bahwa
   // ketukannya sudah terdaftar, bukan diam saja.
   const [meetBusy, setMeetBusy] = useState(false);
+
+  // Sama seperti meetMessage/meetBusy di atas, tapi untuk aksi blokir —
+  // TERPISAH supaya pesan blokir tidak menimpa pesan tanda atau sebaliknya
+  // saat keduanya sempat terjadi berdekatan.
+  const [blokirMessage, setBlokirMessage] = useState<string | null>(null);
+  const [blokirBusy, setBlokirBusy] = useState(false);
 
   // Kegagalan MEMUAT profil (bukan kegagalan membuat bukti baca — itu
   // ditangani secara terpisah di bawah dan tidak boleh menutup profil
@@ -226,6 +243,38 @@ export default function ProfileScreen() {
     }
   }
 
+  // Mengikuti pola toggleTanda persis: pesan dibersihkan di AWAL, ketukan
+  // ganda ditolak lewat blokirBusy, dan kegagalan AKSI dipisahkan dari
+  // kegagalan MUAT ULANG sesudahnya — blokirnya sendiri sudah tersimpan di
+  // server begitu `aksiBlokir` selesai tanpa lempar, jadi kegagalan reload di
+  // bawah TIDAK BOLEH memakai kalimat "gagal memblokir"/"gagal mencabut",
+  // yang akan membohongi pengguna tentang aksi yang justru berhasil.
+  async function toggleBlokir() {
+    if (!signer || !address || blokirBusy) return;
+    setBlokirMessage(null);
+    setBlokirBusy(true);
+    const akanMencabut = !!p?.sudahKublokir;
+    try {
+      await aksiBlokir(signer, address as Address, akanMencabut);
+    } catch (e) {
+      setBlokirMessage(e instanceof ApiError
+        ? blokirErrorMessage(e.code)
+        : (akanMencabut ? "Gagal mencabut blokir." : "Gagal memblokir."));
+      setBlokirBusy(false);
+      return;
+    }
+    try {
+      const kueri = `?${await kueriBuktiProfil(signer, address as Address)}`;
+      setP(await req<Profile>(`/profile/${address}${kueri}`));
+    } catch {
+      setBlokirMessage(akanMencabut
+        ? "Blokir sudah dicabut, tapi profil gagal dimuat ulang. Muat ulang layar ini untuk melihat status terbaru."
+        : "Orang ini sudah diblokir, tapi profil gagal dimuat ulang. Muat ulang layar ini untuk melihat status terbaru.");
+    } finally {
+      setBlokirBusy(false);
+    }
+  }
+
   if (!p) {
     // `loadError` hanya terisi kalau permintaan profilnya sendiri gagal
     // (bukan kalau hanya pembuatan buktinya yang gagal) — lihat `muatProfil`.
@@ -306,6 +355,30 @@ export default function ProfileScreen() {
         ) : null}
         {meetMessage && <Text style={s.message}>{meetMessage}</Text>}
       </View>
+
+      {/*
+        `sudahKublokir !== undefined`, BUKAN cek truthiness — absen berarti
+        "tidak diketahui" (bukti baca gagal/tidak dikirim), dan melonggarkannya
+        ke truthiness diam-diam membuat "tidak diketahui" jadi "belum
+        diblokir". Tombol tanda di atas TIDAK ikut disembunyikan oleh
+        `sudahKublokir` (R5): mencabut tanda yang sudah ada tetap boleh saat
+        terblokir, hanya MEMASANG tanda baru yang ditolak server.
+      */}
+      {p.sudahKublokir !== undefined && !isOwnProfile && (
+        <View style={s.section}>
+          <Button
+            title={blokirTombolLabel(p.sudahKublokir, blokirBusy)}
+            disabled={blokirBusy}
+            onPress={() => { void toggleBlokir(); }}
+          />
+          {p.sudahKublokir && (
+            <Text style={s.catatan}>
+              Kamu memblokir orang ini. Kalian tidak saling muncul di feed, dan tidak bisa saling menandai.
+            </Text>
+          )}
+          {blokirMessage && <Text style={s.pesan}>{blokirMessage}</Text>}
+        </View>
+      )}
 
       {signer && !isOwnProfile && connected && (
         <View style={s.section}>
@@ -423,4 +496,6 @@ const s = StyleSheet.create({
     borderWidth: 1, borderRadius: 8, padding: 10, fontSize: 14, minHeight: 60,
   },
   message: { fontSize: 14, lineHeight: 20, opacity: 0.8 },
+  catatan: { fontSize: 13, opacity: 0.7, lineHeight: 19 },
+  pesan: { fontSize: 14, lineHeight: 20, opacity: 0.8 },
 });

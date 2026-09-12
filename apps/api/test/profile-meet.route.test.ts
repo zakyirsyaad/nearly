@@ -250,6 +250,50 @@ describe("GET /profile/:address — bendera pribadi", () => {
     expect(json.salingMenandai).toBe(false);
   });
 
+  /**
+   * Task 13. `sudahKublokir` adalah bendera pribadi ketiga — siapa memblokir
+   * siapa bukan informasi publik, jadi kuncinya harus HILANG tanpa bukti,
+   * bukan `false` (yang adalah klaim, bukan ketiadaan jawaban).
+   */
+  it("sudahKublokir TIDAK keluar tanpa bukti", async () => {
+    const blokir = blokirPalsu({ adaBlokir: vi.fn(async () => true) });
+    const res = await app(meetStore(), blokir)
+      .request(`/profile/${TARGET}?who=${aku.address}`);
+    const json = await res.json() as Record<string, unknown>;
+    expect(Object.prototype.hasOwnProperty.call(json, "sudahKublokir")).toBe(false);
+    expect(json.sudahKublokir).toBeUndefined();
+  });
+
+  /**
+   * `adaBlokir` cuma satu arah: "apakah blocker memblokir blocked". Server
+   * mencatat penanda tangan sebagai blocker, jadi `sudahKublokir` harus
+   * memanggil `adaBlokir(pemanggil, addr)` — dalam urutan itu — bukan
+   * sebaliknya.
+   */
+  it("sudahKublokir true kalau pemanggil memblokir addr, dan adaBlokir dipanggil (pemanggil, addr)", async () => {
+    const adaBlokir = vi.fn(async () => true);
+    const res = await app(meetStore(), blokirPalsu({ adaBlokir })).request(await buktiBaca());
+    const json = await res.json() as Record<string, unknown>;
+    expect(json.sudahKublokir).toBe(true);
+    expect(adaBlokir).toHaveBeenCalledWith(aku.address.toLowerCase(), TARGET.toLowerCase());
+  });
+
+  /**
+   * Kebalikannya: kalau HANYA `addr` yang memblokir pemanggil (bukan
+   * sebaliknya), `sudahKublokir` harus `false` — "aku memblokir dia" itu
+   * pertanyaan berbeda dari "dia memblokir aku", dan bertukar arah di sini
+   * akan membuat korban blokir sepihak melihat tombol "Cabut blokir" untuk
+   * blokir yang tidak pernah ia pasang.
+   */
+  it("sudahKublokir false kalau hanya addr yang memblokir pemanggil (arah terbalik)", async () => {
+    const adaBlokir = vi.fn(async (blocker: Address, blocked: Address) =>
+      blocker.toLowerCase() === TARGET.toLowerCase()
+      && blocked.toLowerCase() === aku.address.toLowerCase());
+    const res = await app(meetStore(), blokirPalsu({ adaBlokir })).request(await buktiBaca());
+    const json = await res.json() as Record<string, unknown>;
+    expect(json.sudahKublokir).toBe(false);
+  });
+
   it("TIDAK keluar untuk tanda tangan orang lain", async () => {
     const lain = privateKeyToAccount(`0x${"66".repeat(32)}` as Hex);
     const pesan = { target: TARGET, who: aku.address, expiresAt: EXP };
