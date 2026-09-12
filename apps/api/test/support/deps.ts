@@ -145,5 +145,15 @@ export function depsFor(overrides: {
       setCocokDilihat: vi.fn(async () => {}),
       profilRingkas: vi.fn(async () => new Map()),
     },
+    // Fase 4a: rute blokir tidak diuji lewat helper ini (lihat
+    // blokir.route.test.ts sendiri), tapi TrustDeps butuh medan ini supaya
+    // createApp bisa dibangun oleh test route lain (handshake, vouch, admin,
+    // dst).
+    blokir: {
+      setBlokir: vi.fn(async () => {}),
+      adaBlokir: vi.fn(async () => false),
+      diblokirOleh: vi.fn(async () => []),
+      himpunanUntuk: vi.fn(async () => new Set<string>()),
+    },
   };
 }

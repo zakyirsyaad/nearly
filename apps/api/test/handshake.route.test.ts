@@ -117,6 +117,14 @@ function deps(over: { saveSnapshots?: ReturnType<typeof vi.fn> } = {}): TrustDep
       setCocokDilihat: async () => {},
       profilRingkas: async () => new Map(),
     },
+    // Stub Fase 4a: tidak dipakai langsung oleh test handshake ini, tapi
+    // createApp mendaftarkan blokirRoutes yang butuh medan ini lengkap.
+    blokir: {
+      setBlokir: async () => {},
+      adaBlokir: async () => false,
+      diblokirOleh: async () => [],
+      himpunanUntuk: async () => new Set<string>(),
+    },
   };
 }
 

@@ -12,6 +12,7 @@ import { createAttendanceRelayer } from "./attendance-relayer";
 import { createFeedStore } from "./feed-store";
 import { bacaKonfigurasiGreenfield, createGreenfield } from "./greenfield";
 import { createMeetStore } from "./meet-store";
+import { createBlokirStore } from "./blokir-store";
 
 function required(name: string): string {
   const v = process.env[name];
@@ -82,6 +83,7 @@ const app = createApp({
   feed: createFeedStore(supabase),
   greenfield,
   meet: createMeetStore(supabase),
+  blokir: createBlokirStore(supabase),
 });
 
 serve({ fetch: app.fetch, port: 8787 });

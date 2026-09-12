@@ -8,10 +8,11 @@ import { adminRoutes } from "./routes/admin";
 import { eventRoutes } from "./routes/events";
 import { feedRoutes } from "./routes/feed";
 import { meetRoutes } from "./routes/meet";
+import { blokirRoutes } from "./routes/blokir";
 import { recomputeTrust } from "./trust/recompute";
 import type {
   GateDeps, TrustStore, VouchStore, ReportStore, AttestorPort, VouchChainPort,
-  EventStore, AttendanceChainPort, FeedStore, GreenfieldPort, MeetStore,
+  EventStore, AttendanceChainPort, FeedStore, GreenfieldPort, MeetStore, BlokirStore,
 } from "./ports";
 import type { Address } from "viem";
 
@@ -29,6 +30,7 @@ export type TrustDeps = GateDeps & {
   feed: FeedStore;
   greenfield: GreenfieldPort | null;
   meet: MeetStore;
+  blokir: BlokirStore;
 };
 
 // Modul-level, dengan sengaja (Task 8): relayer yang sama menandatangani
@@ -79,5 +81,20 @@ export function createApp(deps: TrustDeps) {
   // tidak ada graf pertemuan yang berubah dan tidak ada skor trust yang perlu
   // dihitung ulang (spec §9).
   app.route("/", meetRoutes(deps));
+  // `onChanged` TIDAK dipanggil dari rute blokir, walaupun blokir MEMANG
+  // mengubah graf trust — dan ini kebalikan dari Fase 3c, jadi alasannya
+  // ditulis di sini alih-alih diserahkan ke ingatan.
+  //
+  // Recompute melakukan loadGraph + computeTrust + setScore on-chain untuk
+  // setiap tier yang berubah. Dipanggil dari rute, ia menempel pada permintaan
+  // pengguna: memblokir seseorang akan terasa macet berdetik-detik, dan
+  // relayer membakar gas tepat pada saat seseorang sedang berusaha
+  // menyingkirkan orang lain — momen paling buruk untuk gagal.
+  //
+  // Skornya menyusul pada recompute berikutnya, yang dipicu handshake atau
+  // vouch mana pun. Yang HARUS langsung berlaku adalah penyaringan feed dan
+  // penanda (Task 9 dan 10), dan keduanya membaca tabel `blocks` secara
+  // langsung tanpa menunggu recompute sama sekali.
+  app.route("/", blokirRoutes(deps));
   return app;
 }
