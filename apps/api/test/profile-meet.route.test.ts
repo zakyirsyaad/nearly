@@ -130,6 +130,31 @@ describe("GET /profile/:address — angka publik", () => {
     expect(hitungTanda).not.toHaveBeenCalled();
   });
 
+  /**
+   * Task 10 (IMPORTANT 3, ronde perbaikan 1). Membalikkan angka publik ke
+   * `hitungTanda(addr, [])` akan tetap lolos suite sebelumnya — tidak ada
+   * tes yang memeriksa ARGUMEN kedua yang diterima `hitungTanda`. Tes ini
+   * memasang mata-mata pada `himpunanUntuk` DAN `hitungTanda`, lalu
+   * memastikan himpunan blokir `addr` (bukan array kosong) yang benar-benar
+   * diteruskan.
+   */
+  it("hitungTanda menerima himpunan blokir addr, bukan array kosong", async () => {
+    const hitungTanda = vi.fn(async () => 7);
+    const himpunanUntuk = vi.fn(async (_addr: Address) => new Set(["0xblok1", "0xblok2"]));
+    const blokir = {
+      setBlokir: vi.fn(async () => {}),
+      adaBlokir: vi.fn(async () => false),
+      diblokirOleh: vi.fn(async () => []),
+      himpunanUntuk,
+    };
+    const res = await app(meetStore({ hitungTanda }), blokir).request(`/profile/${TARGET}`);
+    expect(res.status).toBe(200);
+    expect(himpunanUntuk).toHaveBeenCalledWith(TARGET.toLowerCase());
+    expect(hitungTanda).toHaveBeenCalledWith(
+      TARGET.toLowerCase(), expect.arrayContaining(["0xblok1", "0xblok2"]),
+    );
+  });
+
   it("medan lama tidak berubah", async () => {
     const res = await app(meetStore()).request(`/profile/${TARGET}`);
     const json = await res.json() as Record<string, unknown>;

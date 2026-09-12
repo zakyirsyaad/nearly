@@ -30,24 +30,6 @@ function peringatkanKalauTerpotong(arah: string, alamat: string, jumlah: number)
   );
 }
 
-/**
- * Memasang filter "bukan salah satu dari" secara bertahap, dipotong per
- * UKURAN_KELOMPOK. `.not(kolom, "in", "(a,b,c)")` masuk ke query string sama
- * seperti `.in()`, jadi daftar panjang menabrak batas panjang URL PostgREST —
- * jebakan yang sama yang melahirkan potongKelompok di Fase 3b.
- *
- * Rantai `not` yang beruntun adalah konjungsi: baris harus lolos SEMUA
- * kelompok, dan itu memang artinya "tidak ada di daftar mana pun".
- */
-function tanpa<T>(q: T, kolom: string, kecuali: readonly string[]): T {
-  let keluar = q;
-  for (const bagian of potongKelompok([...new Set(kecuali.map((a) => a.toLowerCase()))])) {
-    keluar = (keluar as { not: (k: string, o: string, v: string) => T })
-      .not(kolom, "in", `(${bagian.join(",")})`);
-  }
-  return keluar;
-}
-
 export type TandaDbRow = {
   target: string;
   who: string;
@@ -95,46 +77,115 @@ export function createMeetStore(db: SupabaseClient): MeetStore {
       if (error) throw new Error(`tandai gagal: ${error.message}`);
     },
 
+    /**
+     * TIDAK memakai `.not(kolom, "in", …)`: postgrest-js menempelkan SETIAP
+     * pemanggilan `.not()`/`.in()` sebagai parameter TAMBAHAN pada URL yang
+     * SAMA (lihat `not()` di `@supabase/postgrest-js` — ia menambah ke
+     * `this.url.searchParams` lalu mengembalikan `this`), bukan mengirim satu
+     * request per potongan. Memotong daftar pengecualian jadi beberapa
+     * kelompok lalu memanggil `.not()` sekali per kelompok TETAP menghasilkan
+     * SATU URL yang memuat semua kelompok itu sekaligus — 250 alamat blokir
+     * masih membangun query string ~11 KB pada setiap pembacaan profil,
+     * event, dan kecocokan. Itulah sebabnya versi sebelumnya (`tanpa()`)
+     * salah: ia memotong PARAMETER, bukan REQUEST, dan URL yang genuinely
+     * pendek hanya didapat kalau setiap kelompok jadi request HTTP-nya
+     * sendiri.
+     *
+     * Jadi: SATU request tanpa filter pengecualian sama sekali untuk
+     * menghitung total, lalu SATU request TERPISAH per kelompok
+     * `potongKelompok` (maksimal UKURAN_KELOMPOK alamat per `.in()`,
+     * dijalankan paralel) untuk menghitung berapa dari total itu yang
+     * datang dari alamat terblokir — dikurangkan di JS. Ini benar karena
+     * primary key `ingin_bertemu` adalah `(target, who)`
+     * (`supabase/migrations/0005_meet.sql`): baris untuk `target` yang sama
+     * dan `who` tertentu hanya ADA SEKALI, jadi kelompok `who` yang saling
+     * lepas (potongKelompok tidak pernah menaruh alamat yang sama di dua
+     * kelompok) tidak pernah dihitung dua kali dan pengurangannya tidak
+     * pernah salah.
+     */
     async hitungTanda(target, kecuali) {
-      let q = db.from("ingin_bertemu")
+      const t = target.toLowerCase();
+      const { count, error } = await db.from("ingin_bertemu")
         .select("*", { count: "exact", head: true })
-        .eq("target", target.toLowerCase());
-      q = tanpa(q, "who", kecuali);
-      const { count, error } = await q;
+        .eq("target", t);
       if (error) throw new Error(`hitung tanda gagal: ${error.message}`);
-      return count ?? 0;
+      const total = count ?? 0;
+
+      const unik = [...new Set(kecuali.map((a) => a.toLowerCase()))];
+      if (unik.length === 0) return total;
+
+      const perKelompok = await Promise.all(potongKelompok(unik).map(async (bagian) => {
+        const { count: c, error: e } = await db.from("ingin_bertemu")
+          .select("*", { count: "exact", head: true })
+          .eq("target", t).in("who", bagian);
+        // Kelompok yang gagal HARUS melempar, bukan dianggap nol — kalau
+        // tidak, kegagalan satu kelompok akan membuat pengurangan terlalu
+        // kecil dan angka publik jadi lebih besar dari yang sebenarnya
+        // (tanda dari orang terblokir ikut kehitung).
+        if (e) throw new Error(`hitung tanda terkecuali gagal: ${e.message}`);
+        return c ?? 0;
+      }));
+      const dikecualikan = perKelompok.reduce((a, b) => a + b, 0);
+      // Math.max sebagai jaring pengaman murni — secara matematis tidak
+      // pernah negatif berkat PK (target, who) di atas — bukan celah yang
+      // sengaja dibiarkan.
+      return Math.max(0, total - dikecualikan);
     },
 
+    /**
+     * TIDAK menyaring lewat query: kalau `who` sendiri sudah ada di
+     * `kecuali`, jawabannya PASTI false tanpa perlu bertanya ke database
+     * sama sekali — baris (kalaupun ada) datang dari salah satu pihak yang
+     * sedang terblokir. Query sungguhan hanya dijalankan saat itu TIDAK
+     * terjadi, jadi tidak ada `.in()`/`.not()` yang perlu dipotong di sini.
+     */
     async adaTanda(target, who, kecuali) {
-      let q = db.from("ingin_bertemu")
+      const kecualiSet = new Set(kecuali.map((a) => a.toLowerCase()));
+      if (kecualiSet.has(who.toLowerCase())) return false;
+
+      const { data, error } = await db.from("ingin_bertemu")
         .select("target")
-        .eq("target", target.toLowerCase()).eq("who", who.toLowerCase());
-      q = tanpa(q, "who", kecuali);
-      const { data, error } = await q.maybeSingle();
+        .eq("target", target.toLowerCase()).eq("who", who.toLowerCase())
+        .maybeSingle();
       if (error) throw new Error(`baca tanda gagal: ${error.message}`);
       return data !== null;
     },
 
+    /**
+     * Pengecualian disaring DI JS setelah baris kembali, bukan lewat
+     * `.not()`/`.in()` di kuerinya — itu yang membuat URL-nya tidak pernah
+     * membengkak seiring panjangnya daftar blokir. Ini aman karena
+     * pembacaan sudah dibatasi `BATAS_TANDA` di atas: menyaring array yang
+     * sudah dipotong di memori TIDAK PERNAH lebih mahal daripada memotong
+     * kuerinya sendiri, dan peringatan keterpotongan tetap dihitung dari
+     * jumlah baris MENTAH (sebelum disaring) karena itulah yang mengukur
+     * apakah `BATAS_TANDA` sendiri sudah kena, bukan efek penyaringan blokir.
+     */
     async tandaOleh(who, kecuali) {
-      let q = db.from("ingin_bertemu")
-        .select("target, who, created_at").eq("who", who.toLowerCase());
-      q = tanpa(q, "target", kecuali);
-      const { data, error } = await q.limit(BATAS_TANDA);
+      const { data, error } = await db.from("ingin_bertemu")
+        .select("target, who, created_at").eq("who", who.toLowerCase())
+        .limit(BATAS_TANDA);
       if (error) throw new Error(`baca tanda keluar gagal: ${error.message}`);
       const baris = data ?? [];
       peringatkanKalauTerpotong("tandaOleh", who.toLowerCase(), baris.length);
-      return baris.map((r) => rowToTanda(r as TandaDbRow, "target"));
+      const kecualiSet = new Set(kecuali.map((a) => a.toLowerCase()));
+      return baris
+        .filter((r) => !kecualiSet.has((r as TandaDbRow).target.toLowerCase()))
+        .map((r) => rowToTanda(r as TandaDbRow, "target"));
     },
 
+    /** Cermin dari `tandaOleh`: menyaring kolom `who` di JS, alasan sama. */
     async tandaKe(target, kecuali) {
-      let q = db.from("ingin_bertemu")
-        .select("target, who, created_at").eq("target", target.toLowerCase());
-      q = tanpa(q, "who", kecuali);
-      const { data, error } = await q.limit(BATAS_TANDA);
+      const { data, error } = await db.from("ingin_bertemu")
+        .select("target, who, created_at").eq("target", target.toLowerCase())
+        .limit(BATAS_TANDA);
       if (error) throw new Error(`baca tanda masuk gagal: ${error.message}`);
       const baris = data ?? [];
       peringatkanKalauTerpotong("tandaKe", target.toLowerCase(), baris.length);
-      return baris.map((r) => rowToTanda(r as TandaDbRow, "who"));
+      const kecualiSet = new Set(kecuali.map((a) => a.toLowerCase()));
+      return baris
+        .filter((r) => !kecualiSet.has((r as TandaDbRow).who.toLowerCase()))
+        .map((r) => rowToTanda(r as TandaDbRow, "who"));
     },
 
     async cocokDilihatAtMs(who) {
