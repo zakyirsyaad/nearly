@@ -646,9 +646,10 @@ masalah akurasi lokasi indoor dan baterai; tidak ada test yang bisa menggantikan
    - XMTP **bukan** bagian dari BNB Chain. Jangan menyebutnya begitu dalam pitch.
 6. **Ruang lingkup adalah risiko terbesar sekarang.** Tujuh fase untuk satu hackathon itu
    berat, dan keputusannya adalah mempertahankan Event + FYP sekaligus dengan mengurangi
-   kedalaman (§11.1). Kalau di tengah jalan ternyata tetap tidak cukup waktu, urutan
-   pengorbanan berikutnya: **FYP (Fase 5) dulu, lalu vouch/tag di Fase 2** — jangan pernah
-   memotong apa pun di §11.2.
+   kedalaman (§11.1). **Catatan (2026-09-08):** Fase 4 dipecah tiga — 4a (blokir), 4c (pesan
+   XMTP), 4b (radar & visibilitas) — lihat spec Fase 4a §1. Kalau di tengah jalan ternyata
+   tetap tidak cukup waktu, urutan pengorbanan berikutnya: **4b (radar & visibilitas) dulu,
+   lalu vouch/tag** — jangan pernah memotong apa pun di §11.2.
 7. **Angka "ingin bertemu" yang publik** menciptakan dinamika papan peringkat popularitas —
    keputusan produk yang diambil sadar (§7.6). Obatnya sudah diketahui kalau terbukti merusak.
 8. **Hukum privasi (UU PDP Indonesia / GDPR)** — aplikasi mengumpulkan lokasi kasar dan graf
