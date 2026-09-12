@@ -38,7 +38,7 @@ describe("setBlokir", () => {
     const r = await setBlokir(await masukan(), d);
     expect(r.ok).toBe(true);
     expect((d as { blokir: { setBlokir: { mock: { calls: unknown[][] } } } })
-      .blokir.setBlokir.mock.calls[0]).toEqual([B, A.address, true]);
+      .blokir.setBlokir.mock.calls[0]).toEqual([A.address, B, true]);
   });
 
   it("mencabut blokir berhasil dan meneruskan false", async () => {
@@ -106,5 +106,33 @@ describe("setBlokir", () => {
       target: B, who: A.address as Address, blokir: true, expiresAt: EXP, sig,
     } as never, d);
     expect(!r.ok && r.failure.code).toBe("bad_signature");
+  });
+
+  // Pengikatan medan: tanda tangan sah untuk PESAN TERTENTU, bukan untuk
+  // apa pun yang kebetulan tiba dengan tanda tangan itu. Dibangun eksplisit
+  // di luar `masukan()` — sebar akhir `masukan()` menerapkan `over` yang
+  // SAMA sebelum menandatangani, jadi pesan yang ditandatangani dan objek
+  // akhir selalu selaras dan tidak pernah bisa mensimulasikan gangguan ini.
+  it("target diubah setelah tanda tangan ditolak 401, bukan diteruskan ke store", async () => {
+    const d = deps();
+    const msg = { target: B, who: A.address as Address, blokir: true, expiresAt: EXP };
+    const sig = await A.signTypedData(blokirTypedData(msg, VC));
+    const C = "0x0000000000000000000000000000000000000ccc" as Address;
+    const r = await setBlokir({ ...msg, target: C, sig } as never, d);
+    expect(!r.ok && r.failure.code).toBe("bad_signature");
+    expect(!r.ok && r.failure.httpStatus).toBe(401);
+    expect((d as { blokir: { setBlokir: { mock: { calls: unknown[] } } } })
+      .blokir.setBlokir.mock.calls.length).toBe(0);
+  });
+
+  it("blokir diubah setelah tanda tangan ditolak 401, bukan diteruskan ke store", async () => {
+    const d = deps();
+    const msg = { target: B, who: A.address as Address, blokir: true, expiresAt: EXP };
+    const sig = await A.signTypedData(blokirTypedData(msg, VC));
+    const r = await setBlokir({ ...msg, blokir: false, sig } as never, d);
+    expect(!r.ok && r.failure.code).toBe("bad_signature");
+    expect(!r.ok && r.failure.httpStatus).toBe(401);
+    expect((d as { blokir: { setBlokir: { mock: { calls: unknown[] } } } })
+      .blokir.setBlokir.mock.calls.length).toBe(0);
   });
 });

@@ -49,7 +49,7 @@ export async function setBlokir(
     return fail({ code: "bad_signature", httpStatus: 401 });
   }
 
-  await deps.blokir.setBlokir(input.target, input.who, input.blokir);
+  await deps.blokir.setBlokir(input.who, input.target, input.blokir);
   return { ok: true, value: undefined };
 }
 
