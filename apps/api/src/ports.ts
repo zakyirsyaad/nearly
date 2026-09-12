@@ -306,12 +306,19 @@ export type ProfilRingkas = { displayName: string; tier: number };
 export type MeetStore = {
   /** `ingin` false berarti MENGHAPUS baris — angka publik ikut turun (spec §2.1). */
   setTanda(target: Address, who: Address, ingin: boolean): Promise<void>;
-  hitungTanda(target: Address): Promise<number>;
-  adaTanda(target: Address, who: Address): Promise<boolean>;
+  /**
+   * `kecuali` adalah alamat yang tidak boleh ikut dihitung — himpunan blokir
+   * pemanggil (spec §5.2). Diberikan pemanggil, bukan dibaca sendiri: store
+   * ini memiliki tabel `ingin_bertemu` saja, dan store yang membaca tabel
+   * orang lain adalah pola yang sudah ditolak sejak `rsvpAddresses` di
+   * Fase 3c ditaruh di EventStore, bukan MeetStore.
+   */
+  hitungTanda(target: Address, kecuali: readonly string[]): Promise<number>;
+  adaTanda(target: Address, who: Address, kecuali: readonly string[]): Promise<boolean>;
   /** Yang DITANDAI oleh `who`. */
-  tandaOleh(who: Address): Promise<Tanda[]>;
+  tandaOleh(who: Address, kecuali: readonly string[]): Promise<Tanda[]>;
   /** Yang MENANDAI `target`. */
-  tandaKe(target: Address): Promise<Tanda[]>;
+  tandaKe(target: Address, kecuali: readonly string[]): Promise<Tanda[]>;
   cocokDilihatAtMs(who: Address): Promise<number | null>;
   setCocokDilihat(who: Address, atMs: number): Promise<void>;
   profilRingkas(addresses: Address[]): Promise<Map<string, ProfilRingkas>>;
@@ -342,6 +349,46 @@ type _PastikanMetodeMeetStoreLengkap = AssertNever<SisaMetodeMeetStore>;
 export type MeetDeps = {
   meet: MeetStore;
   /** Alamat ConnectionRegistry — domain EIP-712 meet terikat padanya (spec §5). */
+  verifyingContract: Address;
+  nowMs: () => number;
+};
+
+/** Satu baris di daftar blokir. */
+export type BarisBlokir = { address: Address; atMs: number };
+
+/** Satu pasangan terblokir mentah, untuk memuat graf trust sekali jalan. */
+export type PasanganBlokir = { blocker: string; blocked: string };
+
+export type BlokirStore = {
+  /** Idempoten. `blokir: false` menghapus barisnya. */
+  setBlokir(blocker: Address, blocked: Address, blokir: boolean): Promise<void>;
+  /** Hanya arah ini: apakah `blocker` memblokir `blocked`. */
+  adaBlokir(blocker: Address, blocked: Address): Promise<boolean>;
+  /** Yang DIBLOKIR oleh `who`, terbaru dulu. Hanya arah ini — cuma pemblokir
+   * yang boleh melihat tombol cabut. */
+  diblokirOleh(who: Address): Promise<BarisBlokir[]>;
+  /**
+   * Semua alamat yang punya hubungan blokir dengan `who` ke ARAH MANA PUN.
+   * Inilah yang dipakai penyaringan feed dan penanda: blokir dua arah tidak
+   * peduli siapa yang memulai. Set, bukan array, karena pemanggilnya
+   * menyaring daftar dan array membuatnya kuadratik.
+   */
+  himpunanUntuk(who: Address): Promise<Set<string>>;
+};
+
+export const METODE_BLOKIR_STORE = [
+  "setBlokir", "adaBlokir", "diblokirOleh", "himpunanUntuk",
+] as const satisfies readonly (keyof BlokirStore)[];
+
+// Arah kedua dari pengait: `satisfies` di atas menangkap nama yang salah eja
+// atau dihapus; ini menangkap metode yang DITAMBAHKAN tanpa didaftarkan.
+type SisaMetodeBlokirStore = Exclude<keyof BlokirStore, (typeof METODE_BLOKIR_STORE)[number]>;
+type AssertNeverBlokir<T extends never> = T;
+type _PastikanMetodeBlokirStoreLengkap = AssertNeverBlokir<SisaMetodeBlokirStore>;
+
+export type BlokirDeps = {
+  blokir: BlokirStore;
+  /** Alamat ConnectionRegistry — domain EIP-712 blokir terikat padanya (spec §6). */
   verifyingContract: Address;
   nowMs: () => number;
 };

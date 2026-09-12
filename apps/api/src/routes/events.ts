@@ -170,8 +170,8 @@ export function eventRoutes(
       const [sudahRsvp, sudahCheckIn, tandaKe, tandaOleh, alamatRsvp] = await Promise.all([
         deps.events.hasRsvp(ev.eventId, addr),
         deps.events.hasCheckIn(ev.eventId, addr),
-        deps.meet.tandaKe(addr),
-        deps.meet.tandaOleh(addr),
+        deps.meet.tandaKe(addr, []), // TODO Task 10
+        deps.meet.tandaOleh(addr, []), // TODO Task 10
         deps.events.rsvpAddresses(ev.eventId),
       ]);
 

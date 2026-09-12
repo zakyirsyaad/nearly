@@ -91,7 +91,7 @@ describe("tandaOleh dan tandaKe: arah filter dan sisi ekstraksi", () => {
     const { db, jejak } = dbPalsuEq([BARIS]);
     const store = createMeetStore(db);
 
-    const hasil = await store.tandaOleh(WHO);
+    const hasil = await store.tandaOleh(WHO, []);
 
     expect(jejak).toHaveLength(1);
     const [rec] = jejak;
@@ -111,11 +111,11 @@ describe("tandaOleh dan tandaKe: arah filter dan sisi ekstraksi", () => {
    */
   it("tandaOleh dan tandaKe memasang batas baris eksplisit", async () => {
     const a = dbPalsuEq([BARIS]);
-    await createMeetStore(a.db).tandaOleh(WHO);
+    await createMeetStore(a.db).tandaOleh(WHO, []);
     expect(a.jejak[0]?.limit).toBeGreaterThan(0);
 
     const b = dbPalsuEq([BARIS]);
-    await createMeetStore(b.db).tandaKe(TARGET);
+    await createMeetStore(b.db).tandaKe(TARGET, []);
     expect(b.jejak[0]?.limit).toBe(a.jejak[0]?.limit);
   });
 
@@ -127,7 +127,7 @@ describe("tandaOleh dan tandaKe: arah filter dan sisi ekstraksi", () => {
   it("memperingatkan kalau jumlah baris menyentuh batasnya", async () => {
     const batas = (() => {
       const { db, jejak } = dbPalsuEq([]);
-      void createMeetStore(db).tandaOleh(WHO);
+      void createMeetStore(db).tandaOleh(WHO, []);
       return jejak[0]?.limit ?? 0;
     })();
     expect(batas).toBeGreaterThan(0);
@@ -135,12 +135,12 @@ describe("tandaOleh dan tandaKe: arah filter dan sisi ekstraksi", () => {
     const penuh = Array.from({ length: batas }, () => BARIS);
     const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
     try {
-      await createMeetStore(dbPalsuEq(penuh).db).tandaOleh(WHO);
+      await createMeetStore(dbPalsuEq(penuh).db).tandaOleh(WHO, []);
       expect(warn).toHaveBeenCalledTimes(1);
       expect(String(warn.mock.calls[0]?.[0])).toContain("tandaOleh");
 
       warn.mockClear();
-      await createMeetStore(dbPalsuEq([BARIS]).db).tandaOleh(WHO);
+      await createMeetStore(dbPalsuEq([BARIS]).db).tandaOleh(WHO, []);
       // Di bawah batas TIDAK boleh berisik — peringatan yang muncul setiap
       // hari berhenti dibaca, dan justru saat penting ia ikut terlewat.
       expect(warn).not.toHaveBeenCalled();
@@ -153,7 +153,7 @@ describe("tandaOleh dan tandaKe: arah filter dan sisi ekstraksi", () => {
     const { db, jejak } = dbPalsuEq([BARIS]);
     const store = createMeetStore(db);
 
-    const hasil = await store.tandaKe(TARGET);
+    const hasil = await store.tandaKe(TARGET, []);
 
     expect(jejak).toHaveLength(1);
     const [rec] = jejak;

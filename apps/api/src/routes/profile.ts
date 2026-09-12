@@ -90,7 +90,7 @@ export function profileRoutes(deps: GateDeps & ProfileMeetDeps) {
     // klaim faktual tentang orang lain yang lahir dari store yang sedang mati.
     // Klien sudah merender ketiadaan kunci ini dengan benar (tidak menampilkan
     // apa-apa), jadi kegagalan menghilangkan kuncinya, bukan memalsukan nol.
-    const inginBertemuCount = await deps.meet.hitungTanda(addr)
+    const inginBertemuCount = await deps.meet.hitungTanda(addr, []) // TODO Task 10
       .then((n): number | undefined => n)
       .catch(() => undefined);
 
@@ -103,8 +103,8 @@ export function profileRoutes(deps: GateDeps & ProfileMeetDeps) {
     if (!pemanggil) return c.json(dasar);
 
     const [sudahKutandai, diaMenandaiku] = await Promise.all([
-      deps.meet.adaTanda(addr, pemanggil),
-      deps.meet.adaTanda(pemanggil, addr),
+      deps.meet.adaTanda(addr, pemanggil, []), // TODO Task 10
+      deps.meet.adaTanda(pemanggil, addr, []), // TODO Task 10
     ]);
     return c.json({
       ...dasar,

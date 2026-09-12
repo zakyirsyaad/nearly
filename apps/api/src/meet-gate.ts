@@ -97,8 +97,8 @@ export async function daftarKecocokan(
   who: Address, deps: MeetDeps,
 ): Promise<{ kecocokan: BarisKecocokan[]; baru: number }> {
   const [oleh, ke, dilihat] = await Promise.all([
-    deps.meet.tandaOleh(who),
-    deps.meet.tandaKe(who),
+    deps.meet.tandaOleh(who, []), // TODO Task 10
+    deps.meet.tandaKe(who, []), // TODO Task 10
     deps.meet.cocokDilihatAtMs(who),
   ]);
 
