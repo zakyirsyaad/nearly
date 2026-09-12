@@ -1,5 +1,6 @@
 import type { Address } from "viem";
 import type { TrustEdge, TrustGraph, Vouch } from "@nearly/trust";
+import type { PasanganBlokir } from "../ports";
 
 /**
  * Jendela 3 jam. CADANGAN, bukan lagi jalur utama: sejak Fase 3a, koneksi yang
@@ -59,7 +60,20 @@ export type GraphRows = {
   slashes: SlashRow[];
   checkins: CheckInRow[];
   events: EventWindowRow[];
+  blocks: PasanganBlokir[];
 };
+
+/**
+ * Kunci kanonik satu pasangan, urutan tidak dipedulikan. Blokir disimpan
+ * berarah tapi trust cuma punya satu boolean per edge — dan itu benar, karena
+ * trust tidak boleh mengalir ke arah mana pun lewat pasangan yang salah
+ * satunya memblokir (spec §4).
+ */
+function kunciPasangan(a: string, b: string): string {
+  const x = a.toLowerCase();
+  const y = b.toLowerCase();
+  return x < y ? `${x}|${y}` : `${y}|${x}`;
+}
 
 type EventWindow = { centerCell: string; startMs: number; endMs: number };
 
@@ -134,6 +148,7 @@ function eventOccasionFor(
 export function rowsToGraph(rows: GraphRows, nowMs: number): TrustGraph {
   const events = indexEvents(rows.events);
   const checkins = indexCheckins(rows.checkins);
+  const terblokir = new Set(rows.blocks.map((b) => kunciPasangan(b.blocker, b.blocked)));
 
   const edges: TrustEdge[] = rows.connections.map((r, i) => {
     const atMs = new Date(r.created_at).getTime();
@@ -147,7 +162,7 @@ export function rowsToGraph(rows: GraphRows, nowMs: number): TrustGraph {
       occasionId:
         fromEvent ?? (r.cell ? occasionIdOf(r.cell, atMs) : `tanpa-sel-${i}:0`),
       atMs,
-      blocked: false,
+      blocked: terblokir.has(kunciPasangan(r.addr_a, r.addr_b)),
     };
   });
 

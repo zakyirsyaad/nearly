@@ -1,7 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Address } from "viem";
 import type { TrustResult } from "@nearly/trust";
-import type { ReportStore, TrustStore, VouchStore } from "../ports";
+import type { PasanganBlokir, ReportStore, TrustStore, VouchStore } from "../ports";
 import { rowsToGraph } from "./load-graph";
 import type { CheckInRow, ConnRow, EventWindowRow, SeedRow, SlashRow, VouchRow } from "./load-graph";
 
@@ -55,7 +55,7 @@ export function createTrustStore(db: SupabaseClient): TrustStore {
       // Diurutkan eksplisit: paginasi hanya benar kalau urutannya stabil antar
       // permintaan. Tanpa order by, PostgREST tidak menjamin apa pun dan sebuah
       // baris bisa terlewat atau terhitung dua kali di batas halaman.
-      const [connections, vouches, seeds, slashes, checkins, events] = await Promise.all([
+      const [connections, vouches, seeds, slashes, checkins, events, blocks] = await Promise.all([
         fetchAllPages<ConnRow>(
           (f, t) =>
             db.from("connections").select("addr_a, addr_b, cell, created_at")
@@ -94,8 +94,15 @@ export function createTrustStore(db: SupabaseClient): TrustStore {
               .order("event_id", { ascending: true }).range(f, t) as never,
           "baca event",
         ),
+        fetchAllPages<PasanganBlokir>(
+          (f, t) =>
+            db.from("blocks").select("blocker, blocked")
+              .order("blocker", { ascending: true }).order("blocked", { ascending: true })
+              .range(f, t) as never,
+          "baca blokir",
+        ),
       ]);
-      return rowsToGraph({ connections, vouches, seeds, slashes, checkins, events }, nowMs);
+      return rowsToGraph({ connections, vouches, seeds, slashes, checkins, events, blocks }, nowMs);
     },
 
     async saveSnapshots(rows, computedAt) {

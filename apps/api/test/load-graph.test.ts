@@ -6,7 +6,7 @@ import { regionOf } from "@nearly/trust";
 const NOW = 1_700_000_000_000;
 
 function rows(over: Partial<GraphRows> = {}): GraphRows {
-  return { connections: [], vouches: [], seeds: [], slashes: [], checkins: [], events: [], ...over };
+  return { connections: [], vouches: [], seeds: [], slashes: [], checkins: [], events: [], blocks: [], ...over };
 }
 
 describe("occasionIdOf", () => {
@@ -203,5 +203,54 @@ describe("occasion dari check-in terverifikasi", () => {
     // Check-in ADA, jadi event menang. Sel tidak dibutuhkan untuk itu — yang
     // dipakai adalah center_cell milik event.
     expect(g.edges[0]!.occasionId).toBe(eventOccasionIdOf(CELL, EVENT_A));
+  });
+});
+
+describe("rowsToGraph: blocked", () => {
+  const KONEKSI = {
+    addr_a: "0x00000000000000000000000000000000000000aa",
+    addr_b: "0x00000000000000000000000000000000000000bb",
+    cell: "u0nd9uu", created_at: new Date(NOW).toISOString(),
+  };
+
+  it("tanpa blokir, edge tidak terblokir", () => {
+    const g = rowsToGraph(rows({ connections: [KONEKSI] as never, blocks: [] }), NOW);
+    expect(g.edges[0]?.blocked).toBe(false);
+  });
+
+  it("A memblokir B → edge terblokir", () => {
+    const g = rowsToGraph(rows({
+      connections: [KONEKSI] as never,
+      blocks: [{ blocker: KONEKSI.addr_a, blocked: KONEKSI.addr_b }],
+    }), NOW);
+    expect(g.edges[0]?.blocked).toBe(true);
+  });
+
+  // Arah kebalikan HARUS ikut memblokir edge-nya. packages/trust cuma punya
+  // satu boolean per edge, dan trust tidak boleh mengalir ke arah mana pun
+  // (spec §4). Membaca satu arah saja membuat separuh blokir tidak berefek
+  // pada skor sama sekali.
+  it("B memblokir A → edge yang SAMA juga terblokir", () => {
+    const g = rowsToGraph(rows({
+      connections: [KONEKSI] as never,
+      blocks: [{ blocker: KONEKSI.addr_b, blocked: KONEKSI.addr_a }],
+    }), NOW);
+    expect(g.edges[0]?.blocked).toBe(true);
+  });
+
+  it("blokir ke orang yang tidak punya koneksi tidak membuat edge apa pun", () => {
+    const g = rowsToGraph(rows({
+      connections: [],
+      blocks: [{ blocker: KONEKSI.addr_a, blocked: "0x00000000000000000000000000000000000000cc" }],
+    }), NOW);
+    expect(g.edges).toHaveLength(0);
+  });
+
+  it("huruf besar di baris blokir tetap cocok", () => {
+    const g = rowsToGraph(rows({
+      connections: [KONEKSI] as never,
+      blocks: [{ blocker: KONEKSI.addr_a.toUpperCase(), blocked: KONEKSI.addr_b.toUpperCase() }],
+    }), NOW);
+    expect(g.edges[0]?.blocked).toBe(true);
   });
 });
