@@ -4,7 +4,7 @@ import { privateKeyToAccount } from "viem/accounts";
 import type { Address, Hex } from "viem";
 import { lihatEventTypedData } from "@nearly/shared";
 import { eventRoutes } from "../src/routes/events";
-import type { EventRecord, MeetStore } from "../src/ports";
+import type { BlokirStore, EventRecord, MeetStore } from "../src/ports";
 
 const aku = privateKeyToAccount(`0x${"77".repeat(32)}` as Hex);
 const ATTENDANCE = "0x000000000000000000000000000000000000beef" as Address;
@@ -34,6 +34,19 @@ function meetStore(over: Partial<MeetStore> = {}): MeetStore {
   };
 }
 
+// Fake BlokirStore dengan tepat empat metode (lihat METODE_BLOKIR_STORE di
+// ports.ts) — `himpunanUntuk` kosong secara default supaya tes-tes lama
+// (yang tidak peduli blokir) tetap berjalan seperti sebelum Task 10.
+function blokirPalsu(over: Partial<BlokirStore> = {}): BlokirStore {
+  return {
+    setBlokir: vi.fn(async () => {}),
+    adaBlokir: vi.fn(async () => false),
+    diblokirOleh: vi.fn(async () => []),
+    himpunanUntuk: vi.fn(async () => new Set<string>()),
+    ...over,
+  };
+}
+
 /** Tanda dari daftar alamat, semuanya berwaktu sama. */
 function tanda(...alamat: Address[]) {
   return alamat.map((address) => ({ address, atMs: NOW }));
@@ -42,7 +55,7 @@ function tanda(...alamat: Address[]) {
 // `rsvps` default 5: tepat di ambang PENANDA_HADIR_MIN_RSVP, supaya tes yang
 // menegaskan isi `penandaHadir`/`kutandaiHadir` tidak ikut tersandung penjaga
 // ukuran kerumunan yang diuji terpisah di bawah.
-function app(meet: MeetStore, rsvpAddrs: Address[], rsvps = 5) {
+function app(meet: MeetStore, rsvpAddrs: Address[], rsvps = 5, blokir: BlokirStore = blokirPalsu()) {
   const deps = {
     events: {
       getEvent: vi.fn(async () => acara),
@@ -61,6 +74,7 @@ function app(meet: MeetStore, rsvpAddrs: Address[], rsvps = 5) {
     nowMs: () => NOW,
     onChanged: vi.fn(async () => {}),
     meet,
+    blokir,
   };
   const a = new Hono();
   a.route("/", eventRoutes(deps as never));

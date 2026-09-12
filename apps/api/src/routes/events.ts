@@ -6,7 +6,7 @@ import {
 } from "@nearly/shared";
 import { acceptCheckIn, createEvent, rsvp, submitCheckInOffer } from "../event-gate";
 import { irisan, kecocokanDari } from "../meet-rank";
-import type { EventDeps, EventRecord, MeetStore } from "../ports";
+import type { BlokirStore, EventDeps, EventRecord, MeetStore } from "../ports";
 import { pulihkanTandaTangan } from "../pulihkan-tanda-tangan";
 
 const DISCOVERY_LIMIT = 50;
@@ -108,7 +108,7 @@ async function pemanggilTerbukti(
 }
 
 export function eventRoutes(
-  deps: EventDeps & { onChanged: () => Promise<void>; meet: MeetStore },
+  deps: EventDeps & { onChanged: () => Promise<void>; meet: MeetStore; blokir: BlokirStore },
 ) {
   const r = new Hono();
 
@@ -167,11 +167,14 @@ export function eventRoutes(
 
     const addr = await pemanggilTerbukti(c.req.query(), ev.eventId, deps);
     if (addr) {
+      // Satu pembacaan himpunan blokir pemanggil per permintaan, dipakai
+      // KEDUA arah tanda di bawah.
+      const kecuali = [...await deps.blokir.himpunanUntuk(addr)];
       const [sudahRsvp, sudahCheckIn, tandaKe, tandaOleh, alamatRsvp] = await Promise.all([
         deps.events.hasRsvp(ev.eventId, addr),
         deps.events.hasCheckIn(ev.eventId, addr),
-        deps.meet.tandaKe(addr, []), // TODO Task 10
-        deps.meet.tandaOleh(addr, []), // TODO Task 10
+        deps.meet.tandaKe(addr, kecuali),
+        deps.meet.tandaOleh(addr, kecuali),
         deps.events.rsvpAddresses(ev.eventId),
       ]);
 

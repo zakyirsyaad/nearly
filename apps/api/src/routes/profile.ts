@@ -1,11 +1,12 @@
 import { Hono } from "hono";
 import { isAddress, type Address, type Hex } from "viem";
 import { recoverLihatProfilSigner } from "@nearly/shared";
-import type { GateDeps, MeetStore } from "../ports";
+import type { BlokirStore, GateDeps, MeetStore } from "../ports";
 import { pulihkanTandaTangan } from "../pulihkan-tanda-tangan";
 
 type ProfileMeetDeps = {
   meet: MeetStore;
+  blokir: BlokirStore;
   verifyingContract: Address;
   nowMs: () => number;
 };
@@ -90,7 +91,15 @@ export function profileRoutes(deps: GateDeps & ProfileMeetDeps) {
     // klaim faktual tentang orang lain yang lahir dari store yang sedang mati.
     // Klien sudah merender ketiadaan kunci ini dengan benar (tidak menampilkan
     // apa-apa), jadi kegagalan menghilangkan kuncinya, bukan memalsukan nol.
-    const inginBertemuCount = await deps.meet.hitungTanda(addr, []) // TODO Task 10
+    //
+    // `himpunanUntuk` DI DALAM rantai yang sama, bukan di-`.catch()` sendiri
+    // dengan jatuh ke himpunan kosong: himpunan kosong berarti TIDAK ADA yang
+    // disaring, jadi kegagalan store blokir akan membuat tanda dari orang yang
+    // memblokir/diblokir ikut kehitung sebagai angka publik yang SALAH,
+    // bukan sekadar angka yang hilang. Satu-satunya keluaran yang jujur saat
+    // salah satu store gagal adalah kunci ini hilang sama sekali.
+    const inginBertemuCount = await deps.blokir.himpunanUntuk(addr)
+      .then((s) => deps.meet.hitungTanda(addr, [...s]))
       .then((n): number | undefined => n)
       .catch(() => undefined);
 
@@ -102,9 +111,14 @@ export function profileRoutes(deps: GateDeps & ProfileMeetDeps) {
     const pemanggil = await pemanggilTerbukti(c.req.query(), addr, deps);
     if (!pemanggil) return c.json(dasar);
 
+    // Satu pembacaan himpunan blokir pemanggil, dipakai KEDUA bendera di
+    // bawah. Beda dari angka publik di atas: di sini kegagalan boleh keluar
+    // sebagai 500 — pemanggil sudah membuktikan dirinya, jadi tidak ada
+    // orang asing yang menerima jawaban yang dikarang untuknya.
+    const kecuali = [...await deps.blokir.himpunanUntuk(pemanggil)];
     const [sudahKutandai, diaMenandaiku] = await Promise.all([
-      deps.meet.adaTanda(addr, pemanggil, []), // TODO Task 10
-      deps.meet.adaTanda(pemanggil, addr, []), // TODO Task 10
+      deps.meet.adaTanda(addr, pemanggil, kecuali),
+      deps.meet.adaTanda(pemanggil, addr, kecuali),
     ]);
     return c.json({
       ...dasar,

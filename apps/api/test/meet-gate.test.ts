@@ -5,7 +5,7 @@ import {
   inginBertemuTypedData, lihatKecocokanTypedData, lihatProfilTypedData, tandaiDilihatTypedData,
 } from "@nearly/shared";
 import { daftarKecocokan, setTanda, tandaiDilihat } from "../src/meet-gate";
-import type { MeetDeps, MeetStore } from "../src/ports";
+import type { BlokirStore, MeetDeps, MeetStore } from "../src/ports";
 
 const aku = privateKeyToAccount(`0x${"11".repeat(32)}` as Hex);
 const lain = privateKeyToAccount(`0x${"22".repeat(32)}` as Hex);
@@ -28,8 +28,21 @@ function store(over: Partial<MeetStore> = {}): MeetStore {
   };
 }
 
-const deps = (meet: MeetStore): MeetDeps =>
-  ({ meet, verifyingContract: KONTRAK, nowMs: () => NOW });
+// Fake BlokirStore dengan tepat empat metode (lihat METODE_BLOKIR_STORE di
+// ports.ts) — `himpunanUntuk` kosong secara default supaya tes-tes lama
+// (yang tidak peduli blokir) tetap berjalan seperti sebelum Task 10.
+function blokirPalsu(over: Partial<BlokirStore> = {}): BlokirStore {
+  return {
+    setBlokir: vi.fn(async () => {}),
+    adaBlokir: vi.fn(async () => false),
+    diblokirOleh: vi.fn(async () => []),
+    himpunanUntuk: vi.fn(async () => new Set<string>()),
+    ...over,
+  };
+}
+
+const deps = (meet: MeetStore, blokir: BlokirStore = blokirPalsu()): MeetDeps =>
+  ({ meet, blokir, verifyingContract: KONTRAK, nowMs: () => NOW });
 
 async function masukan(over: Record<string, unknown> = {}) {
   const pesan = { target: TARGET, who: aku.address, ingin: true, expiresAt: EXP };
@@ -144,6 +157,54 @@ describe("setTanda", () => {
     const s = store();
     const hasil = await setTanda(
       { target: TARGET, who: aku.address, ingin: true, expiresAt: EXP, sig: sigBaca }, deps(s),
+    );
+    expect(hasil).toMatchObject({ ok: false, failure: { code: "bad_signature", httpStatus: 401 } });
+    expect(s.setTanda).not.toHaveBeenCalled();
+  });
+
+  /**
+   * R5 (putusan pengawas atas brief Task 10). Spec §5.2 menolak MENANDAI
+   * selagi terblokir — bukan mencabut. Pemeriksaan ini hanya menyala saat
+   * `ingin === true`.
+   */
+  it("menolak memasang tanda baru saat terblokir", async () => {
+    const s = store();
+    const b = blokirPalsu({ himpunanUntuk: vi.fn(async () => new Set([TARGET.toLowerCase()])) });
+    const hasil = await setTanda(await masukan(), deps(s, b));
+    expect(hasil).toMatchObject({ ok: false, failure: { code: "terblokir", httpStatus: 403 } });
+    expect(s.setTanda).not.toHaveBeenCalled();
+  });
+
+  /**
+   * R5. Mencabut tanda TETAP diizinkan walau terblokir — menolaknya akan
+   * memaksa pemblokir membuka blokir hanya untuk menghapus tanda lamanya
+   * sendiri, padahal membuka blokir justru memulihkan PERSIS tanda yang ingin
+   * dihapusnya.
+   */
+  it("tetap mengizinkan mencabut tanda saat terblokir", async () => {
+    const pesan = { target: TARGET, who: aku.address, ingin: false, expiresAt: EXP };
+    const sig = await aku.signTypedData(inginBertemuTypedData(pesan, KONTRAK));
+    const s = store();
+    const b = blokirPalsu({ himpunanUntuk: vi.fn(async () => new Set([TARGET.toLowerCase()])) });
+    const hasil = await setTanda({ ...pesan, sig }, deps(s, b));
+    expect(hasil.ok).toBe(true);
+    expect(s.setTanda).toHaveBeenCalledWith(TARGET, aku.address, false);
+  });
+
+  /**
+   * Mutasi B (Step 7 brief): pemeriksaan `terblokir` HARUS ada SETELAH
+   * verifikasi tanda tangan, bukan sebelumnya — kalau tidak, ia jadi orakel
+   * yang membocorkan keberadaan blokir ke siapa pun tanpa tanda tangan sah.
+   * Tanda tangan di bawah ini SAMPAH (bukan sekadar tanda tangan orang lain),
+   * jadi hasilnya wajib `bad_signature`, bukan `terblokir`, walau pasangannya
+   * memang terblokir.
+   */
+  it("tanda tangan sampah tetap ditolak bad_signature walau terblokir (bukan orakel)", async () => {
+    const s = store();
+    const b = blokirPalsu({ himpunanUntuk: vi.fn(async () => new Set([TARGET.toLowerCase()])) });
+    const hasil = await setTanda(
+      { target: TARGET, who: aku.address, ingin: true, expiresAt: EXP, sig: "0xbukan" as Hex },
+      deps(s, b),
     );
     expect(hasil).toMatchObject({ ok: false, failure: { code: "bad_signature", httpStatus: 401 } });
     expect(s.setTanda).not.toHaveBeenCalled();
@@ -272,5 +333,25 @@ describe("daftarKecocokan", () => {
     });
     const hasil = await daftarKecocokan(aku.address, deps(s));
     expect(hasil.kecocokan[0]).toMatchObject({ displayName: "", tier: 0 });
+  });
+
+  /**
+   * Task 10: himpunan blokir pemanggil dibaca SEKALI lalu diteruskan sebagai
+   * `kecuali` ke KEDUA arah (`tandaOleh` dan `tandaKe`) — bukan dibaca ulang
+   * per metode.
+   */
+  it("meneruskan himpunan blokir pemanggil sebagai kecuali ke tandaOleh dan tandaKe", async () => {
+    const s = store();
+    const himpunanUntuk = vi.fn(async () => new Set(["0xblok1", "0xblok2"]));
+    const b = blokirPalsu({ himpunanUntuk });
+    await daftarKecocokan(aku.address, deps(s, b));
+    expect(himpunanUntuk).toHaveBeenCalledTimes(1);
+    expect(himpunanUntuk).toHaveBeenCalledWith(aku.address);
+    expect(s.tandaOleh).toHaveBeenCalledWith(
+      aku.address, expect.arrayContaining(["0xblok1", "0xblok2"]),
+    );
+    expect(s.tandaKe).toHaveBeenCalledWith(
+      aku.address, expect.arrayContaining(["0xblok1", "0xblok2"]),
+    );
   });
 });

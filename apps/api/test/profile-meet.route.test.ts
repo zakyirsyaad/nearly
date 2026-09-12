@@ -4,7 +4,7 @@ import { privateKeyToAccount } from "viem/accounts";
 import type { Address, Hex } from "viem";
 import { inginBertemuTypedData, lihatProfilTypedData } from "@nearly/shared";
 import { profileRoutes } from "../src/routes/profile";
-import type { MeetStore } from "../src/ports";
+import type { BlokirStore, MeetStore } from "../src/ports";
 
 const aku = privateKeyToAccount(`0x${"55".repeat(32)}` as Hex);
 const KONTRAK = "0x000000000000000000000000000000000000c0de" as Address;
@@ -26,7 +26,20 @@ function meetStore(over: Partial<MeetStore> = {}): MeetStore {
   };
 }
 
-function app(meet: MeetStore) {
+// Fake BlokirStore dengan tepat empat metode (lihat METODE_BLOKIR_STORE di
+// ports.ts) — `himpunanUntuk` kosong secara default supaya tes-tes lama
+// (yang tidak peduli blokir) tetap berjalan seperti sebelum Task 10.
+function blokirPalsu(over: Partial<BlokirStore> = {}): BlokirStore {
+  return {
+    setBlokir: vi.fn(async () => {}),
+    adaBlokir: vi.fn(async () => false),
+    diblokirOleh: vi.fn(async () => []),
+    himpunanUntuk: vi.fn(async () => new Set<string>()),
+    ...over,
+  };
+}
+
+function app(meet: MeetStore, blokir: BlokirStore = blokirPalsu()) {
   const deps = {
     profiles: {
       listConnections: vi.fn(async () => []),
@@ -35,6 +48,7 @@ function app(meet: MeetStore) {
     },
     identity: { ensName: vi.fn(async () => null), txCount: vi.fn(async () => 0) },
     meet,
+    blokir,
     verifyingContract: KONTRAK,
     nowMs: () => NOW,
   };
@@ -88,6 +102,34 @@ describe("GET /profile/:address — angka publik", () => {
     expect(json.inginBertemuCount).toBe(0);
   });
 
+  /**
+   * R6 (putusan pengawas atas brief Task 10). `himpunanUntuk` DI DALAM
+   * rantai yang sama dengan `hitungTanda`, bukan `.catch()` sendiri yang
+   * jatuh ke himpunan kosong: himpunan kosong berarti TIDAK ADA yang
+   * disaring, jadi kegagalan store blokir akan mengarang angka publik yang
+   * ikut menghitung tanda dari orang yang sedang terblokir — bukan sekadar
+   * kunci yang hilang.
+   */
+  it("kunci HILANG kalau himpunanUntuk blokir gagal, bukan jatuh ke himpunan kosong", async () => {
+    const hitungTanda = vi.fn(async () => 7);
+    const s = meetStore({ hitungTanda });
+    const blokir = {
+      setBlokir: vi.fn(async () => {}),
+      adaBlokir: vi.fn(async () => false),
+      diblokirOleh: vi.fn(async () => []),
+      himpunanUntuk: vi.fn(async () => { throw new Error("blokir mati"); }),
+    };
+    const res = await app(s, blokir).request(`/profile/${TARGET}`);
+    expect(res.status).toBe(200);
+    const json = await res.json() as Record<string, unknown>;
+    expect(Object.prototype.hasOwnProperty.call(json, "inginBertemuCount")).toBe(false);
+    // hitungTanda TIDAK PERNAH dipanggil — membuktikan kedua await berada
+    // dalam SATU rantai yang sama, bukan dipanggil terlepas dengan fallback
+    // himpunan kosong yang membuat hitungTanda tetap jalan dan mengarang
+    // angka.
+    expect(hitungTanda).not.toHaveBeenCalled();
+  });
+
   it("medan lama tidak berubah", async () => {
     const res = await app(meetStore()).request(`/profile/${TARGET}`);
     const json = await res.json() as Record<string, unknown>;
@@ -117,6 +159,58 @@ describe("GET /profile/:address — bendera pribadi", () => {
     const json = await res.json() as Record<string, unknown>;
     expect(json.sudahKutandai).toBe(true);
     expect(json.salingMenandai).toBe(true);
+  });
+
+  /**
+   * Task 10. Himpunan blokir PEMANGGIL (bukan `addr`) dibaca sekali lalu
+   * diteruskan ke KEDUA panggilan `adaTanda`. Ini yang membuat
+   * `diaMenandaiku` (dan karenanya `salingMenandai`) jatuh ke false untuk
+   * pasangan yang terblokir — `sudahKutandai` sendiri tetap tidak berubah
+   * (menyaring kolom `who` dengan himpunan pemanggil sendiri adalah no-op,
+   * lihat komentar di meet-gate.ts) karena baris itu memang masih ada dan
+   * pemanggil (si pemblokir) tetap boleh mencabutnya (R5).
+   */
+  it("meneruskan himpunan blokir pemanggil ke sudahKutandai dan diaMenandaiku", async () => {
+    const adaTanda = vi.fn(async () => true);
+    const himpunanUntuk = vi.fn(async (_who: Address) => new Set(["0xblok"]));
+    const blokir = {
+      setBlokir: vi.fn(async () => {}),
+      adaBlokir: vi.fn(async () => false),
+      diblokirOleh: vi.fn(async () => []),
+      himpunanUntuk,
+    };
+    const res = await app(meetStore({ adaTanda }), blokir).request(await buktiBaca());
+    expect(res.status).toBe(200);
+    // Dipanggil DUA kali total untuk satu permintaan — sekali untuk angka
+    // publik (himpunan `addr`), sekali untuk bendera pribadi (himpunan
+    // `pemanggil`) — tapi HANYA SEKALI untuk pemanggil, diteruskan ke KEDUA
+    // panggilan adaTanda di bawah, bukan dibaca ulang per metode.
+    expect(himpunanUntuk.mock.calls.filter((c) => c[0] === aku.address.toLowerCase())).toHaveLength(1);
+    expect(adaTanda).toHaveBeenCalledWith(
+      TARGET.toLowerCase(), aku.address.toLowerCase(), expect.arrayContaining(["0xblok"]),
+    );
+    expect(adaTanda).toHaveBeenCalledWith(
+      aku.address.toLowerCase(), TARGET.toLowerCase(), expect.arrayContaining(["0xblok"]),
+    );
+  });
+
+  /**
+   * R6 (putusan pengawas). Bendera pribadi HANYA keluar setelah pemanggil
+   * membuktikan dirinya, jadi kegagalan store blokir di sini BOLEH menjadi
+   * 500 — beda dari angka publik di atas, tidak boleh diam-diam disaring
+   * dengan himpunan kosong (yang akan menyingkap `sudahKutandai`/
+   * `salingMenandai` yang seharusnya tersaring untuk pasangan terblokir).
+   */
+  it("500 kalau himpunanUntuk blokir gagal untuk bendera pribadi, bukan disaring kosong", async () => {
+    const blokir = {
+      setBlokir: vi.fn(async () => {}),
+      adaBlokir: vi.fn(async () => false),
+      diblokirOleh: vi.fn(async () => []),
+      himpunanUntuk: vi.fn(async () => { throw new Error("blokir mati"); }),
+    };
+    const res = await app(meetStore({ adaTanda: vi.fn(async () => true) }), blokir)
+      .request(await buktiBaca());
+    expect(res.status).toBe(500);
   });
 
   it("membedakan sudahKutandai dari salingMenandai", async () => {

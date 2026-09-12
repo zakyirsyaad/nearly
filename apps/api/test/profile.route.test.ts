@@ -37,6 +37,15 @@ function deps(): TrustDeps {
       setCocokDilihat: vi.fn(async () => {}),
       profilRingkas: vi.fn(async () => new Map()),
     },
+    // Stub Fase 4a: tidak diuji langsung di sini, hanya supaya bentuk
+    // TrustDeps lengkap — rute profil memanggil deps.blokir.himpunanUntuk
+    // untuk menyaring angka publik dan bendera pribadi (Task 10).
+    blokir: {
+      setBlokir: vi.fn(async () => {}),
+      adaBlokir: vi.fn(async () => false),
+      diblokirOleh: vi.fn(async () => []),
+      himpunanUntuk: vi.fn(async () => new Set<string>()),
+    },
     // Stub Fase 2: tidak dipakai langsung oleh test profil ini, hanya supaya
     // bentuk TrustDeps lengkap untuk onChanged() yang dipicu createApp.
     trust: {

@@ -30,6 +30,24 @@ function peringatkanKalauTerpotong(arah: string, alamat: string, jumlah: number)
   );
 }
 
+/**
+ * Memasang filter "bukan salah satu dari" secara bertahap, dipotong per
+ * UKURAN_KELOMPOK. `.not(kolom, "in", "(a,b,c)")` masuk ke query string sama
+ * seperti `.in()`, jadi daftar panjang menabrak batas panjang URL PostgREST —
+ * jebakan yang sama yang melahirkan potongKelompok di Fase 3b.
+ *
+ * Rantai `not` yang beruntun adalah konjungsi: baris harus lolos SEMUA
+ * kelompok, dan itu memang artinya "tidak ada di daftar mana pun".
+ */
+function tanpa<T>(q: T, kolom: string, kecuali: readonly string[]): T {
+  let keluar = q;
+  for (const bagian of potongKelompok([...new Set(kecuali.map((a) => a.toLowerCase()))])) {
+    keluar = (keluar as { not: (k: string, o: string, v: string) => T })
+      .not(kolom, "in", `(${bagian.join(",")})`);
+  }
+  return keluar;
+}
+
 export type TandaDbRow = {
   target: string;
   who: string;
@@ -77,37 +95,42 @@ export function createMeetStore(db: SupabaseClient): MeetStore {
       if (error) throw new Error(`tandai gagal: ${error.message}`);
     },
 
-    async hitungTanda(target) {
-      const { count, error } = await db.from("ingin_bertemu")
+    async hitungTanda(target, kecuali) {
+      let q = db.from("ingin_bertemu")
         .select("*", { count: "exact", head: true })
         .eq("target", target.toLowerCase());
+      q = tanpa(q, "who", kecuali);
+      const { count, error } = await q;
       if (error) throw new Error(`hitung tanda gagal: ${error.message}`);
       return count ?? 0;
     },
 
-    async adaTanda(target, who) {
-      const { data, error } = await db.from("ingin_bertemu")
+    async adaTanda(target, who, kecuali) {
+      let q = db.from("ingin_bertemu")
         .select("target")
-        .eq("target", target.toLowerCase()).eq("who", who.toLowerCase())
-        .maybeSingle();
+        .eq("target", target.toLowerCase()).eq("who", who.toLowerCase());
+      q = tanpa(q, "who", kecuali);
+      const { data, error } = await q.maybeSingle();
       if (error) throw new Error(`baca tanda gagal: ${error.message}`);
       return data !== null;
     },
 
-    async tandaOleh(who) {
-      const { data, error } = await db.from("ingin_bertemu")
-        .select("target, who, created_at").eq("who", who.toLowerCase())
-        .limit(BATAS_TANDA);
+    async tandaOleh(who, kecuali) {
+      let q = db.from("ingin_bertemu")
+        .select("target, who, created_at").eq("who", who.toLowerCase());
+      q = tanpa(q, "target", kecuali);
+      const { data, error } = await q.limit(BATAS_TANDA);
       if (error) throw new Error(`baca tanda keluar gagal: ${error.message}`);
       const baris = data ?? [];
       peringatkanKalauTerpotong("tandaOleh", who.toLowerCase(), baris.length);
       return baris.map((r) => rowToTanda(r as TandaDbRow, "target"));
     },
 
-    async tandaKe(target) {
-      const { data, error } = await db.from("ingin_bertemu")
-        .select("target, who, created_at").eq("target", target.toLowerCase())
-        .limit(BATAS_TANDA);
+    async tandaKe(target, kecuali) {
+      let q = db.from("ingin_bertemu")
+        .select("target, who, created_at").eq("target", target.toLowerCase());
+      q = tanpa(q, "who", kecuali);
+      const { data, error } = await q.limit(BATAS_TANDA);
       if (error) throw new Error(`baca tanda masuk gagal: ${error.message}`);
       const baris = data ?? [];
       peringatkanKalauTerpotong("tandaKe", target.toLowerCase(), baris.length);

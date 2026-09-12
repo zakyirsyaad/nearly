@@ -6,7 +6,7 @@ import {
   inginBertemuTypedData, lihatKecocokanTypedData, tandaiDilihatTypedData,
 } from "@nearly/shared";
 import { meetRoutes } from "../src/routes/meet";
-import type { MeetDeps, MeetStore } from "../src/ports";
+import type { BlokirStore, MeetDeps, MeetStore } from "../src/ports";
 
 const aku = privateKeyToAccount(`0x${"33".repeat(32)}` as Hex);
 const KONTRAK = "0x000000000000000000000000000000000000c0de" as Address;
@@ -28,8 +28,21 @@ function store(over: Partial<MeetStore> = {}): MeetStore {
   };
 }
 
-function app(meet: MeetStore) {
-  const deps: MeetDeps = { meet, verifyingContract: KONTRAK, nowMs: () => NOW };
+// Fake BlokirStore dengan tepat empat metode (lihat METODE_BLOKIR_STORE di
+// ports.ts) — `himpunanUntuk` kosong secara default supaya tes-tes lama
+// (yang tidak peduli blokir) tetap berjalan seperti sebelum Task 10.
+function blokirPalsu(over: Partial<BlokirStore> = {}): BlokirStore {
+  return {
+    setBlokir: vi.fn(async () => {}),
+    adaBlokir: vi.fn(async () => false),
+    diblokirOleh: vi.fn(async () => []),
+    himpunanUntuk: vi.fn(async () => new Set<string>()),
+    ...over,
+  };
+}
+
+function app(meet: MeetStore, blokir: BlokirStore = blokirPalsu()) {
+  const deps: MeetDeps = { meet, blokir, verifyingContract: KONTRAK, nowMs: () => NOW };
   const a = new Hono();
   a.route("/", meetRoutes(deps));
   return a;

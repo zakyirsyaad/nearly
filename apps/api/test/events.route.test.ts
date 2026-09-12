@@ -5,7 +5,7 @@ import {
   cellToBytes32, createEventTypedData, lihatEventTypedData, rsvpTypedData,
 } from "@nearly/shared";
 import { eventRoutes } from "../src/routes/events";
-import type { MeetStore } from "../src/ports";
+import type { BlokirStore, MeetStore } from "../src/ports";
 
 const NOW = 1_700_000_000_000;
 const NOW_SEC = BigInt(Math.floor(NOW / 1000));
@@ -27,6 +27,18 @@ function meetStore(): MeetStore {
     tandaOleh: vi.fn(async () => []), tandaKe: vi.fn(async () => []),
     cocokDilihatAtMs: vi.fn(async () => null), setCocokDilihat: vi.fn(async () => {}),
     profilRingkas: vi.fn(async () => new Map()),
+  };
+}
+
+// Fake BlokirStore dengan tepat empat metode (lihat METODE_BLOKIR_STORE di
+// ports.ts) — `himpunanUntuk` kosong secara default supaya tes-tes lama
+// (yang tidak peduli blokir) tetap berjalan seperti sebelum Task 10.
+function blokirPalsu(): BlokirStore {
+  return {
+    setBlokir: vi.fn(async () => {}),
+    adaBlokir: vi.fn(async () => false),
+    diblokirOleh: vi.fn(async () => []),
+    himpunanUntuk: vi.fn(async () => new Set<string>()),
   };
 }
 
@@ -55,6 +67,7 @@ function app(over: Record<string, unknown> = {}) {
     nowMs: () => NOW,
     onChanged: vi.fn(async () => {}),
     meet: meetStore(),
+    blokir: blokirPalsu(),
     ...over,
   } as never);
 }

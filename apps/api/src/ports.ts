@@ -348,6 +348,11 @@ type _PastikanMetodeMeetStoreLengkap = AssertNever<SisaMetodeMeetStore>;
 
 export type MeetDeps = {
   meet: MeetStore;
+  /**
+   * Dibaca `setTanda` (menolak menandai saat terblokir) dan `daftarKecocokan`
+   * (menyaring kecocokan dua arah) — spec §5.2.
+   */
+  blokir: BlokirStore;
   /** Alamat ConnectionRegistry — domain EIP-712 meet terikat padanya (spec §5). */
   verifyingContract: Address;
   nowMs: () => number;

@@ -7,7 +7,8 @@ import { pulihkanTandaTangan } from "./pulihkan-tanda-tangan";
 export type MeetFailure =
   | { code: "expired"; httpStatus: 410 }
   | { code: "bad_signature"; httpStatus: 401 }
-  | { code: "tandai_diri"; httpStatus: 400 };
+  | { code: "tandai_diri"; httpStatus: 400 }
+  | { code: "terblokir"; httpStatus: 403 };
 
 export type MeetResult<T> = { ok: true; value: T } | { ok: false; failure: MeetFailure };
 
@@ -58,6 +59,20 @@ export async function setTanda(
     return fail({ code: "bad_signature", httpStatus: 401 });
   }
 
+  // Selama terblokir, keduanya tidak bisa saling MENANDAI (spec §5.2) — tapi
+  // MENCABUT tetap boleh: menolaknya akan memaksa pemblokir membuka blokir
+  // hanya untuk menghapus tanda lamanya sendiri, padahal membuka blokir justru
+  // memulihkan PERSIS tanda yang ingin dihapusnya. Karena itu pemeriksaan ini
+  // hanya menyala saat `input.ingin === true`.
+  //
+  // Diperiksa SETELAH tanda tangan supaya tidak menjadi orakel: tanpa tanda
+  // tangan yang sah, tidak ada yang bisa memancing keberadaan blokir.
+  if (input.ingin) {
+    const terblokir = await deps.blokir.himpunanUntuk(input.who)
+      .then((s) => s.has(input.target.toLowerCase()));
+    if (terblokir) return fail({ code: "terblokir", httpStatus: 403 });
+  }
+
   await deps.meet.setTanda(input.target, input.who, input.ingin);
   return { ok: true, value: undefined };
 }
@@ -96,9 +111,12 @@ export type BarisKecocokan = {
 export async function daftarKecocokan(
   who: Address, deps: MeetDeps,
 ): Promise<{ kecocokan: BarisKecocokan[]; baru: number }> {
+  // Satu pembacaan himpunan blokir per permintaan, dipakai KEDUA arah di
+  // bawah — bukan satu panggilan per metode.
+  const kecuali = [...await deps.blokir.himpunanUntuk(who)];
   const [oleh, ke, dilihat] = await Promise.all([
-    deps.meet.tandaOleh(who, []), // TODO Task 10
-    deps.meet.tandaKe(who, []), // TODO Task 10
+    deps.meet.tandaOleh(who, kecuali),
+    deps.meet.tandaKe(who, kecuali),
     deps.meet.cocokDilihatAtMs(who),
   ]);
 
