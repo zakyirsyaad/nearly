@@ -34,6 +34,17 @@ describe("meetSuccessMessage", () => {
   });
 });
 
+describe("meetErrorMessage: terblokir", () => {
+  // `terblokir` (403) datang dari POST /meet ketika penanda tangan dan
+  // target punya hubungan blokir. Tanpa entri sendiri, layar penanda jatuh
+  // ke kalimat cadangan "Gagal. Coba lagi sebentar." — yang mengundang orang
+  // mengetuk tombol yang sama lagi, padahal aksi itu tidak akan pernah
+  // berhasil selama blokirnya masih ada.
+  it("punya pesan sendiri, bukan kalimat cadangan", () => {
+    expect(meetErrorMessage("terblokir")).toBe("Kamu tidak bisa menandai orang ini.");
+  });
+});
+
 describe("feedErrorMessage: image_unavailable", () => {
   it("punya pesan sendiri, bukan kalimat cadangan", () => {
     const pesan = feedErrorMessage("image_unavailable");

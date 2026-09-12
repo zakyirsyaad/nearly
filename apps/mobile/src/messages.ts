@@ -76,6 +76,13 @@ const MEET_MESSAGES: Record<string, string> = {
   butuh_bukti: "Buktinya belum ada, sudah kedaluwarsa, atau dari dompet yang berbeda. Muat ulang layar ini untuk mencoba lagi.",
   invalid_body: "Ada isian yang belum benar.",
   invalid_address: "Alamatnya tidak valid. Coba lagi dari layar sebelumnya.",
+  // POST /meet mengembalikan ini (403) kalau penanda tangan dan target
+  // punya hubungan blokir, arah mana pun. Kalimatnya sengaja netral: tidak
+  // bilang siapa yang memblokir siapa, dan tidak bilang "saling memblokir"
+  // (itu salah untuk blokir sepihak). Spec menerima bahwa orang yang
+  // diblokir bisa MENYIMPULKAN adanya blokir dari sini — tapi tidak
+  // memberitahunya secara eksplisit.
+  terblokir: "Kamu tidak bisa menandai orang ini.",
 };
 
 export function meetErrorMessage(code: string): string {
@@ -190,4 +197,28 @@ export function teksPenandaHadir(jumlah: number | undefined): string | null {
 export function teksKutandaiHadir(jumlah: number | undefined): string | null {
   if (jumlah === undefined) return null;
   return `${jumlah} orang yang saling ingin bertemu denganmu sudah RSVP.`;
+}
+
+const BLOKIR_MESSAGES: Record<string, string> = {
+  blokir_diri: "Kamu tidak bisa memblokir dirimu sendiri.",
+  bad_signature: "Tanda tangan tidak cocok. Coba lagi.",
+  expired: "Permintaannya sudah kedaluwarsa. Coba lagi.",
+  // Sama seperti di layar kecocokan: bukan salah pengguna, dan yang menolong
+  // adalah memuat ulang, bukan mengetuk tombol yang sama lagi.
+  butuh_bukti: "Buktinya belum ada, sudah kedaluwarsa, atau dari dompet yang berbeda. Muat ulang layar ini untuk mencoba lagi.",
+  invalid_body: "Ada isian yang belum benar.",
+};
+
+export function blokirErrorMessage(code: string): string {
+  return BLOKIR_MESSAGES[code] ?? "Gagal. Coba lagi sebentar.";
+}
+
+/**
+ * Label tombol blokir. Sengaja fungsi murni supaya bisa diuji tanpa merender
+ * — repo ini tidak punya harness uji render React Native, dan pola yang sama
+ * sudah dipakai `teksLencana` dan `tombolTandaLabel`.
+ */
+export function blokirTombolLabel(sudahDiblokir: boolean, sibuk: boolean): string {
+  if (sibuk) return "Mengirim…";
+  return sudahDiblokir ? "Cabut blokir" : "Blokir orang ini";
 }
