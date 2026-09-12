@@ -45,6 +45,7 @@ describe("hitungTanda menghormati `kecuali` tanpa membengkakkan URL", () => {
     expect(hasil).toBe(5);
     expect(panggilan).toHaveLength(1);
     expect(panggilan[0]?.in).toEqual([]);
+    expect(panggilan[0]?.eq).toEqual([["target", A.toLowerCase()]]);
   });
 
   it("kecuali satu alamat: total dikurangi hitungan kelompok itu, lewat request TERPISAH", async () => {
@@ -58,6 +59,37 @@ describe("hitungTanda menghormati `kecuali` tanpa membengkakkan URL", () => {
     // tanda ke `target`, baru dikurangi belakangan.
     expect(panggilan[0]?.in).toEqual([]);
     expect(panggilan[1]?.in).toEqual([["who", [B.toLowerCase()]]]);
+    // Kedua request menyaring `target`, BUKAN `who` — kalau query kelompok
+    // kehilangan filter `target`-nya (atau memakainya untuk `who`), angka
+    // publik `inginBertemuCount` akan salah untuk `target` yang lain: 0
+    // kalau filternya hilang sama sekali, atau tetap menghitung tanda dari
+    // orang terblokir kalau filternya tertukar ke `who`.
+    expect(panggilan[0]?.eq).toEqual([["target", A.toLowerCase()]]);
+    expect(panggilan[1]?.eq).toEqual([["target", A.toLowerCase()]]);
+  });
+
+  /**
+   * IMPORTANT (ronde perbaikan 2). `.eq("target", t)` pada request TOTAL
+   * maupun pada SETIAP request kelompok tidak pernah dipin sebelum ini —
+   * `hitungDbPalsu` merekam `rec.eq` tapi tidak ada tes yang membacanya.
+   * Query kelompok bisa kehilangan filter `target`-nya, atau memakai
+   * `.eq("who", t)`, dan seluruh suite tetap hijau sementara
+   * `inginBertemuCount` publik salah (terpotong ke 0 di kasus pertama, atau
+   * tetap menghitung tanda dari orang terblokir di kasus kedua).
+   */
+  it("query total dan SETIAP query kelompok menyaring eq(\"target\", …), bukan eq(\"who\", …)", async () => {
+    const { db, panggilan } = hitungDbPalsu(
+      (posisi) => (posisi === 0 ? { count: 300, error: null } : { count: 10, error: null }),
+    );
+    const banyak = Array.from({ length: 250 }, (_, i) => `0x${String(i).padStart(40, "0")}`);
+    await createMeetStore(db).hitungTanda(A, banyak);
+    expect(panggilan).toHaveLength(4);
+    for (const p of panggilan) {
+      expect(p.eq).toEqual([["target", A.toLowerCase()]]);
+    }
+    // Tidak ada satu pun request yang menyaring `who` lewat `.eq()` — daftar
+    // kecuali HARUS lewat `.in("who", …)`, bukan `.eq("who", …)`.
+    expect(panggilan.some((p) => p.eq.some(([k]) => k === "who"))).toBe(false);
   });
 
   /**
