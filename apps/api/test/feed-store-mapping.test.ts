@@ -1,10 +1,23 @@
 import { describe, expect, it } from "vitest";
 import type { Address } from "viem";
 import type { SupabaseClient } from "@supabase/supabase-js";
+import type { BlokirStore } from "../src/ports";
 import {
   createFeedStore, petaHop, potongKelompok, rowToPost, UKURAN_KELOMPOK,
   type PostDbRow,
 } from "../src/feed-store";
+
+// Fake BlokirStore dengan tepat empat metode (lihat METODE_BLOKIR_STORE di
+// ports.ts) — `himpunanUntuk` kosong karena tes-tes di bawah memakai
+// `viewer: null`, jadi ia tidak seharusnya pernah dipanggil.
+function blokirPalsu(): BlokirStore {
+  return {
+    setBlokir: async () => {},
+    adaBlokir: async () => false,
+    diblokirOleh: async () => [],
+    himpunanUntuk: async () => new Set<string>(),
+  };
+}
 
 const AKU = "0x00000000000000000000000000000000000000a1" as Address;
 const B = "0x00000000000000000000000000000000000000b2";
@@ -48,21 +61,21 @@ describe("petaHop", () => {
   const tepi = (a: string, b: string) => ({ addr_a: a, addr_b: b });
 
   it("koneksi langsung berjarak 1 lompatan", () => {
-    expect(petaHop(AKU, [tepi(AKU, B)], []).get(B.toLowerCase())).toBe(1);
+    expect(petaHop(AKU, [tepi(AKU, B)], [], new Set()).get(B.toLowerCase())).toBe(1);
   });
 
   it("koneksi dari koneksi berjarak 2 lompatan", () => {
-    expect(petaHop(AKU, [tepi(AKU, B)], [tepi(B, C)]).get(C.toLowerCase())).toBe(2);
+    expect(petaHop(AKU, [tepi(AKU, B)], [tepi(B, C)], new Set()).get(C.toLowerCase())).toBe(2);
   });
 
   it("arah tepi tidak penting", () => {
-    expect(petaHop(AKU, [tepi(B, AKU)], []).get(B.toLowerCase())).toBe(1);
+    expect(petaHop(AKU, [tepi(B, AKU)], [], new Set()).get(B.toLowerCase())).toBe(1);
   });
 
   // Satu lompatan menang atas dua: kalau seseorang bisa dicapai lewat kedua
   // jalur, yang lebih dekat yang berlaku.
   it("1 lompatan tidak diturunkan menjadi 2", () => {
-    expect(petaHop(AKU, [tepi(AKU, B), tepi(AKU, C)], [tepi(B, C)]).get(C.toLowerCase())).toBe(1);
+    expect(petaHop(AKU, [tepi(AKU, B), tepi(AKU, C)], [tepi(B, C)], new Set()).get(C.toLowerCase())).toBe(1);
   });
 
   /**
@@ -72,30 +85,30 @@ describe("petaHop", () => {
    * mengalikan skornya dengan JARAK_LUAR 0.3.
    */
   it("penonton memetakan dirinya sendiri ke 0", () => {
-    expect(petaHop(AKU, [tepi(AKU, B)], [tepi(B, AKU)]).get(AKU.toLowerCase())).toBe(0);
+    expect(petaHop(AKU, [tepi(AKU, B)], [tepi(B, AKU)], new Set()).get(AKU.toLowerCase())).toBe(0);
   });
 
   it("0 tidak bisa diturunkan menjadi 1 atau 2 oleh tepi mana pun", () => {
-    const peta = petaHop(AKU, [tepi(AKU, B), tepi(AKU, AKU)], [tepi(B, AKU)]);
+    const peta = petaHop(AKU, [tepi(AKU, B), tepi(AKU, AKU)], [tepi(B, AKU)], new Set());
     expect(peta.get(AKU.toLowerCase())).toBe(0);
   });
 
   it("0 dipetakan tanpa peduli besar-kecil huruf alamat penonton", () => {
-    const peta = petaHop(AKU.toUpperCase() as Address, [], []);
+    const peta = petaHop(AKU.toUpperCase() as Address, [], [], new Set());
     expect(peta.get(AKU.toLowerCase())).toBe(0);
   });
 
   it("orang yang tak terjangkau tidak masuk peta", () => {
-    expect(petaHop(AKU, [tepi(AKU, B)], [tepi(B, C)]).has(D.toLowerCase())).toBe(false);
+    expect(petaHop(AKU, [tepi(AKU, B)], [tepi(B, C)], new Set()).has(D.toLowerCase())).toBe(false);
   });
 
   it("pencocokan tidak peka besar-kecil huruf", () => {
-    expect(petaHop(AKU.toUpperCase() as Address, [tepi(AKU, B)], []).get(B.toLowerCase())).toBe(1);
+    expect(petaHop(AKU.toUpperCase() as Address, [tepi(AKU, B)], [], new Set()).get(B.toLowerCase())).toBe(1);
   });
 
   // Hanya dirinya sendiri yang ada di dalamnya.
   it("penonton tanpa koneksi hanya memetakan dirinya sendiri", () => {
-    const peta = petaHop(AKU, [], []);
+    const peta = petaHop(AKU, [], [], new Set());
     expect(peta.size).toBe(1);
     expect(peta.get(AKU.toLowerCase())).toBe(0);
   });
@@ -169,7 +182,7 @@ describe("listCandidates memotong setiap .in()", () => {
     }));
 
     const jejak: Panggilan[] = [];
-    const store = createFeedStore(dbPalsu({ posts }, jejak));
+    const store = createFeedStore(dbPalsu({ posts }, jejak), blokirPalsu());
     await store.listCandidates({ sinceMs: 0, limit: 500, viewer: null });
 
     const semuaIn = jejak.flatMap((p) => p.in);
@@ -193,7 +206,7 @@ describe("listCandidates memotong setiap .in()", () => {
     }));
 
     const jejak: Panggilan[] = [];
-    const store = createFeedStore(dbPalsu({ posts }, jejak));
+    const store = createFeedStore(dbPalsu({ posts }, jejak), blokirPalsu());
     await store.listCandidates({ sinceMs: 0, limit: 250, viewer: null });
 
     const idTerkirim = jejak

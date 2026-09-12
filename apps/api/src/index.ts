@@ -47,6 +47,10 @@ const supabase = createSupabase(
   required("SUPABASE_SERVICE_ROLE_KEY"),
 );
 
+// Satu instans dipakai ulang oleh `feed` dan `blokir` — keduanya membaca
+// tabel `blocks` yang sama, jadi satu instans lebih jelas daripada dua.
+const blokirStore = createBlokirStore(supabase);
+
 const app = createApp({
   store: createStore(supabase),
   profiles: createProfileStore(supabase),
@@ -80,10 +84,10 @@ const app = createApp({
     registry: attendanceRegistry,
   }),
   attendanceContract: attendanceRegistry,
-  feed: createFeedStore(supabase),
+  feed: createFeedStore(supabase, blokirStore),
   greenfield,
   meet: createMeetStore(supabase),
-  blokir: createBlokirStore(supabase),
+  blokir: blokirStore,
 });
 
 serve({ fetch: app.fetch, port: 8787 });

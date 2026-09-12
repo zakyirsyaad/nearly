@@ -1,6 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Address, Hex } from "viem";
-import type { FeedCandidate, FeedStore, ImageStatus, PostRecord } from "./ports";
+import type { BlokirStore, FeedCandidate, FeedStore, ImageStatus, PostRecord } from "./ports";
 
 export type PostDbRow = {
   post_id: string;
@@ -47,13 +47,25 @@ type Tepi = { addr_a: string; addr_b: string };
  * dan ia menang atas 1 maupun 2 kalau seseorang entah bagaimana punya tepi ke
  * dirinya sendiri.
  *
- * Kolom `blocked` TIDAK ADA di tabel connections; blokir baru datang di Fase 4
- * (spec §6.4). Setiap koneksi dihitung sebagai lompatan.
+ * `terblokir` memuat setiap alamat yang punya hubungan blokir dengan penonton
+ * ke arah mana pun. Edge yang menyentuhnya dibuang SEBELUM lompatan dihitung,
+ * bukan sesudahnya — kalau disaring sesudah, orang ketiga yang hanya
+ * terjangkau LEWAT orang yang diblokir tetap terhitung dua lompatan padahal
+ * jalannya sudah putus, dan feed akan tidak sepakat dengan graf trust yang
+ * memang membuang edge itu sepenuhnya (spec §5.1).
  */
-export function petaHop(viewer: Address, tepi1: Tepi[], tepi2: Tepi[]): Map<string, 0 | 1 | 2> {
+export function petaHop(
+  viewer: Address, tepi1: Tepi[], tepi2: Tepi[], terblokir: ReadonlySet<string>,
+): Map<string, 0 | 1 | 2> {
   const aku = viewer.toLowerCase();
   const peta = new Map<string, 0 | 1 | 2>();
   peta.set(aku, 0);
+
+  // Edge yang menyentuh alamat terblokir dibuang lebih dulu, kedua lapisnya.
+  const hidup = (t: Tepi) =>
+    !terblokir.has(t.addr_a.toLowerCase()) && !terblokir.has(t.addr_b.toLowerCase());
+  const t1 = tepi1.filter(hidup);
+  const t2 = tepi2.filter(hidup);
 
   const seberang = (t: Tepi, dari: Set<string>): string | null => {
     const a = t.addr_a.toLowerCase();
@@ -64,13 +76,13 @@ export function petaHop(viewer: Address, tepi1: Tepi[], tepi2: Tepi[]): Map<stri
   };
 
   const satu = new Set<string>();
-  for (const t of tepi1) {
+  for (const t of t1) {
     const lain = seberang(t, new Set([aku]));
     if (lain && lain !== aku) satu.add(lain);
   }
   for (const a of satu) peta.set(a, 1);
 
-  for (const t of tepi2) {
+  for (const t of t2) {
     const lain = seberang(t, satu);
     // 1 lompatan menang atas 2 — yang lebih dekat yang berlaku.
     if (lain && lain !== aku && !peta.has(lain)) peta.set(lain, 2);
@@ -125,7 +137,7 @@ async function gabungPerKelompok(
   return keluar;
 }
 
-export function createFeedStore(db: SupabaseClient): FeedStore {
+export function createFeedStore(db: SupabaseClient, blokir: BlokirStore): FeedStore {
   async function ensureProfile(address: Address): Promise<void> {
     const { error } = await db
       .from("profiles")
@@ -228,12 +240,19 @@ export function createFeedStore(db: SupabaseClient): FeedStore {
         .limit(limit);
       if (e1) throw new Error(`ambil kandidat gagal: ${e1.message}`);
 
-      const posts = (postRows ?? []).map((r) => rowToPost(r as PostDbRow));
+      const aku = viewer ? viewer.toLowerCase() : null;
+
+      // Dua arah: unggahan orang yang kamu blokir hilang dari feedmu, DAN
+      // unggahanmu hilang dari feed mereka. Yang kedua terjadi sendirinya
+      // karena himpunan ini simetris (spec §5.1).
+      const terblokir = aku ? await blokir.himpunanUntuk(viewer as Address) : new Set<string>();
+
+      const posts = (postRows ?? []).map((r) => rowToPost(r as PostDbRow))
+        .filter((p) => !terblokir.has(p.author.toLowerCase()));
       if (posts.length === 0) return [];
 
       const ids = posts.map((p) => p.postId.toLowerCase());
       const penulis = [...new Set(posts.map((p) => p.author.toLowerCase()))];
-      const aku = viewer ? viewer.toLowerCase() : null;
 
       // Setiap `.in()` dipotong jadi kelompok maksimal UKURAN_KELOMPOK id.
       const kelompokId = potongKelompok(ids);
@@ -306,7 +325,7 @@ export function createFeedStore(db: SupabaseClient): FeedStore {
             .or(`addr_a.in.(${bagian.join(",")}),addr_b.in.(${bagian.join(",")})`),
           "ambil koneksi lapis dua",
         ) as { addr_a: string; addr_b: string }[];
-        hop = petaHop(viewer as Address, (t1 ?? []) as Tepi[], t2);
+        hop = petaHop(viewer as Address, (t1 ?? []) as Tepi[], t2, terblokir);
       }
 
       return posts.map((p): FeedCandidate => {
