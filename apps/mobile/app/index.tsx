@@ -73,6 +73,7 @@ export default function Home() {
       <Link href="/kecocokan" style={s.link}>
         Saling ingin bertemu{lencana ? `  ${lencana}` : ""}
       </Link>
+      <Link href="/blokir" style={s.link}>Daftar blokir</Link>
     </View>
   );
 }
