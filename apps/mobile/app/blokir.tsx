@@ -7,7 +7,7 @@ import { createDevSigner } from "../src/signer";
 import { ApiError } from "../src/http";
 import { getBlokir, kueriBuktiBlokir, type BarisBlokir } from "../src/blokir-api";
 import { aksiBlokir } from "../src/blokir-actions";
-import { blokirErrorMessage } from "../src/messages";
+import { blokirErrorMessage, blokirTombolLabel } from "../src/messages";
 
 export default function BlokirScreen() {
   const signer = useMemo(
@@ -92,7 +92,9 @@ export default function BlokirScreen() {
           <View style={s.kartu}>
             <Text style={s.alamat}>{item.address}</Text>
             <Button
-              title={sibuk === item.address ? "Mengirim…" : "Cabut blokir"}
+              // `true` tetap: setiap baris di layar ini, by construction, adalah
+              // orang yang sudah diblokir pengguna.
+              title={blokirTombolLabel(true, sibuk === item.address)}
               disabled={sibuk === item.address}
               onPress={() => { void cabut(item.address); }}
             />
