@@ -1,3 +1,5 @@
+import { MAKS_ISI_PESAN } from "@nearly/shared";
+
 const PESAN: Record<string, string> = {
   expired: "QR-nya sudah kedaluwarsa. Minta QR baru, lalu pindai lagi.",
   offer_not_found: "QR ini tidak dikenali. Minta dia membuka layar QR lagi.",
@@ -222,3 +224,34 @@ export function blokirTombolLabel(sudahDiblokir: boolean, sibuk: boolean): strin
   if (sibuk) return "Mengirim…";
   return sudahDiblokir ? "Cabut blokir" : "Blokir orang ini";
 }
+
+const PESAN_MESSAGES: Record<string, string> = {
+  tidak_terhubung: "Pesan hanya bisa dikirim ke orang yang pernah kamu temui.",
+  // Netral dengan sengaja, sama seperti `terblokir` di MEET_MESSAGES (Ruling R8
+  // Fase 4a): benar untuk blokir satu arah, tidak mengatakan siapa memblokir.
+  terblokir: "Kamu tidak bisa berkirim pesan dengan orang ini.",
+  belum_siap: "Orang ini belum membuka pesan di Nearly. Coba lagi nanti.",
+  terlalu_cepat: "Terlalu banyak pesan dalam waktu singkat. Tunggu sebentar.",
+  terlalu_besar: "Pesannya terlalu panjang.",
+  pesan_diri: "Kamu tidak bisa mengirim pesan ke dirimu sendiri.",
+  butuh_autentikasi: "Sesi pesan tidak sah. Tutup lalu buka lagi layar ini.",
+  bukti_tidak_sah: "Bukti pesan tidak bisa diverifikasi. Muat ulang percakapan lalu coba lagi.",
+  lapor_diri: "Kamu tidak bisa melaporkan dirimu sendiri.",
+  expired: "Permintaannya sudah kedaluwarsa. Coba lagi.",
+  bad_signature: "Tanda tangan tidak cocok. Coba lagi.",
+  invalid_body: "Ada isian yang belum benar.",
+};
+
+export function pesanErrorMessage(code: string): string {
+  return PESAN_MESSAGES[code] ?? "Gagal. Coba lagi sebentar.";
+}
+
+/** Fungsi murni supaya layar percakapan tidak mengarang labelnya sendiri (Ruling R4). */
+export function labelKirimPesan(sibuk: boolean): string {
+  return sibuk ? "Mengirim…" : "Kirim";
+}
+
+export function sisaKarakterPesan(isi: string): number {
+  return MAKS_ISI_PESAN - isi.length;
+}
+
