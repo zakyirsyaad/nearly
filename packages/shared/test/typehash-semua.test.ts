@@ -7,6 +7,7 @@ import { EVENT_TYPES } from "../src/event";
 import { FEED_TYPES } from "../src/feed";
 import { MEET_TYPES } from "../src/meet";
 import { BLOKIR_TYPES } from "../src/blokir";
+import { PESAN_TYPES } from "../src/pesan";
 
 type Field = { name: string; type: string };
 
@@ -25,11 +26,11 @@ function encodeType(nama: string, fields: readonly Field[]): string {
  */
 const SEMUA: Record<string, readonly Field[]> = {
   ...HANDSHAKE_TYPES, ...VOUCH_TYPES, ...EVENT_TYPES, ...FEED_TYPES, ...MEET_TYPES,
-  ...BLOKIR_TYPES,
+  ...BLOKIR_TYPES, ...PESAN_TYPES,
 };
 
-// 22 sejak C1 review akhir Fase 4a: `LihatFeed` di keluarga feed.
-const JUMLAH_TIPE = 22;
+// 24 sejak Fase 4c: KunciPesan dan DaftarKunciPesan.
+const JUMLAH_TIPE = 24;
 
 const SOL_DIR = fileURLToPath(new URL("../../contracts/src/", import.meta.url));
 
@@ -44,7 +45,8 @@ describe("typehash seluruh aplikasi", () => {
   it("jumlah tipe per keluarga sesuai jumlah yang diharapkan", () => {
     const total = Object.keys(HANDSHAKE_TYPES).length + Object.keys(VOUCH_TYPES).length
       + Object.keys(EVENT_TYPES).length + Object.keys(FEED_TYPES).length
-      + Object.keys(MEET_TYPES).length + Object.keys(BLOKIR_TYPES).length;
+      + Object.keys(MEET_TYPES).length + Object.keys(BLOKIR_TYPES).length
+      + Object.keys(PESAN_TYPES).length;
     expect(total).toBe(JUMLAH_TIPE);
   });
 
@@ -52,7 +54,7 @@ describe("typehash seluruh aplikasi", () => {
     expect(Object.keys(SEMUA)).toHaveLength(JUMLAH_TIPE);
   });
 
-  it("kedua puluh dua encodeType unik", () => {
+  it("setiap encodeType unik", () => {
     const semua = Object.entries(SEMUA).map(([n, f]) => encodeType(n, f));
     expect(new Set(semua).size).toBe(JUMLAH_TIPE);
   });
@@ -114,5 +116,24 @@ describe("typehash seluruh aplikasi", () => {
       .toBe("Blokir(address target,address who,bool blokir,uint64 expiresAt)");
     expect(encodeType("LihatBlokir", BLOKIR_TYPES.LihatBlokir))
       .toBe("LihatBlokir(address who,uint64 expiresAt)");
+  });
+
+  // Kedua tipe pesan TIDAK PERNAH naik on-chain (spec 4c §6).
+  it("tidak ada typehash pesan di Solidity mana pun", () => {
+    const berkasSol = readdirSync(SOL_DIR).filter((f) => f.endsWith(".sol"));
+    expect(berkasSol.length).toBeGreaterThan(0);
+    for (const berkas of berkasSol) {
+      const sumber = readFileSync(`${SOL_DIR}${berkas}`, "utf8");
+      for (const nama of Object.keys(PESAN_TYPES)) {
+        expect(sumber).not.toContain(`${nama}(`);
+      }
+    }
+  });
+
+  it("encodeType pesan persis seperti spec 4c §6", () => {
+    expect(encodeType("KunciPesan", PESAN_TYPES.KunciPesan))
+      .toBe("KunciPesan(address who,uint32 versi)");
+    expect(encodeType("DaftarKunciPesan", PESAN_TYPES.DaftarKunciPesan))
+      .toBe("DaftarKunciPesan(address who,bytes32 kunciEnkripsi,bytes32 kunciTanda,uint64 expiresAt)");
   });
 });

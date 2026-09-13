@@ -10,3 +10,4 @@ export * from "./event";
 export * from "./feed";
 export * from "./meet";
 export * from "./blokir";
+export * from "./pesan";
