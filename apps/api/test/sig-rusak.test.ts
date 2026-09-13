@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
+import { Hono } from "hono";
 import { privateKeyToAccount } from "viem/accounts";
 import type { Address, Hex } from "viem";
 import { encodeCell } from "@nearly/shared";
@@ -307,5 +308,42 @@ describe("verifikasi Ed25519 hanya lewat packages/shared", () => {
     expect(semua.length).toBeGreaterThan(10);
     const pelanggar = semua.filter((f) => /from\s+["']@noble\/curves/.test(readFileSync(f, "utf8")));
     expect(pelanggar).toEqual([]);
+  });
+});
+
+describe("rute pesan dengan tanda tangan cacat bentuk", () => {
+  const RUSAK = `0x${"9".repeat(130)}`;
+
+  it("POST /pesan/kunci dengan sig rusak → 401, bukan 500", async () => {
+    const { duniaPesan } = await import("./support/dunia-pesan");
+    const { pesanRoutes } = await import("../src/routes/pesan");
+    const d = duniaPesan();
+    const app = new Hono().route("/", pesanRoutes(d.deps));
+    const r = await app.request("/pesan/kunci", {
+      method: "POST", headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        who: "0x00000000000000000000000000000000000000aa", kunciEnkripsi: `0x${"ab".repeat(32)}`,
+        kunciTanda: `0x${"ab".repeat(32)}`, expiresAt: String(Math.floor(d.jam.sekarang / 1000) + 300), sig: RUSAK,
+      }),
+    });
+    expect(r.status).toBe(401);
+  });
+
+  it("POST /pesan/laporan dengan sig Report rusak → 401, bukan 500", async () => {
+    const { duniaPesan } = await import("./support/dunia-pesan");
+    const { pesanRoutes } = await import("../src/routes/pesan");
+    const d = duniaPesan();
+    const app = new Hono().route("/", pesanRoutes(d.deps));
+    const r = await app.request("/pesan/laporan", {
+      method: "POST", headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        laporan: {
+          reporter: "0x00000000000000000000000000000000000000aa", subject: "0x00000000000000000000000000000000000000bb",
+          reason: "alasan yang cukup panjang", expiresAt: String(Math.floor(d.jam.sekarang / 1000) + 300), sig: RUSAK,
+        },
+        bukti: [{ pesanId: "00000000-0000-4000-8000-000000000001", isi: "x", dikirimMs: 1, tanda: `0x${"99".repeat(64)}` }],
+      }),
+    });
+    expect(r.status).toBe(401);
   });
 });

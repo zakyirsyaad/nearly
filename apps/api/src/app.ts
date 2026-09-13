@@ -9,10 +9,12 @@ import { eventRoutes } from "./routes/events";
 import { feedRoutes } from "./routes/feed";
 import { meetRoutes } from "./routes/meet";
 import { blokirRoutes } from "./routes/blokir";
+import { pesanRoutes } from "./routes/pesan";
 import { recomputeTrust } from "./trust/recompute";
 import type {
   GateDeps, TrustStore, VouchStore, ReportStore, AttestorPort, VouchChainPort,
   EventStore, AttendanceChainPort, FeedStore, GreenfieldPort, MeetStore, BlokirStore,
+  PesanStore, PushPort,
 } from "./ports";
 import type { Address } from "viem";
 
@@ -31,6 +33,8 @@ export type TrustDeps = GateDeps & {
   greenfield: GreenfieldPort | null;
   meet: MeetStore;
   blokir: BlokirStore;
+  pesan: PesanStore;
+  push: PushPort | null;
 };
 
 // Modul-level, dengan sengaja (Task 8): relayer yang sama menandatangani
@@ -100,5 +104,10 @@ export function createApp(deps: TrustDeps) {
   // penanda (Task 9 dan 10), dan keduanya membaca tabel `blocks` secara
   // langsung tanpa menunggu recompute sama sekali.
   app.route("/", blokirRoutes(deps));
+  // `onChanged` TIDAK dipanggil dari rute pesan — berkirim pesan bukan bertemu,
+  // jadi graf pertemuan tidak berubah dan tidak ada skor trust yang perlu
+  // dihitung ulang. Blokir dari percakapan memakai POST /blokir yang sudah ada,
+  // yang juga sengaja tanpa recompute (Ruling R10 Fase 4a).
+  app.route("/", pesanRoutes(deps));
   return app;
 }

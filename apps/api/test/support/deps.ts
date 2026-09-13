@@ -79,7 +79,7 @@ export function depsFor(overrides: {
       ...overrides.vouches,
     },
     reports: {
-      recordReport: overrides.recordReport ?? vi.fn(async () => {}),
+      recordReport: overrides.recordReport ?? vi.fn(async () => 1),
       listReports: vi.fn(async () => []),
       setReportStatus: vi.fn(async () => {}),
       recordSlash: vi.fn(async () => {}),
@@ -156,5 +156,22 @@ export function depsFor(overrides: {
       himpunanUntuk: vi.fn(async () => new Set<string>()),
       pemblokirUntuk: vi.fn(async () => new Set<string>()),
     },
+    pesan: {
+      simpanKunci: vi.fn(async () => {}),
+      ambilKunci: vi.fn(async () => null),
+      simpanPesan: vi.fn(async () => "baru" as const),
+      hitungTerkirimSejak: vi.fn(async () => 0),
+      pesanTerbaruUntuk: vi.fn(async () => []),
+      belumDibacaPerPengirim: vi.fn(async () => new Map<string, number>()),
+      riwayat: vi.fn(async () => []),
+      tandaiDibaca: vi.fn(async () => {}),
+      adaBelumDibacaLainDari: vi.fn(async () => false),
+      simpanTokenPush: vi.fn(async () => {}),
+      tokenPush: vi.fn(async () => []),
+      hapusTokenPush: vi.fn(async () => {}),
+      pesanBerdasarkanId: vi.fn(async () => []),
+      gantiBuktiLaporan: vi.fn(async () => {}),
+    },
+    push: null,
   };
 }

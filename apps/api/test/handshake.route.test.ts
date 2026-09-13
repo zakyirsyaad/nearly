@@ -126,6 +126,23 @@ function deps(over: { saveSnapshots?: ReturnType<typeof vi.fn> } = {}): TrustDep
       himpunanUntuk: async () => new Set<string>(),
       pemblokirUntuk: async () => new Set<string>(),
     },
+    pesan: {
+      simpanKunci: async () => {},
+      ambilKunci: async () => null,
+      simpanPesan: async () => "baru" as const,
+      hitungTerkirimSejak: async () => 0,
+      pesanTerbaruUntuk: async () => [],
+      belumDibacaPerPengirim: async () => new Map<string, number>(),
+      riwayat: async () => [],
+      tandaiDibaca: async () => {},
+      adaBelumDibacaLainDari: async () => false,
+      simpanTokenPush: async () => {},
+      tokenPush: async () => [],
+      hapusTokenPush: async () => {},
+      pesanBerdasarkanId: async () => [],
+      gantiBuktiLaporan: async () => {},
+    },
+    push: null,
   };
 }
 

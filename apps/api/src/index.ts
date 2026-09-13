@@ -13,6 +13,8 @@ import { createFeedStore } from "./feed-store";
 import { bacaKonfigurasiGreenfield, createGreenfield } from "./greenfield";
 import { createMeetStore } from "./meet-store";
 import { createBlokirStore } from "./blokir-store";
+import { createPesanStore } from "./pesan-store";
+import { createExpoPush } from "./push";
 
 function required(name: string): string {
   const v = process.env[name];
@@ -88,6 +90,8 @@ const app = createApp({
   greenfield,
   meet: createMeetStore(supabase),
   blokir: blokirStore,
+  pesan: createPesanStore(supabase),
+  push: createExpoPush(),
 });
 
 serve({ fetch: app.fetch, port: 8787 });
