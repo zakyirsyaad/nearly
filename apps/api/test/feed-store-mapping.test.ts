@@ -357,4 +357,35 @@ describe("listCandidates menyaring blokir dua arah", () => {
     expect(penulis).not.toContain(MEMBLOKIR);
     expect(hasil.find((p) => p.author === LAIN)?.hop).toBeNull();
   });
+
+  /**
+   * Kebocoran yang sama kelasnya dengan C1, ada sejak Fase 3b: `sudahSuka`
+   * dihitung untuk `who` mana pun, jadi `GET /feed?who=A` tanpa tanda tangan
+   * menyingkap unggahan mana yang disukai A. Tidak ada rute lain yang
+   * memperlihatkan siapa menyukai apa — hanya jumlahnya yang publik.
+   */
+  it("who TIDAK terbukti: sudahSuka selalu false, jumlah suka tetap terhitung", async () => {
+    const posts: PostDbRow[] = [postDari(LAIN, 4)];
+    const idLain = postDari(LAIN, 4).post_id;
+    const post_likes = [{ post_id: idLain, address: VIEWER }];
+
+    const hasil = await createFeedStore(dbPalsu({ posts, post_likes }, []), blokirPalsuDengan(new Set()))
+      .listCandidates({ sinceMs: 0, limit: 10, viewer: VIEWER, terbukti: false });
+
+    expect(hasil[0]?.likeCount).toBe(1);
+    expect(hasil[0]?.sudahSuka).toBe(false);
+  });
+
+  it("who TERBUKTI: sudahSuka mencerminkan suka penonton itu", async () => {
+    const posts: PostDbRow[] = [postDari(LAIN, 4), postDari(MEMBLOKIR, 3)];
+    const idLain = postDari(LAIN, 4).post_id;
+    // Huruf besar di baris suka: perbandingannya harus menormalkan huruf.
+    const post_likes = [{ post_id: idLain, address: VIEWER.toUpperCase() }];
+
+    const hasil = await createFeedStore(dbPalsu({ posts, post_likes }, []), blokirPalsuDengan(new Set()))
+      .listCandidates({ sinceMs: 0, limit: 10, viewer: VIEWER, terbukti: true });
+
+    expect(hasil.find((p) => p.author === LAIN)?.sudahSuka).toBe(true);
+    expect(hasil.find((p) => p.author === MEMBLOKIR)?.sudahSuka).toBe(false);
+  });
 });

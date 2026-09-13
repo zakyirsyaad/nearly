@@ -274,8 +274,10 @@ export type FeedStore = {
    * `terbukti` true, yaitu rute sudah memverifikasi bukti LihatFeed milik
    * `viewer`. Untuk `viewer` tak terbukti, tabel `blocks` tidak dibaca sama
    * sekali; kalau dibaca, membandingkan feed dengan dan tanpa `who`
-   * menyingkap hubungan blokir alamat mana pun. `terbukti` tanpa `viewer`
-   * tidak bermakna dan diperlakukan false.
+   * menyingkap hubungan blokir alamat mana pun. `sudahSuka` juga hanya
+   * dihitung untuk penonton terbukti — siapa menyukai apa sama privatnya;
+   * untuk `viewer` tak terbukti medan itu selalu false. `terbukti` tanpa
+   * `viewer` tidak bermakna dan diperlakukan false.
    */
   listCandidates(a: {
     sinceMs: number; limit: number; viewer: Address | null; terbukti: boolean;

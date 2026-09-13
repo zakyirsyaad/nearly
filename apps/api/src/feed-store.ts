@@ -293,11 +293,15 @@ export function createFeedStore(db: SupabaseClient, blokir: BlokirStore): FeedSt
         "hidrasi feed"),
       ]);
 
+      // `sudahSuka` HANYA untuk penonton terbukti. Siapa menyukai apa bukan
+      // informasi publik — cuma jumlahnya. Tanpa syarat `terbukti`,
+      // `GET /feed?who=A` tanpa tanda tangan menyingkap unggahan mana yang
+      // disukai A; kelas kebocoran yang sama dengan C1 di atas.
       const jumlahSuka = new Map<string, number>();
       const sukaAku = new Set<string>();
       for (const r of likes as { post_id: string; address: string }[]) {
         jumlahSuka.set(r.post_id, (jumlahSuka.get(r.post_id) ?? 0) + 1);
-        if (aku && r.address.toLowerCase() === aku) sukaAku.add(r.post_id);
+        if (aku && terbukti && r.address.toLowerCase() === aku) sukaAku.add(r.post_id);
       }
 
       const jumlahLapor = new Map<string, number>();
