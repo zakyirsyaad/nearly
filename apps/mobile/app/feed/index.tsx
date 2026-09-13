@@ -9,7 +9,9 @@ import type { Address } from "viem";
 import { CONFIG } from "../../src/config";
 import { createDevSigner } from "../../src/signer";
 import { ApiError } from "../../src/http";
-import { getFeed, postImage, postLike, type FeedPost } from "../../src/feed-api";
+import {
+  getFeed, kueriBuktiFeed, postImage, postLike, type FeedPost,
+} from "../../src/feed-api";
 import {
   bisaHapus, hapusUnggahan, laporUnggahan, MASA_BERLAKU_DETIK,
 } from "../../src/feed-actions";
@@ -39,14 +41,17 @@ export default function FeedScreen() {
 
   const muat = useCallback(async () => {
     try {
-      const { posts } = await getFeed(signer.address);
+      // Bukti LihatFeed setiap muat: tanpa itu server tidak menerapkan
+      // blokirmu di feed (review akhir 4a, C1). Satu tanda tangan per muat,
+      // karena `muat` hanya punya satu pemicu di bawah.
+      const { posts } = await getFeed(await kueriBuktiFeed(signer));
       setPosts(posts);
       setPesan(null);
     } catch (e) {
       setPosts([]);
       setPesan(e instanceof ApiError ? feedErrorMessage(e.code) : "Feed gagal dimuat.");
     }
-  }, [signer.address]);
+  }, [signer]);
 
   // useFocusEffect SENDIRIAN, bukan berpasangan dengan useEffect: ia sudah
   // menyala saat layar pertama kali fokus — yaitu saat mount — jadi useEffect

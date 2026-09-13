@@ -1,5 +1,8 @@
 import type { Hex } from "viem";
+import { lihatFeedTypedData } from "@nearly/shared";
+import { CONFIG } from "./config";
 import { postJson, req } from "./http";
+import type { PenandaSigner } from "./meet-api";
 
 export type FeedPost = {
   postId: Hex;
@@ -19,12 +22,37 @@ export type FeedPost = {
   createdAtMs: number;
 };
 
-export function getFeed(who?: string, cursor?: string) {
-  const q = new URLSearchParams();
-  if (who) q.set("who", who);
+/** Lima menit. Sama seperti setiap tanda tangan lain di aplikasi ini. */
+const UMUR_DETIK = 300;
+
+/**
+ * Bukti BACA untuk `GET /feed` (review akhir 4a, C1). Tanpa bukti ini server
+ * tetap mengurutkan feed menurut grafmu, tapi TIDAK menerapkan blokirmu —
+ * orang yang kamu blokir tetap muncul. Server sengaja tidak menolak (feed
+ * tidak pernah 4xx), jadi bukti yang salah tidak terlihat sebagai galat,
+ * hanya sebagai blokir yang tidak bekerja.
+ *
+ * Dibangun dengan `lihatFeedTypedData` dan TIDAK PERNAH yang lain —
+ * `LihatKecocokan`, `TandaiDilihat`, dan `LihatBlokir` berbentuk field
+ * identik `{ who, expiresAt }`.
+ *
+ * `signer.address` masuk kueri APA ADANYA; server memvalidasinya dengan
+ * `isAddress` yang strict EIP-55, dan alamat dari viem sudah checksummed.
+ */
+export async function kueriBuktiFeed(signer: PenandaSigner): Promise<string> {
+  const expiresAt = BigInt(Math.floor(Date.now() / 1000) + UMUR_DETIK);
+  const sig = await signer.signTypedData(
+    lihatFeedTypedData({ who: signer.address, expiresAt }, CONFIG.verifyingContract) as never);
+  return new URLSearchParams({
+    who: signer.address, expiresAt: expiresAt.toString(), sig,
+  }).toString();
+}
+
+/** `bukti` dari `kueriBuktiFeed`. */
+export function getFeed(bukti: string, cursor?: string) {
+  const q = new URLSearchParams(bukti);
   if (cursor) q.set("cursor", cursor);
-  const s = q.toString();
-  return req<{ posts: FeedPost[]; cursor: string | null }>(`/feed${s ? `?${s}` : ""}`);
+  return req<{ posts: FeedPost[]; cursor: string | null }>(`/feed?${q.toString()}`);
 }
 
 export const postPost = (b: unknown) => postJson<{ ok: true }>("/posts", b);
