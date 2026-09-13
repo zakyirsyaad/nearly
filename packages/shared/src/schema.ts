@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { GEOHASH_PRECISION } from "./geohash";
+import { MAKS_ISI_PESAN } from "./pesan-kripto";
 
 const address = z.string().regex(/^0x[0-9a-fA-F]{40}$/);
 const bytes32 = z.string().regex(/^0x[0-9a-fA-F]{64}$/);
@@ -274,3 +275,42 @@ export const BlokirRequestSchema = z.object({
   expiresAt: unixSeconds,
   sig: signature,
 });
+
+// ── Fase 4c: pesan ──────────────────────────────────────────────────────────
+
+/** Huruf kecil saja: kolom basis data menuntutnya (spec 4c §3). */
+const kunciPublik = z.string().regex(/^0x[0-9a-f]{64}$/);
+
+export const DaftarKunciPesanRequestSchema = z.object({
+  who: address,
+  kunciEnkripsi: kunciPublik,
+  kunciTanda: kunciPublik,
+  expiresAt: unixSeconds,
+  sig: signature,
+});
+
+export const KirimPesanRequestSchema = z.object({
+  id: z.string().uuid(),
+  penerima: address,
+  ciphertext: z.string().min(1).max(16384).regex(/^[A-Za-z0-9+/]+={0,2}$/),
+  nonce: z.string().regex(/^0x[0-9a-f]{48}$/),
+});
+
+export const TandaiDibacaRequestSchema = z.object({
+  sampaiMs: z.number().int().nonnegative(),
+});
+
+export const TokenPushRequestSchema = z.object({
+  token: z.string().max(200).regex(/^Expo(nent)?PushToken\[[A-Za-z0-9_-]+\]$/),
+});
+
+export const LaporanPesanRequestSchema = z.object({
+  laporan: ReportRequestSchema,
+  bukti: z.array(z.object({
+    pesanId: z.string().uuid(),
+    isi: z.string().min(1).max(MAKS_ISI_PESAN),
+    dikirimMs: z.number().int().nonnegative(),
+    tanda: z.string().regex(/^0x[0-9a-f]{128}$/),
+  })).min(1).max(5),
+});
+
