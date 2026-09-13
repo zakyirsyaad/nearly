@@ -5,7 +5,10 @@ import {
   blokirTypedData, lihatBlokirTypedData,
   recoverBlokirSigner, recoverLihatBlokirSigner,
 } from "../src/blokir";
-import { lihatKecocokanTypedData, tandaiDilihatTypedData } from "../src/meet";
+import {
+  inginBertemuTypedData, lihatKecocokanTypedData, recoverInginBertemuSigner,
+  recoverTandaiDilihatSigner, tandaiDilihatTypedData,
+} from "../src/meet";
 
 const A = privateKeyToAccount(`0x${"a1".repeat(32)}` as Hex);
 const B = "0x000000000000000000000000000000000000beef" as Address;
@@ -67,5 +70,41 @@ describe("LihatBlokir vs dua tipe sebentuk lainnya", () => {
     const sig = await A.signTypedData(lihatBlokirTypedData(msg, KONTRAK));
     expect((await recoverLihatKecocokanSigner(msg, sig, KONTRAK)).toLowerCase())
       .not.toBe(A.address.toLowerCase());
+  });
+});
+
+/**
+ * Minor T1 review akhir. Dua arah yang belum dikunci:
+ *
+ * - bukti BACA → perintah TULIS: LihatBlokir berkeliaran di query string
+ *   `GET /blokir`; kalau ia sah sebagai TandaiDilihat, siapa pun yang
+ *   menangkap URL-nya bisa membungkam lencana kecocokan pemiliknya.
+ * - Blokir vs InginBertemu: bentuk jenisnya sama (address, address, bool,
+ *   uint64), hanya nama tipe dan nama medan bool yang berbeda. Kalau salah
+ *   satu sah sebagai yang lain, memblokir seseorang sekaligus menandainya —
+ *   atau menandai seseorang sekaligus memblokirnya.
+ */
+describe("LihatBlokir vs TandaiDilihat, Blokir vs InginBertemu", () => {
+  it("tanda tangan LihatBlokir TIDAK sah sebagai TandaiDilihat", async () => {
+    const msg = { who: A.address as Address, expiresAt: EXP };
+    const sig = await A.signTypedData(lihatBlokirTypedData(msg, KONTRAK));
+    expect((await recoverTandaiDilihatSigner(msg, sig, KONTRAK)).toLowerCase())
+      .not.toBe(A.address.toLowerCase());
+  });
+
+  it("tanda tangan Blokir TIDAK sah sebagai InginBertemu", async () => {
+    const sig = await A.signTypedData(blokirTypedData(
+      { target: B, who: A.address as Address, blokir: true, expiresAt: EXP }, KONTRAK));
+    expect((await recoverInginBertemuSigner(
+      { target: B, who: A.address as Address, ingin: true, expiresAt: EXP }, sig, KONTRAK,
+    )).toLowerCase()).not.toBe(A.address.toLowerCase());
+  });
+
+  it("tanda tangan InginBertemu TIDAK sah sebagai Blokir", async () => {
+    const sig = await A.signTypedData(inginBertemuTypedData(
+      { target: B, who: A.address as Address, ingin: true, expiresAt: EXP }, KONTRAK));
+    expect((await recoverBlokirSigner(
+      { target: B, who: A.address as Address, blokir: true, expiresAt: EXP }, sig, KONTRAK,
+    )).toLowerCase()).not.toBe(A.address.toLowerCase());
   });
 });
