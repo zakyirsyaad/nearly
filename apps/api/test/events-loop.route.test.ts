@@ -5,6 +5,7 @@ import type { Address, Hex } from "viem";
 import { lihatEventTypedData } from "@nearly/shared";
 import { eventRoutes } from "../src/routes/events";
 import type { BlokirStore, EventRecord, MeetStore } from "../src/ports";
+import { duniaBlokir } from "./support/dunia-blokir";
 
 const aku = privateKeyToAccount(`0x${"77".repeat(32)}` as Hex);
 const ATTENDANCE = "0x000000000000000000000000000000000000beef" as Address;
@@ -274,5 +275,65 @@ describe("dua ambang penandaHadir", () => {
     const res = await app(s, [B, C, D], 3).request(await kueriTerbukti());
     const json = await res.json() as Record<string, unknown>;
     expect(Object.prototype.hasOwnProperty.call(json, "penandaHadir")).toBe(false);
+  });
+});
+
+/**
+ * C2 review akhir — varian lokasi dari oracle angka publik, diuji lewat rute
+ * dengan dunia yang membedakan kedua arah blokir.
+ *
+ * `penandaHadir` menghitung tanda sepihak KE pemanggil. Kalau himpunan dua
+ * arah menyaringnya, pemanggil bisa membaca angkanya, memblokir B, membaca
+ * lagi: turun berarti B menandainya DAN RSVP di acara ini — lalu mencabut
+ * blokir tanpa jejak. `kutandaiHadir` beda: kecocokan wajib TETAP bubar ke
+ * dua arah (spec §5.2), dan ia tetap kecocokan ∩ RSVP (Fase 3c).
+ */
+describe("blokir di loop event tidak jadi oracle (C2)", () => {
+  const RSVP = [B, C, D, E];
+
+  async function baca(d: ReturnType<typeof duniaBlokir>) {
+    const res = await app(d.meet, RSVP, 5, d.blokir).request(await kueriTerbukti());
+    return await res.json() as Record<string, unknown>;
+  }
+
+  it("(c) penandaHadir TIDAK berubah saat pemanggil memblokir penandanya", async () => {
+    const d = duniaBlokir({
+      tanda: [B, C, D, E].map((who) => ({ who, target: aku.address, atMs: NOW })),
+    });
+    expect((await baca(d)).penandaHadir).toBe(4);
+    d.pasangBlokir(aku.address, B);
+    expect((await baca(d)).penandaHadir).toBe(4);
+  });
+
+  it("penandaHadir membuang tanda dari orang yang MEMBLOKIR pemanggil", async () => {
+    const d = duniaBlokir({
+      tanda: [B, C, D, E].map((who) => ({ who, target: aku.address, atMs: NOW })),
+    });
+    expect((await baca(d)).penandaHadir).toBe(4);
+    d.pasangBlokir(B, aku.address);
+    expect((await baca(d)).penandaHadir).toBe(3);
+  });
+
+  it("(d) kutandaiHadir tetap BUBAR saat pemanggil memblokir kecocokannya", async () => {
+    const d = duniaBlokir({
+      tanda: [
+        { who: aku.address, target: B, atMs: NOW }, { who: B, target: aku.address, atMs: NOW },
+        { who: aku.address, target: C, atMs: NOW }, { who: C, target: aku.address, atMs: NOW },
+      ],
+    });
+    expect((await baca(d)).kutandaiHadir).toBe(2);
+    d.pasangBlokir(aku.address, B);
+    expect((await baca(d)).kutandaiHadir).toBe(1);
+  });
+
+  it("kutandaiHadir tetap BUBAR saat kecocokan memblokir pemanggil", async () => {
+    const d = duniaBlokir({
+      tanda: [
+        { who: aku.address, target: B, atMs: NOW }, { who: B, target: aku.address, atMs: NOW },
+      ],
+    });
+    expect((await baca(d)).kutandaiHadir).toBe(1);
+    d.pasangBlokir(B, aku.address);
+    expect((await baca(d)).kutandaiHadir).toBe(0);
   });
 });

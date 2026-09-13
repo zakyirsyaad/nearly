@@ -5,6 +5,7 @@ import type { Address, Hex } from "viem";
 import { inginBertemuTypedData, lihatProfilTypedData } from "@nearly/shared";
 import { profileRoutes } from "../src/routes/profile";
 import type { BlokirStore, MeetStore } from "../src/ports";
+import { duniaBlokir } from "./support/dunia-blokir";
 
 const aku = privateKeyToAccount(`0x${"55".repeat(32)}` as Hex);
 const KONTRAK = "0x000000000000000000000000000000000000c0de" as Address;
@@ -104,23 +105,20 @@ describe("GET /profile/:address — angka publik", () => {
   });
 
   /**
-   * R6 (putusan pengawas atas brief Task 10). `himpunanUntuk` DI DALAM
-   * rantai yang sama dengan `hitungTanda`, bukan `.catch()` sendiri yang
-   * jatuh ke himpunan kosong: himpunan kosong berarti TIDAK ADA yang
+   * R6 (putusan pengawas atas brief Task 10). Pembacaan himpunan blokir DI
+   * DALAM rantai yang sama dengan `hitungTanda`, bukan `.catch()` sendiri
+   * yang jatuh ke himpunan kosong: himpunan kosong berarti TIDAK ADA yang
    * disaring, jadi kegagalan store blokir akan mengarang angka publik yang
-   * ikut menghitung tanda dari orang yang sedang terblokir — bukan sekadar
-   * kunci yang hilang.
+   * ikut menghitung tanda dari orang yang memblokir `addr` — bukan sekadar
+   * kunci yang hilang. Sejak C2 himpunan itu `pemblokirUntuk`, bukan
+   * `himpunanUntuk`; aturannya tetap.
    */
-  it("kunci HILANG kalau himpunanUntuk blokir gagal, bukan jatuh ke himpunan kosong", async () => {
+  it("kunci HILANG kalau pemblokirUntuk gagal, bukan jatuh ke himpunan kosong", async () => {
     const hitungTanda = vi.fn(async () => 7);
     const s = meetStore({ hitungTanda });
-    const blokir = {
-      setBlokir: vi.fn(async () => {}),
-      adaBlokir: vi.fn(async () => false),
-      diblokirOleh: vi.fn(async () => []),
-      himpunanUntuk: vi.fn(async () => { throw new Error("blokir mati"); }),
-      pemblokirUntuk: vi.fn(async () => new Set<string>()),
-    };
+    const blokir = blokirPalsu({
+      pemblokirUntuk: vi.fn(async () => { throw new Error("blokir mati"); }),
+    });
     const res = await app(s, blokir).request(`/profile/${TARGET}`);
     expect(res.status).toBe(200);
     const json = await res.json() as Record<string, unknown>;
@@ -133,29 +131,25 @@ describe("GET /profile/:address — angka publik", () => {
   });
 
   /**
-   * Task 10 (IMPORTANT 3, ronde perbaikan 1). Membalikkan angka publik ke
-   * `hitungTanda(addr, [])` akan tetap lolos suite sebelumnya — tidak ada
-   * tes yang memeriksa ARGUMEN kedua yang diterima `hitungTanda`. Tes ini
-   * memasang mata-mata pada `himpunanUntuk` DAN `hitungTanda`, lalu
-   * memastikan himpunan blokir `addr` (bukan array kosong) yang benar-benar
-   * diteruskan.
+   * Membalikkan angka publik ke `hitungTanda(addr, [])` akan tetap lolos
+   * tes yang tidak memeriksa ARGUMEN kedua `hitungTanda`. Tes ini memasang
+   * mata-mata pada kedua pembaca blokir DAN `hitungTanda`: yang diteruskan
+   * wajib himpunan PEMBLOKIR `addr`, dan himpunan dua arah `addr` tidak
+   * boleh dibaca sama sekali untuk angka ini (C2).
    */
-  it("hitungTanda menerima himpunan blokir addr, bukan array kosong", async () => {
-    const hitungTanda = vi.fn(async () => 7);
-    const himpunanUntuk = vi.fn(async (_addr: Address) => new Set(["0xblok1", "0xblok2"]));
-    const blokir = {
-      setBlokir: vi.fn(async () => {}),
-      adaBlokir: vi.fn(async () => false),
-      diblokirOleh: vi.fn(async () => []),
-      himpunanUntuk,
-      pemblokirUntuk: vi.fn(async () => new Set<string>()),
-    };
+  it("hitungTanda menerima pemblokirUntuk(addr), bukan array kosong dan bukan himpunan dua arah", async () => {
+    const hitungTanda = vi.fn(async (_t: Address, _k: readonly string[]) => 7);
+    const pemblokirUntuk = vi.fn(async (_addr: Address) => new Set(["0xblok1", "0xblok2"]));
+    const himpunanUntuk = vi.fn(async (_addr: Address) => new Set(["0xdua-arah"]));
+    const blokir = blokirPalsu({ pemblokirUntuk, himpunanUntuk });
     const res = await app(meetStore({ hitungTanda }), blokir).request(`/profile/${TARGET}`);
     expect(res.status).toBe(200);
-    expect(himpunanUntuk).toHaveBeenCalledWith(TARGET.toLowerCase());
+    expect(pemblokirUntuk).toHaveBeenCalledWith(TARGET.toLowerCase());
+    expect(himpunanUntuk).not.toHaveBeenCalled();
     expect(hitungTanda).toHaveBeenCalledWith(
       TARGET.toLowerCase(), expect.arrayContaining(["0xblok1", "0xblok2"]),
     );
+    expect(hitungTanda.mock.calls[0]?.[1]).not.toContain("0xdua-arah");
   });
 
   it("medan lama tidak berubah", async () => {
@@ -195,26 +189,22 @@ describe("GET /profile/:address — bendera pribadi", () => {
    * `diaMenandaiku` (dan karenanya `salingMenandai`) jatuh ke false untuk
    * pasangan yang terblokir — `sudahKutandai` sendiri tetap tidak berubah
    * (menyaring kolom `who` dengan himpunan pemanggil sendiri adalah no-op,
-   * lihat komentar di meet-gate.ts) karena baris itu memang masih ada dan
-   * pemanggil (si pemblokir) tetap boleh mencabutnya (R5).
+   * lihat komentar di dekat `sudahKutandai` di routes/profile.ts) karena
+   * baris itu memang masih ada dan pemanggil (si pemblokir) tetap boleh
+   * mencabutnya (R5).
    */
   it("meneruskan himpunan blokir pemanggil ke sudahKutandai dan diaMenandaiku", async () => {
     const adaTanda = vi.fn(async () => true);
     const himpunanUntuk = vi.fn(async (_who: Address) => new Set(["0xblok"]));
-    const blokir = {
-      setBlokir: vi.fn(async () => {}),
-      adaBlokir: vi.fn(async () => false),
-      diblokirOleh: vi.fn(async () => []),
-      himpunanUntuk,
-      pemblokirUntuk: vi.fn(async () => new Set<string>()),
-    };
+    const blokir = blokirPalsu({ himpunanUntuk });
     const res = await app(meetStore({ adaTanda }), blokir).request(await buktiBaca());
     expect(res.status).toBe(200);
-    // Dipanggil DUA kali total untuk satu permintaan — sekali untuk angka
-    // publik (himpunan `addr`), sekali untuk bendera pribadi (himpunan
-    // `pemanggil`) — tapi HANYA SEKALI untuk pemanggil, diteruskan ke KEDUA
-    // panggilan adaTanda di bawah, bukan dibaca ulang per metode.
-    expect(himpunanUntuk.mock.calls.filter((c) => c[0] === aku.address.toLowerCase())).toHaveLength(1);
+    // HANYA SEKALI untuk satu permintaan, untuk pemanggil, diteruskan ke
+    // KEDUA panggilan adaTanda di bawah — bukan dibaca ulang per metode.
+    // Angka publik tidak ikut membacanya lagi sejak C2 (ia memakai
+    // `pemblokirUntuk(addr)`).
+    expect(himpunanUntuk).toHaveBeenCalledTimes(1);
+    expect(himpunanUntuk).toHaveBeenCalledWith(aku.address.toLowerCase());
     expect(adaTanda).toHaveBeenCalledWith(
       TARGET.toLowerCase(), aku.address.toLowerCase(), expect.arrayContaining(["0xblok"]),
     );
@@ -231,13 +221,9 @@ describe("GET /profile/:address — bendera pribadi", () => {
    * `salingMenandai` yang seharusnya tersaring untuk pasangan terblokir).
    */
   it("500 kalau himpunanUntuk blokir gagal untuk bendera pribadi, bukan disaring kosong", async () => {
-    const blokir = {
-      setBlokir: vi.fn(async () => {}),
-      adaBlokir: vi.fn(async () => false),
-      diblokirOleh: vi.fn(async () => []),
+    const blokir = blokirPalsu({
       himpunanUntuk: vi.fn(async () => { throw new Error("blokir mati"); }),
-      pemblokirUntuk: vi.fn(async () => new Set<string>()),
-    };
+    });
     const res = await app(meetStore({ adaTanda: vi.fn(async () => true) }), blokir)
       .request(await buktiBaca());
     expect(res.status).toBe(500);
@@ -380,5 +366,52 @@ describe("GET /profile/:address — bendera pribadi", () => {
     expect(json.inginBertemuCount).toBe(7);
     expect(json.sudahKutandai).toBeUndefined();
     expect(json.salingMenandai).toBeUndefined();
+  });
+});
+
+/**
+ * C2 review akhir — INVARIAN, diuji lewat rute dengan dunia yang membedakan
+ * kedua arah blokir.
+ *
+ * Serangannya: X membaca angka publiknya sendiri (n), memblokir B, membaca
+ * lagi. Kalau angkanya n−1, B pernah diam-diam menandai X — lalu X mencabut
+ * blokirnya tanpa jejak. Keputusan pemilik: "hanya sisi yang diblokir". Angka
+ * publik T hanya membuang tanda dari orang yang MEMBLOKIR T; tindakan blokir
+ * T sendiri tidak pernah menggerakkan angka T.
+ */
+describe("GET /profile/:address — angka publik tidak jadi oracle blokir (C2)", () => {
+  const X = "0x00000000000000000000000000000000000000a1" as Address;
+  const B = "0x00000000000000000000000000000000000000b2" as Address;
+  const C = "0x00000000000000000000000000000000000000c3" as Address;
+
+  async function angka(a: Hono, siapa: Address) {
+    const json = await (await a.request(`/profile/${siapa}`)).json() as Record<string, unknown>;
+    return json.inginBertemuCount;
+  }
+
+  it("(a) X memblokir B yang pernah menandai X → angka publik X TIDAK berubah", async () => {
+    const d = duniaBlokir({ tanda: [{ who: B, target: X }, { who: C, target: X }] });
+    const a = app(d.meet, d.blokir);
+    const sebelum = await angka(a, X);
+    d.pasangBlokir(X, B);
+    const sesudah = await angka(a, X);
+    expect(sebelum).toBe(2);
+    expect(sesudah).toBe(2);
+  });
+
+  it("(b) B memblokir X → tanda dari pemblokir X dibuang dari angka publik X", async () => {
+    const d = duniaBlokir({ tanda: [{ who: B, target: X }, { who: C, target: X }] });
+    const a = app(d.meet, d.blokir);
+    expect(await angka(a, X)).toBe(2);
+    d.pasangBlokir(B, X);
+    expect(await angka(a, X)).toBe(1);
+  });
+
+  it("tanda X ke B berhenti terhitung di angka publik B saat X memblokir B", async () => {
+    const d = duniaBlokir({ tanda: [{ who: X, target: B }] });
+    const a = app(d.meet, d.blokir);
+    expect(await angka(a, B)).toBe(1);
+    d.pasangBlokir(X, B);
+    expect(await angka(a, B)).toBe(0);
   });
 });

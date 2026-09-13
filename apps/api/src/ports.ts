@@ -308,7 +308,9 @@ export type MeetStore = {
   setTanda(target: Address, who: Address, ingin: boolean): Promise<void>;
   /**
    * `kecuali` adalah alamat yang tidak boleh ikut dihitung — himpunan blokir
-   * pemanggil (spec §5.2). Diberikan pemanggil, bukan dibaca sendiri: store
+   * yang DIPILIH pemanggil (spec §5.2): dua arah (`himpunanUntuk`) untuk
+   * kecocokan dan bendera pribadi, hanya pemblokir (`pemblokirUntuk`) untuk
+   * angka publik dan `penandaHadir`. Diberikan pemanggil, bukan dibaca sendiri: store
    * ini memiliki tabel `ingin_bertemu` saja, dan store yang membaca tabel
    * orang lain adalah pola yang sudah ditolak sejak `rsvpAddresses` di
    * Fase 3c ditaruh di EventStore, bukan MeetStore.

@@ -92,13 +92,23 @@ export function profileRoutes(deps: GateDeps & ProfileMeetDeps) {
     // Klien sudah merender ketiadaan kunci ini dengan benar (tidak menampilkan
     // apa-apa), jadi kegagalan menghilangkan kuncinya, bukan memalsukan nol.
     //
-    // `himpunanUntuk` DI DALAM rantai yang sama, bukan di-`.catch()` sendiri
-    // dengan jatuh ke himpunan kosong: himpunan kosong berarti TIDAK ADA yang
-    // disaring, jadi kegagalan store blokir akan membuat tanda dari orang yang
-    // memblokir/diblokir ikut kehitung sebagai angka publik yang SALAH,
-    // bukan sekadar angka yang hilang. Satu-satunya keluaran yang jujur saat
-    // salah satu store gagal adalah kunci ini hilang sama sekali.
-    const inginBertemuCount = await deps.blokir.himpunanUntuk(addr)
+    // HANYA tanda dari orang yang MEMBLOKIR `addr` yang dibuang — satu arah,
+    // `pemblokirUntuk`, BUKAN `himpunanUntuk` (spec §5.2, keputusan pemilik
+    // di review akhir). Dengan himpunan dua arah, angka ini jadi oracle:
+    // `addr` membaca angkanya sendiri, memblokir B, membaca lagi — turun satu
+    // berarti B pernah diam-diam menandainya — lalu mencabut blokir tanpa
+    // jejak. Satu arah menutupnya karena tindakan blokir `addr` sendiri tidak
+    // pernah menggerakkan angka `addr`. Tanda dari orang yang DIBLOKIR `addr`
+    // tetap terhitung di sini; tanda `addr` ke orang yang diblokirnya berhenti
+    // terhitung di angka orang itu (dari sisi sana, `addr` adalah pemblokir).
+    //
+    // `pemblokirUntuk` DI DALAM rantai yang sama (R6), bukan di-`.catch()`
+    // sendiri dengan jatuh ke himpunan kosong: himpunan kosong berarti TIDAK
+    // ADA yang disaring, jadi kegagalan store blokir akan membuat tanda dari
+    // pemblokir `addr` ikut terhitung sebagai angka publik yang SALAH, bukan
+    // sekadar angka yang hilang. Satu-satunya keluaran yang jujur saat salah
+    // satu store gagal adalah kunci ini hilang sama sekali.
+    const inginBertemuCount = await deps.blokir.pemblokirUntuk(addr)
       .then((s) => deps.meet.hitungTanda(addr, [...s]))
       .then((n): number | undefined => n)
       .catch(() => undefined);
@@ -123,6 +133,15 @@ export function profileRoutes(deps: GateDeps & ProfileMeetDeps) {
     // Kalau dibalik, korban blokir sepihak (dia memblokir aku, bukan aku dia)
     // akan salah melihat tombol "Cabut blokir" untuk blokir yang tidak pernah
     // dipasangnya.
+    //
+    // `sudahKutandai` memakai `adaTanda(addr, pemanggil, kecuali)`: `kecuali`
+    // menyaring kolom `who`, dan `who` di sini adalah PEMANGGIL SENDIRI —
+    // yang tidak pernah ada di himpunan blokirnya sendiri. Jadi saringannya
+    // no-op untuk bendera ini, dan itu disengaja: baris tanda milik pemanggil
+    // tetap ada selagi terblokir dan boleh dicabutnya (R5), jadi layar harus
+    // tetap tahu tanda itu ada supaya tombol cabutnya muncul. Yang tersaring
+    // hanya `diaMenandaiku` (kolom `who` = `addr`), sehingga `salingMenandai`
+    // jatuh ke false untuk pasangan terblokir.
     const [sudahKutandai, diaMenandaiku, sudahKublokir] = await Promise.all([
       deps.meet.adaTanda(addr, pemanggil, kecuali),
       deps.meet.adaTanda(pemanggil, addr, kecuali),

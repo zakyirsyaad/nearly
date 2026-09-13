@@ -196,31 +196,32 @@ describe("GET /events/:id", () => {
   });
 
   /**
-   * Task 10 (IMPORTANT 3, ronde perbaikan 1). Mengembalikan `[]` yang
-   * ditinggalkan Task 4 akan tetap lolos SELURUH suite sebelumnya — tidak
-   * ada tes yang memeriksa ARGUMEN yang diterima `tandaKe`/`tandaOleh`.
-   * Tes ini memasang mata-mata pada himpunan blokir DAN pada kedua metode
-   * baca, lalu memastikan himpunan itu (bukan array kosong) yang benar-benar
-   * diteruskan.
+   * Task 10 (IMPORTANT 3, ronde perbaikan 1), diperbarui C2 review akhir.
+   * Mengembalikan `[]` akan tetap lolos tes yang tidak memeriksa ARGUMEN
+   * `tandaKe`/`tandaOleh`. Tes ini memasang mata-mata pada kedua pembaca
+   * blokir DAN kedua metode baca, lalu memastikan himpunan yang BENAR
+   * sampai ke masing-masing: `tandaOleh` himpunan dua arah (kecocokan tetap
+   * bubar ke dua arah), `tandaKe` hanya pemblokir pemanggil (`penandaHadir`
+   * tidak boleh bergerak karena pemanggil sendiri memblokir).
    */
-  it("meneruskan himpunan blokir pemanggil ke tandaKe dan tandaOleh, bukan array kosong", async () => {
+  it("meneruskan himpunan dua arah ke tandaOleh dan pemblokir ke tandaKe, bukan array kosong", async () => {
     const tandaKe = vi.fn(async () => []);
     const tandaOleh = vi.fn(async () => []);
     const himpunanUntuk = vi.fn(async (_who: Address) => new Set(["0xblok1", "0xblok2"]));
+    const pemblokirUntuk = vi.fn(async (_who: Address) => new Set(["0xpemblokir"]));
     const a = app({
       events: eventsWithFlags(),
       meet: { ...meetStore(), tandaKe, tandaOleh },
-      blokir: { ...blokirPalsu(), himpunanUntuk },
+      blokir: { ...blokirPalsu(), himpunanUntuk, pemblokirUntuk },
     });
     const res = await a.request(`/events/${EVENT_ID}?${await buktiQuery()}`);
     expect(res.status).toBe(200);
     expect(himpunanUntuk).toHaveBeenCalledWith(host.address.toLowerCase());
-    expect(tandaKe).toHaveBeenCalledWith(
-      host.address.toLowerCase(), expect.arrayContaining(["0xblok1", "0xblok2"]),
-    );
+    expect(pemblokirUntuk).toHaveBeenCalledWith(host.address.toLowerCase());
     expect(tandaOleh).toHaveBeenCalledWith(
       host.address.toLowerCase(), expect.arrayContaining(["0xblok1", "0xblok2"]),
     );
+    expect(tandaKe).toHaveBeenCalledWith(host.address.toLowerCase(), ["0xpemblokir"]);
   });
 
   // Tanda tangan yang tidak cocok BUKAN galat — rute ini tidak boleh pernah

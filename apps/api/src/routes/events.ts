@@ -167,14 +167,29 @@ export function eventRoutes(
 
     const addr = await pemanggilTerbukti(c.req.query(), ev.eventId, deps);
     if (addr) {
-      // Satu pembacaan himpunan blokir pemanggil per permintaan, dipakai
-      // KEDUA arah tanda di bawah.
-      const kecuali = [...await deps.blokir.himpunanUntuk(addr)];
+      // DUA himpunan blokir pemanggil, dibaca paralel, masing-masing untuk
+      // satu arah tanda (spec §5.2 yang diamandemen di review akhir):
+      //
+      // - `tandaOleh` (yang DITANDAI pemanggil) disaring himpunan DUA arah.
+      //   Kecocokan adalah irisan `tandaOleh` ∩ `tandaKe`, jadi menyaring satu
+      //   sisinya dua arah sudah cukup membuat kecocokan bubar ke arah mana
+      //   pun blokirnya — dan `kutandaiHadir` tetap kecocokan ∩ RSVP.
+      //
+      // - `tandaKe` (yang MENANDAI pemanggil) hanya disaring PEMBLOKIR
+      //   pemanggil. Ia sumber `penandaHadir`, dan himpunan dua arah di sini
+      //   membuatnya oracle: pemanggil membaca angkanya, memblokir B, membaca
+      //   lagi — turun berarti B menandainya DAN RSVP di acara ini — lalu
+      //   mencabut blokir tanpa jejak. Satu arah menutupnya: tindakan blokir
+      //   pemanggil sendiri tidak pernah menggerakkan `penandaHadir`-nya.
+      const [duaArah, pemblokir] = await Promise.all([
+        deps.blokir.himpunanUntuk(addr),
+        deps.blokir.pemblokirUntuk(addr),
+      ]);
       const [sudahRsvp, sudahCheckIn, tandaKe, tandaOleh, alamatRsvp] = await Promise.all([
         deps.events.hasRsvp(ev.eventId, addr),
         deps.events.hasCheckIn(ev.eventId, addr),
-        deps.meet.tandaKe(addr, kecuali),
-        deps.meet.tandaOleh(addr, kecuali),
+        deps.meet.tandaKe(addr, [...pemblokir]),
+        deps.meet.tandaOleh(addr, [...duaArah]),
         deps.events.rsvpAddresses(ev.eventId),
       ]);
 
@@ -216,7 +231,11 @@ export function eventRoutes(
       // dan probenya meninggalkan jejak — memasang ulang tanda memajukan
       // `sejakMs` kecocokan itu (Math.max kedua tanda), jadi ia menyala lagi
       // sebagai "baru" di lencana X. Jangan baca ini sebagai selesai; spec
-      // §11.8 mencatat residunya.
+      // §11.8 mencatat residunya. Blokir (Fase 4a) membuka varian yang TIDAK
+      // meninggalkan jejak itu: memblokir X membubarkan kecocokan tanpa
+      // menyentuh `sejakMs`, dan mencabut blokir memulihkannya apa adanya —
+      // batas diakui di spec 4a §10, tidak ditutup karena menutupnya
+      // mematahkan "kecocokan bubar" di spec 4a §5.2.
       //
       // `penandaHadir` beda: ia menghitung tanda sepihak ke arah pemanggil,
       // jadi ia digerbangi dua ambang di atas.
