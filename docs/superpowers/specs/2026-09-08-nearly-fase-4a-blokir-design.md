@@ -43,7 +43,8 @@ trust, dan blokirnya bisa dicabut dari sebuah daftar.
 | Penyimpanan | **Tabel `blocks` tersendiri**, bukan kolom di `connections` |
 | Arah efek | **Dua arah** — saling tak terlihat di permukaan yang Nearly kendalikan |
 | Mencabut | **Bisa**, lewat daftar blokir. Tanda "ingin bertemu" yang tertekan ikut kembali |
-| Tanda "ingin bertemu" | **Berhenti dihitung**, barisnya **bertahan** |
+| Tanda "ingin bertemu" | **Tanda dari pemblokir berhenti dihitung** di angka publik yang diblokir; tanda dari yang diblokir **tetap dihitung** di angka pemblokir. Kecocokan bubar dua arah. Barisnya **bertahan** (§5.2, amandemen review akhir) |
+| Feed untuk `?who=` | **Efek blokir hanya untuk penonton terbukti** lewat bukti baca `LihatFeed` (§5.1, amandemen review akhir) |
 | Handshake saat terblokir | **Dibiarkan berhasil** — koneksinya fakta, blokirnya lapisan di atasnya |
 | Blokir vs lapor | **Terpisah penuh.** Tidak ada yang memicu yang lain |
 | Pemberitahuan ke yang diblokir | **Tidak ada.** Blokir senyap |
@@ -128,8 +129,15 @@ benar karena trust memang tidak boleh mengalir ke arah mana pun.
 utuh setiap recompute; kueri per-edge akan mengubah satu recompute jadi ribuan perjalanan ke
 database.
 
-**Memblokir memicu recompute** lewat `onChanged` yang sudah ada di `app.ts`, termasuk penjaga
-anti-tumpang-tindih `recomputeInFlight`-nya.
+**Memblokir TIDAK memicu recompute** (amandemen review akhir, Ruling R10). Rute blokir sengaja
+tidak memanggil `onChanged`. Efek blokir pada skor trust masuk pada recompute **berikutnya** —
+yang dipicu handshake atau vouch mana pun.
+
+Alasannya privasi, bukan hemat: recompute segera menulis perubahan tier **on-chain** lewat
+`setScore` pada detik blokir terjadi. Stempel waktu publik itu menandai blokir yang privat
+(§2) — siapa pun yang mengamati tier dua orang berubah bersamaan tepat setelah salah satunya
+aktif bisa menduga hubungannya. Menunda ke recompute berikutnya memutus korelasi waktu itu.
+Harganya: skor bisa basi sampai recompute berikutnya (§10.6).
 
 ## 5. Efek di Setiap Permukaan
 
@@ -138,11 +146,34 @@ anti-tumpang-tindih `recomputeInFlight`-nya.
 Dua arah: unggahan B hilang dari feed A, dan unggahan A hilang dari feed B. Disaring di
 `feed-store.ts` saat mengumpulkan kandidat.
 
-**`petaHop` juga harus membuang edge terblokir.** `apps/api/src/feed-store.ts:53` menghitung
-hop dari tabel `connections` **langsung**, terpisah dari graf trust — dan komentarnya di baris
-50-51 sudah menunjuk ke fase ini. Tanpa perubahan ini feed dan trust memberi jawaban berbeda
-tentang graf yang sama, dan yang salah justru feed, karena ia yang menentukan apa yang orang
-lihat.
+**Hanya untuk penonton TERBUKTI** (amandemen review akhir, keputusan pemilik). `GET /feed?who=`
+sejak Fase 3b menerima `who` tanpa bukti, karena ia hanya dipakai untuk urutan graf dan graf
+koneksi publik on-chain. Begitu `who` juga menyaring blokir, rute itu jadi oracle: bandingkan
+`GET /feed` dengan `GET /feed?who=A` — penulis yang hilang di yang kedua punya hubungan blokir
+dengan A, dan nilai `hop` ikut bergeser. Gratis, tanpa tanda tangan, untuk alamat mana pun.
+
+Jadi `who` punya dua tingkat:
+
+- `who` yang alamatnya valid tetap dipakai untuk **urutan graf**, persis seperti Fase 3b.
+- Efek blokir — saringan unggahan dan edge terblokir di `petaHop` — hanya berlaku kalau
+  permintaan membawa bukti baca **`LihatFeed`** (`who` + `expiresAt` + `sig`) yang sah, belum
+  kedaluwarsa, dan penanda tangannya `who`. Untuk `who` tanpa bukti, tabel `blocks` tidak
+  dibaca sama sekali.
+- Bukti yang hilang, cacat, kedaluwarsa, milik orang lain, atau bertipe salah **tidak pernah
+  4xx**. Rute feed tidak boleh gagal untuk orang yang membuka tautan; ia turun ke "tidak
+  terbukti".
+
+**`petaHop` juga harus membuang edge terblokir.** `apps/api/src/feed-store.ts` menghitung
+hop dari tabel `connections` **langsung**, terpisah dari graf trust. Edge yang menyentuh
+blokir **penonton sendiri** dibuang sebelum lompatan dihitung, sehingga orang ketiga yang hanya
+terjangkau lewat orang yang diblokir ikut keluar jangkauan.
+
+**Feed dan trust sengaja TIDAK sepakat sepenuhnya** (amandemen review akhir). Trust membuang
+edge antara pasangan terblokir **mana pun**; feed hanya edge yang menyentuh blokir penonton.
+Kalau B memblokir Z, penonton masih menjangkau Z lewat B di feed, tapi tidak di trust. Versi
+per-pasangan di feed butuh himpunan blokir pihak ketiga, dan `hop` yang dikirim ke penonton
+akan membocorkannya — Z yang tiba-tiba "di luar jaringanmu" memberi tahu penonton bahwa B dan
+Z saling memblokir.
 
 **Konsekuensi yang tidak akan diduga pengguna:** memblokir seseorang mengubah jarak hop ke
 **orang lain**. Kalau B adalah 1-hop dan lewat B kamu terhubung ke sepuluh orang, memblokir B
@@ -155,19 +186,36 @@ dipikirkan orang saat sedang ingin menyingkirkan seseorang.
 
 ### 5.2 Penanda dan kecocokan
 
-- Tanda B ke A **berhenti dihitung** — angka publik A turun satu.
-- **Dan sebaliknya juga.** Kalau A pernah menandai B, tanda itu ikut berhenti dihitung dan
-  angka publik B turun satu. Efeknya simetris seperti seluruh blokir ini: A tidak boleh terus
-  menyumbang ke kehadiran publik orang yang ia blokir, sama seperti sebaliknya. Yang asimetris
-  hanya siapa yang bisa mencabutnya.
-- **Kedua barisnya bertahan.** Mencabut blokir mengembalikan tanda dari kedua arah; tidak ada
-  yang perlu menandai ulang.
-- **Kecocokan bubar** — mengikuti sendirinya, karena kecocokan adalah irisan dua tanda dan
-  satu sisinya kini tertekan. Mekanik yang sama persis dengan mencabut tanda.
-- Selama terblokir, keduanya **tidak bisa menandai** satu sama lain.
+Diamandemen di review akhir (keputusan pemilik: **"hanya sisi yang diblokir"**). A memblokir B:
+
+- Tanda **A ke B berhenti dihitung** — angka publik B turun satu. Dari sisi B, A adalah orang
+  yang memblokirnya.
+- Tanda **B ke A TETAP dihitung** di angka publik A. Blokir A sendiri tidak pernah menggerakkan
+  angka A.
+- Aturan yang sama untuk `penandaHadir` di `GET /events/:id`: ia hanya membuang tanda dari
+  orang yang **memblokir** pemanggil.
+- **Kedua barisnya bertahan.** Mencabut blokir mengembalikan semuanya; tidak ada yang perlu
+  menandai ulang.
+- **Kecocokan bubar ke dua arah** — di `GET /kecocokan` dan `kutandaiHadir`. Kecocokan adalah
+  irisan dua tanda, dan sisi "yang ditandai pemanggil" tetap disaring himpunan blokir dua
+  arah. `kutandaiHadir` tetap kecocokan ∩ RSVP (Fase 3c).
+- Selama terblokir, keduanya **tidak bisa menandai** satu sama lain; mencabut tanda sendiri
+  tetap boleh (R5).
+
+**Kenapa tidak simetris seperti versi awal.** Versi awal membuang tanda dari kedua arah, dan
+itu membuat angka publik jadi oracle selisih: A membaca angkanya sendiri (n), memblokir B,
+membaca lagi. n−1 berarti **B pernah diam-diam menandai A** — lalu A mencabut blokirnya tanpa
+jejak, dan B tidak pernah tahu. Varian lokasinya lewat `penandaHadir`: angkanya turun berarti
+B menandai A **dan** RSVP di acara itu. Kelas yang sama dengan Critical Fase 3c. Dengan hanya
+membuang tanda dari **pemblokir**, tindakan A sendiri tidak pernah memindahkan angka A, dan
+selisih itu tidak ada lagi.
+
+Harganya: B yang diblokir A masih menyumbang satu ke kehadiran publik A. Itu diterima — angka
+A hanya berkata "sekian orang ingin bertemu A", dan B memang ingin.
 
 Ini tidak melanggar spec induk §7.6 (*"tidak ada yang bisa menurunkan angka orang lain"*):
-yang menurunkan angka A adalah A sendiri, bukan orang lain.
+yang menurunkan angka B adalah tanda A yang berhenti dihitung karena pilihan A sendiri atas
+tandanya sendiri, bukan penghapusan tanda orang lain.
 
 ### 5.3 Profil
 
@@ -201,30 +249,34 @@ cuma milikmu. **Tidak ada yang memicu yang lain**, dan gerbang lapor tidak diuba
 
 ## 6. Tanda Tangan
 
-Dua tipe EIP-712 baru, membawa aplikasi ke **21 tipe**:
+Tiga tipe EIP-712 baru, membawa aplikasi ke **22 tipe** (21 di versi awal; `LihatFeed`
+ditambahkan di review akhir, keputusan pemilik):
 
 ```
 Blokir      { target: address, who: address, blokir: bool, expiresAt: uint64 }
 LihatBlokir { who: address, expiresAt: uint64 }
+LihatFeed   { who: address, expiresAt: uint64 }
 ```
 
 `Blokir` perintah tulis dengan boolean toggle — pola yang sama dengan `InginBertemu`, satu
-tipe untuk memasang dan mencabut. `LihatBlokir` bukti baca untuk `GET /blokir`.
+tipe untuk memasang dan mencabut. `LihatBlokir` bukti baca untuk `GET /blokir`. `LihatFeed`
+bukti baca untuk efek blokir di `GET /feed` (§5.1); ia hidup di keluarga feed
+(`packages/shared/src/feed.ts`).
 
 Domain sama seperti seluruh aplikasi:
 `{ name: "Nearly", version: "1", chainId: 97, verifyingContract: <ConnectionRegistry> }`.
 
 ### 6.1 Keluarga Ruling 23 bertambah anggota — dan ini risikonya
 
-`LihatBlokir` akan jadi tipe **ketiga** yang bentuk fieldnya `{ who, expiresAt }`, bersama
-`LihatKecocokan` dan `TandaiDilihat`. Ketiganya identik bentuknya dan **hanya nama tipenya**
-yang memisahkan bukti baca dari perintah tulis.
+`LihatBlokir` jadi tipe **ketiga** yang bentuk fieldnya `{ who, expiresAt }`, bersama
+`LihatKecocokan` dan `TandaiDilihat`, dan `LihatFeed` jadi yang **keempat**. Keempatnya
+identik bentuknya dan **hanya nama tipenya** yang memisahkan bukti baca dari perintah tulis.
 
 Makin banyak anggota keluarga ini, makin besar peluang seseorang menganggap dua di antaranya
 mubazir lalu menggabungkannya — dan penggabungan itu membuat satu tanda tangan sah sebagai
 perintah lain. Dua penjaga wajib ada:
 
-1. **Tes typehash** yang menuntut **21** `encodeType` unik di seluruh keluarga, dengan asersi
+1. **Tes typehash** yang menuntut **22** `encodeType` unik di seluruh keluarga, dengan asersi
    jumlah dan asersi tabrakan nama di blok `it` **terpisah** (Fase 3c membuktikan kenapa:
    ketika keduanya satu blok, kegagalan pertama membatalkan blok sebelum asersi kedua
    dijalankan, dan penjaga tabrakan tidak pernah teruji).
@@ -234,7 +286,7 @@ perintah lain. Dua penjaga wajib ada:
 
 `Blokir` juga sebentuk dengan `InginBertemu` (address, address, bool, uint64), tapi nama
 medannya berbeda (`blokir` vs `ingin`) sehingga `encodeType`-nya berbeda dua kali. Tetap masuk
-hitungan 21 unik.
+hitungan 22 unik, dan tes kebingungan tipenya ada ke dua arah.
 
 ## 7. Permukaan API
 
@@ -242,6 +294,7 @@ hitungan 21 unik.
 |---|---|---|
 | `POST /blokir` | `Blokir` | Memasang dan mencabut lewat medan `blokir` |
 | `GET /blokir` | `LihatBlokir` | Daftar yang kamu blokir. **403 tanpa bukti sah** |
+| `GET /feed` (ubah) | `LihatFeed`, opsional | Efek blokir hanya dengan bukti sah. **Tidak pernah 4xx karena bukti** — tanpa bukti sah turun ke "tidak terbukti" (§5.1) |
 
 **`GET /blokir` menolak 403, bukan mengembalikan daftar kosong.** Daftar siapa yang kamu
 blokir itu privat, dan daftar kosong tidak bisa dibedakan dari "kamu tidak memblokir siapa
@@ -272,6 +325,7 @@ menolak panggilan telanjang di gerbang baru ini secara otomatis.
 | `apps/mobile/app/profile/[address].tsx` (ubah) | Tombol blokir + tanda kalau sudah diblokir |
 | `apps/mobile/src/blokir-actions.ts` | **Satu-satunya tempat `Blokir` ditandatangani** |
 | `apps/mobile/src/blokir-api.ts` | Pembangun bukti baca + pembacaan daftar |
+| `apps/mobile/src/feed-api.ts` (ubah) | `kueriBuktiFeed` — bukti `LihatFeed` di setiap muat feed (amandemen review akhir) |
 | `apps/mobile/src/messages.ts` (ubah) | `blokirErrorMessage` |
 
 **Tombol blokir hanya di profil, tidak di kartu feed.** Jalurnya tetap ada: kartu feed sudah
@@ -294,22 +348,54 @@ on-chain (§2)
 graf koneksi keduanya publik menurut desain. Yang diputus jangkauan, bukan keterlihatan
 (§5.3). Jangan pernah mengklaim lebih dari ini dalam pitch.
 
-**10.2 Yang diblokir bisa menyimpulkan.** Tandanya berhenti dihitung, unggahannya hilang dari
-feed lawan, dan nanti pesannya tidak sampai. Blokir senyap berarti tidak ada pemberitahuan,
-bukan tidak bisa ditebak.
+**10.2 Yang diblokir bisa menyimpulkan.** Sejak amandemen §5.2, yang berhenti dihitung adalah
+tanda **pemblokir** di angka orang yang diblokirnya. Jadi B yang diblokir A bisa melihat angka
+publiknya sendiri atau `penandaHadir`-nya turun kalau A pernah menandainya; unggahannya hilang
+dari feed A; kecocokannya dengan A bubar; dan nanti pesannya tidak sampai. Blokir senyap
+berarti tidak ada pemberitahuan, bukan tidak bisa ditebak. Yang **ditutup** amandemen itu arah
+sebaliknya: pemblokir tidak lagi bisa memakai blokir untuk mengetahui siapa yang diam-diam
+menandainya.
 
 **10.3 Memblokir mengubah jarak ke orang ketiga**, dan itu tidak dijelaskan ke pengguna
 (§5.1). Kalau nanti terbukti membingungkan, obatnya sudah diketahui: satu baris penjelasan di
 layar daftar blokir, bukan di dialog konfirmasi.
 
-**10.4 Setiap blokir membakar gas relayer.** Recompute menulis `setScore` on-chain untuk tier
-yang berubah. Sudah berlaku untuk setiap handshake juga, tapi ia satu lagi hal yang menarik
-dari kolam yang sama — dan saldo BSC testnet relayer tercatat **0,00887 tBNB** pada
-2026-09-08, cukup untuk beberapa puluh transaksi saja.
+**10.4 Blokir tidak membakar gas relayer secara langsung** (amandemen review akhir, R10).
+Versi awal bagian ini menyatakan setiap blokir memicu recompute yang menulis `setScore`
+on-chain. Sejak §4 diamandemen, blokir tidak memicu recompute; gasnya dibayar recompute
+berikutnya yang memang sudah akan terjadi. Saldo BSC testnet relayer tercatat **0,00887 tBNB**
+pada 2026-09-08.
 
 **10.5 Blokir massal tidak dibatasi.** Tidak ada kuota harian seperti pada koneksi dan vouch.
 Blokir tidak menghantar apa pun ke siapa pun, jadi menyalahgunakannya hanya merugikan diri
-sendiri — tapi ini keputusan sadar, bukan kelalaian.
+sendiri — tapi ini keputusan sadar, bukan kelalaian. Karena itu pula tabel `blocks` bisa
+dibanjiri dari luar (ribuan kunci sekali pakai yang memblokir satu korban); setiap pembaca
+himpunan blokir karenanya berhalaman dengan urutan total stabil, dan pemeriksaan satu pasangan
+memakai pencarian primary key, bukan memuat himpunan (amandemen review akhir).
+
+**10.6 Skor trust bisa basi setelah blokir** (amandemen review akhir, R10). Karena blokir tidak
+memicu recompute (§4), edge terblokir masih menghantar trust sampai handshake atau vouch
+mana pun memicu recompute berikutnya. Diterima demi tidak menandai waktu blokir on-chain.
+
+**10.7 Terhadap orang yang sudah cocok, blokir adalah probe RSVP tanpa jejak** (amandemen
+review akhir, R11). Pemanggil yang sudah cocok dengan X bisa: baca `kutandaiHadir` di sebuah
+acara, blokir X, baca lagi, cabut blokir. Turun satu berarti X RSVP di acara itu. Spec 3c §11.8
+menjadikan "kecocokan menyala lagi sebagai *baru*" satu-satunya jejak probe cabut-pasang
+tanda; blokir melewati jejak itu, karena memblokir tidak menyentuh `sejakMs` dan mencabutnya
+memulihkan kecocokan apa adanya. **Tidak ditutup**: menutupnya berarti kecocokan tidak bubar
+saat blokir, yang mematahkan §5.2. Cooldown cabut-blokir di luar cakupan fase ini. Himpunan
+yang bisa disurvei tetap terbatas pada orang yang sudah memilih mencocoki pemanggil.
+
+**10.8 Jumlah permintaan `hitungTanda` bergantung pada banyaknya pemblokir** (amandemen review
+akhir, M2). Sejak §5.2, angka publik T mengecualikan himpunan pemblokir T, dan `hitungTanda`
+butuh 1 permintaan kalau himpunan itu kosong tapi 1+⌈n/100⌉ kalau tidak (R7). Pengamat yang
+mengukur latensi `GET /profile/T` secara prinsip bisa menebak "ada yang memblokir T".
+Keparahannya rendah — bedanya satu perjalanan ke database, tertimbun jitter jaringan, dan
+tidak menyebut siapa — tapi ini batas yang diakui, bukan yang tidak terlihat.
+
+**10.9 Feed dan trust tidak sepakat soal blokir pihak ketiga** (amandemen review akhir, M1).
+Lihat §5.1: feed hanya memutus edge yang menyentuh blokir penonton, trust memutus semua edge
+terblokir. Menyamakannya di feed akan membocorkan blokir pihak ketiga lewat `hop`.
 
 ## 11. Verifikasi
 
@@ -326,13 +412,21 @@ yang terakhir wajib mengembalikan 401, bukan 500.
 
 **11.4 `GET /blokir` tanpa bukti wajib 403**, dan diuji juga dengan tanda tangan
 `LihatKecocokan` maupun `TandaiDilihat` yang bentuk fieldnya identik — keduanya harus ditolak.
+**`GET /feed` dengan `who` tanpa bukti `LihatFeed` sah** (termasuk tanda tangan `LihatKecocokan`)
+wajib 200 dengan keluaran yang tidak bergantung pada tabel `blocks` (amandemen review akhir).
+
+**11.4a Invarian angka publik** (amandemen review akhir): X memblokir B yang pernah menandai X
+tidak mengubah angka publik X maupun `penandaHadir` X; B memblokir X menurunkannya; kecocokan
+dan `kutandaiHadir` tetap bubar ke dua arah. Diuji lewat rute dengan store palsu yang
+membedakan kedua arah blokir.
 
 **11.5 Batas global diverifikasi**: `git diff --stat <base>..HEAD -- packages/trust` kosong,
-dan 21 `encodeType` unik.
+dan 22 `encodeType` unik.
 
 **11.6 Uji lapangan** terhadap API dan Supabase sungguhan, seperti Fase 3b dan 3c: blokir
-menurunkan angka publik, kecocokan bubar, unggahan hilang dua arah, mencabut mengembalikan
-semuanya, dan skor trust berubah setelah recompute.
+menurunkan angka publik **yang diblokir** (bukan pemblokir), kecocokan bubar, unggahan hilang
+dua arah di feed yang membawa bukti `LihatFeed`, mencabut mengembalikan semuanya, dan skor
+trust berubah setelah recompute **berikutnya** (blokir sendiri tidak memicunya, §4).
 
 ## 12. Perbaikan Spec Induk yang Termasuk Ruang Lingkup
 
