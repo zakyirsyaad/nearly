@@ -91,6 +91,10 @@ export function createApp(deps: TrustDeps) {
   // relayer membakar gas tepat pada saat seseorang sedang berusaha
   // menyingkirkan orang lain — momen paling buruk untuk gagal.
   //
+  // Alasan yang lebih berat adalah privasi (Ruling R10, spec §4 yang
+  // diamandemen): recompute segera menulis perubahan tier ON-CHAIN pada detik
+  // blokir terjadi, dan stempel waktu publik itu menandai blokir yang privat.
+  //
   // Skornya menyusul pada recompute berikutnya, yang dipicu handshake atau
   // vouch mana pun. Yang HARUS langsung berlaku adalah penyaringan feed dan
   // penanda (Task 9 dan 10), dan keduanya membaca tabel `blocks` secara

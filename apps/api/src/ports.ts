@@ -386,9 +386,11 @@ export type BlokirStore = {
   diblokirOleh(who: Address): Promise<BarisBlokir[]>;
   /**
    * Semua alamat yang punya hubungan blokir dengan `who` ke ARAH MANA PUN.
-   * Inilah yang dipakai penyaringan feed dan penanda: blokir dua arah tidak
-   * peduli siapa yang memulai. Set, bukan array, karena pemanggilnya
-   * menyaring daftar dan array membuatnya kuadratik.
+   * Inilah yang dipakai penyaringan feed (penonton terbukti saja), kecocokan,
+   * dan bendera pribadi profil: blokir dua arah tidak peduli siapa yang
+   * memulai. BUKAN untuk angka publik atau `penandaHadir` — di sana pakai
+   * `pemblokirUntuk`. Set, bukan array, karena pemanggilnya menyaring daftar
+   * dan array membuatnya kuadratik.
    */
   himpunanUntuk(who: Address): Promise<Set<string>>;
   /**
