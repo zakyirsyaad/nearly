@@ -45,6 +45,7 @@ function deps(): TrustDeps {
       adaBlokir: vi.fn(async () => false),
       diblokirOleh: vi.fn(async () => []),
       himpunanUntuk: vi.fn(async () => new Set<string>()),
+      pemblokirUntuk: vi.fn(async () => new Set<string>()),
     },
     // Stub Fase 2: tidak dipakai langsung oleh test profil ini, hanya supaya
     // bentuk TrustDeps lengkap untuk onChanged() yang dipicu createApp.

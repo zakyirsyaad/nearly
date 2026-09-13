@@ -34,7 +34,7 @@ function meetStore(over: Partial<MeetStore> = {}): MeetStore {
   };
 }
 
-// Fake BlokirStore dengan tepat empat metode (lihat METODE_BLOKIR_STORE di
+// Fake BlokirStore dengan tepat lima metode (lihat METODE_BLOKIR_STORE di
 // ports.ts) — `himpunanUntuk` kosong secara default supaya tes-tes lama
 // (yang tidak peduli blokir) tetap berjalan seperti sebelum Task 10.
 function blokirPalsu(over: Partial<BlokirStore> = {}): BlokirStore {
@@ -43,6 +43,7 @@ function blokirPalsu(over: Partial<BlokirStore> = {}): BlokirStore {
     adaBlokir: vi.fn(async () => false),
     diblokirOleh: vi.fn(async () => []),
     himpunanUntuk: vi.fn(async () => new Set<string>()),
+    pemblokirUntuk: vi.fn(async () => new Set<string>()),
     ...over,
   };
 }

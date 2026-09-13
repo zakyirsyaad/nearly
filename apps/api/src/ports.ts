@@ -379,10 +379,18 @@ export type BlokirStore = {
    * menyaring daftar dan array membuatnya kuadratik.
    */
   himpunanUntuk(who: Address): Promise<Set<string>>;
+  /**
+   * SATU arah: alamat yang MEMBLOKIR `who` (baris `blocked = who`). Dipakai
+   * angka publik `inginBertemuCount` dan `penandaHadir` (spec §5.2 yang
+   * diamandemen): hanya tanda dari orang yang memblokir `who` yang dibuang.
+   * Himpunan dua arah di sana membuat tindakan blokir `who` sendiri
+   * menggerakkan angkanya sendiri — oracle "siapa yang diam-diam menandaiku".
+   */
+  pemblokirUntuk(who: Address): Promise<Set<string>>;
 };
 
 export const METODE_BLOKIR_STORE = [
-  "setBlokir", "adaBlokir", "diblokirOleh", "himpunanUntuk",
+  "setBlokir", "adaBlokir", "diblokirOleh", "himpunanUntuk", "pemblokirUntuk",
 ] as const satisfies readonly (keyof BlokirStore)[];
 
 // Arah kedua dari pengait: `satisfies` di atas menangkap nama yang salah eja

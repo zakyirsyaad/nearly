@@ -124,6 +124,7 @@ function deps(over: { saveSnapshots?: ReturnType<typeof vi.fn> } = {}): TrustDep
       adaBlokir: async () => false,
       diblokirOleh: async () => [],
       himpunanUntuk: async () => new Set<string>(),
+      pemblokirUntuk: async () => new Set<string>(),
     },
   };
 }

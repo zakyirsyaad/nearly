@@ -67,10 +67,17 @@ export async function setTanda(
   //
   // Diperiksa SETELAH tanda tangan supaya tidak menjadi orakel: tanpa tanda
   // tangan yang sah, tidak ada yang bisa memancing keberadaan blokir.
+  //
+  // Pasangan TEPAT, dua arah paralel — bukan memuat seluruh himpunan blokir
+  // penanda lalu mencari target di dalamnya. Himpunan itu bisa dibanjiri dari
+  // luar (ribuan kunci sekali pakai yang memblokir satu orang), sedangkan
+  // pertanyaan di sini hanya soal SATU pasangan: dua pencarian primary key.
   if (input.ingin) {
-    const terblokir = await deps.blokir.himpunanUntuk(input.who)
-      .then((s) => s.has(input.target.toLowerCase()));
-    if (terblokir) return fail({ code: "terblokir", httpStatus: 403 });
+    const [akuMemblokir, akuDiblokir] = await Promise.all([
+      deps.blokir.adaBlokir(input.who, input.target),
+      deps.blokir.adaBlokir(input.target, input.who),
+    ]);
+    if (akuMemblokir || akuDiblokir) return fail({ code: "terblokir", httpStatus: 403 });
   }
 
   await deps.meet.setTanda(input.target, input.who, input.ingin);

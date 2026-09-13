@@ -26,7 +26,7 @@ function meetStore(over: Partial<MeetStore> = {}): MeetStore {
   };
 }
 
-// Fake BlokirStore dengan tepat empat metode (lihat METODE_BLOKIR_STORE di
+// Fake BlokirStore dengan tepat lima metode (lihat METODE_BLOKIR_STORE di
 // ports.ts) — `himpunanUntuk` kosong secara default supaya tes-tes lama
 // (yang tidak peduli blokir) tetap berjalan seperti sebelum Task 10.
 function blokirPalsu(over: Partial<BlokirStore> = {}): BlokirStore {
@@ -35,6 +35,7 @@ function blokirPalsu(over: Partial<BlokirStore> = {}): BlokirStore {
     adaBlokir: vi.fn(async () => false),
     diblokirOleh: vi.fn(async () => []),
     himpunanUntuk: vi.fn(async () => new Set<string>()),
+    pemblokirUntuk: vi.fn(async () => new Set<string>()),
     ...over,
   };
 }
@@ -118,6 +119,7 @@ describe("GET /profile/:address — angka publik", () => {
       adaBlokir: vi.fn(async () => false),
       diblokirOleh: vi.fn(async () => []),
       himpunanUntuk: vi.fn(async () => { throw new Error("blokir mati"); }),
+      pemblokirUntuk: vi.fn(async () => new Set<string>()),
     };
     const res = await app(s, blokir).request(`/profile/${TARGET}`);
     expect(res.status).toBe(200);
@@ -146,6 +148,7 @@ describe("GET /profile/:address — angka publik", () => {
       adaBlokir: vi.fn(async () => false),
       diblokirOleh: vi.fn(async () => []),
       himpunanUntuk,
+      pemblokirUntuk: vi.fn(async () => new Set<string>()),
     };
     const res = await app(meetStore({ hitungTanda }), blokir).request(`/profile/${TARGET}`);
     expect(res.status).toBe(200);
@@ -203,6 +206,7 @@ describe("GET /profile/:address — bendera pribadi", () => {
       adaBlokir: vi.fn(async () => false),
       diblokirOleh: vi.fn(async () => []),
       himpunanUntuk,
+      pemblokirUntuk: vi.fn(async () => new Set<string>()),
     };
     const res = await app(meetStore({ adaTanda }), blokir).request(await buktiBaca());
     expect(res.status).toBe(200);
@@ -232,6 +236,7 @@ describe("GET /profile/:address — bendera pribadi", () => {
       adaBlokir: vi.fn(async () => false),
       diblokirOleh: vi.fn(async () => []),
       himpunanUntuk: vi.fn(async () => { throw new Error("blokir mati"); }),
+      pemblokirUntuk: vi.fn(async () => new Set<string>()),
     };
     const res = await app(meetStore({ adaTanda: vi.fn(async () => true) }), blokir)
       .request(await buktiBaca());

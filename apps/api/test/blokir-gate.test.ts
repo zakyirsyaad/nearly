@@ -18,6 +18,7 @@ function deps() {
       adaBlokir: vi.fn(async () => false),
       diblokirOleh: vi.fn(async () => []),
       himpunanUntuk: vi.fn(async () => new Set<string>()),
+      pemblokirUntuk: vi.fn(async () => new Set<string>()),
     },
   } as never;
 }

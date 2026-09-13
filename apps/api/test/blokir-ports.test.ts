@@ -13,7 +13,7 @@ import { METODE_BLOKIR_STORE } from "../src/ports";
 describe("bentuk BlokirStore", () => {
   it("daftar metodenya persis seperti yang tercatat", () => {
     expect(METODE_BLOKIR_STORE).toEqual([
-      "setBlokir", "adaBlokir", "diblokirOleh", "himpunanUntuk",
+      "setBlokir", "adaBlokir", "diblokirOleh", "himpunanUntuk", "pemblokirUntuk",
     ]);
   });
 });

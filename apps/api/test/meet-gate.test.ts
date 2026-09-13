@@ -28,7 +28,7 @@ function store(over: Partial<MeetStore> = {}): MeetStore {
   };
 }
 
-// Fake BlokirStore dengan tepat empat metode (lihat METODE_BLOKIR_STORE di
+// Fake BlokirStore dengan tepat lima metode (lihat METODE_BLOKIR_STORE di
 // ports.ts) — `himpunanUntuk` kosong secara default supaya tes-tes lama
 // (yang tidak peduli blokir) tetap berjalan seperti sebelum Task 10.
 function blokirPalsu(over: Partial<BlokirStore> = {}): BlokirStore {
@@ -37,6 +37,7 @@ function blokirPalsu(over: Partial<BlokirStore> = {}): BlokirStore {
     adaBlokir: vi.fn(async () => false),
     diblokirOleh: vi.fn(async () => []),
     himpunanUntuk: vi.fn(async () => new Set<string>()),
+    pemblokirUntuk: vi.fn(async () => new Set<string>()),
     ...over,
   };
 }
@@ -163,16 +164,52 @@ describe("setTanda", () => {
   });
 
   /**
+   * Fake adaBlokir yang MEMBEDAKAN arah: hanya pasangan (blocker, blocked)
+   * yang disebut yang terblokir. Dengan ini tes di bawah bisa membuktikan
+   * KEDUA arah diperiksa — fake yang selalu `true` akan lolos juga untuk
+   * gerbang yang hanya memeriksa satu arah.
+   */
+  const blokirArah = (blocker: string, blocked: string) => vi.fn(
+    async (x: Address, y: Address) =>
+      x.toLowerCase() === blocker.toLowerCase() && y.toLowerCase() === blocked.toLowerCase(),
+  );
+
+  /**
    * R5 (putusan pengawas atas brief Task 10). Spec §5.2 menolak MENANDAI
    * selagi terblokir — bukan mencabut. Pemeriksaan ini hanya menyala saat
    * `ingin === true`.
    */
-  it("menolak memasang tanda baru saat terblokir", async () => {
+  it("menolak memasang tanda baru saat PENANDA memblokir target", async () => {
     const s = store();
-    const b = blokirPalsu({ himpunanUntuk: vi.fn(async () => new Set([TARGET.toLowerCase()])) });
+    const b = blokirPalsu({ adaBlokir: blokirArah(aku.address, TARGET) });
     const hasil = await setTanda(await masukan(), deps(s, b));
     expect(hasil).toMatchObject({ ok: false, failure: { code: "terblokir", httpStatus: 403 } });
     expect(s.setTanda).not.toHaveBeenCalled();
+  });
+
+  it("menolak memasang tanda baru saat TARGET memblokir penanda", async () => {
+    const s = store();
+    const b = blokirPalsu({ adaBlokir: blokirArah(TARGET, aku.address) });
+    const hasil = await setTanda(await masukan(), deps(s, b));
+    expect(hasil).toMatchObject({ ok: false, failure: { code: "terblokir", httpStatus: 403 } });
+    expect(s.setTanda).not.toHaveBeenCalled();
+  });
+
+  /**
+   * I1 review akhir. Pemeriksaan pasangan TEPAT dua arah, bukan memuat
+   * seluruh himpunan blokir penanda: himpunan itu bisa dibanjiri ribuan
+   * baris dari luar, dan satu pasangan cukup dua pencarian primary key.
+   */
+  it("memeriksa adaBlokir di kedua arah dan tidak memuat himpunanUntuk", async () => {
+    const adaBlokir = vi.fn(async () => false);
+    const himpunanUntuk = vi.fn(async () => new Set<string>());
+    const s = store();
+    const hasil = await setTanda(await masukan(), deps(s, blokirPalsu({ adaBlokir, himpunanUntuk })));
+    expect(hasil.ok).toBe(true);
+    expect(adaBlokir).toHaveBeenCalledTimes(2);
+    expect(adaBlokir).toHaveBeenCalledWith(aku.address, TARGET);
+    expect(adaBlokir).toHaveBeenCalledWith(TARGET, aku.address);
+    expect(himpunanUntuk).not.toHaveBeenCalled();
   });
 
   /**
@@ -185,7 +222,7 @@ describe("setTanda", () => {
     const pesan = { target: TARGET, who: aku.address, ingin: false, expiresAt: EXP };
     const sig = await aku.signTypedData(inginBertemuTypedData(pesan, KONTRAK));
     const s = store();
-    const b = blokirPalsu({ himpunanUntuk: vi.fn(async () => new Set([TARGET.toLowerCase()])) });
+    const b = blokirPalsu({ adaBlokir: vi.fn(async () => true) });
     const hasil = await setTanda({ ...pesan, sig }, deps(s, b));
     expect(hasil.ok).toBe(true);
     expect(s.setTanda).toHaveBeenCalledWith(TARGET, aku.address, false);
@@ -201,13 +238,15 @@ describe("setTanda", () => {
    */
   it("tanda tangan sampah tetap ditolak bad_signature walau terblokir (bukan orakel)", async () => {
     const s = store();
-    const b = blokirPalsu({ himpunanUntuk: vi.fn(async () => new Set([TARGET.toLowerCase()])) });
+    const adaBlokir = vi.fn(async () => true);
+    const b = blokirPalsu({ adaBlokir });
     const hasil = await setTanda(
       { target: TARGET, who: aku.address, ingin: true, expiresAt: EXP, sig: "0xbukan" as Hex },
       deps(s, b),
     );
     expect(hasil).toMatchObject({ ok: false, failure: { code: "bad_signature", httpStatus: 401 } });
     expect(s.setTanda).not.toHaveBeenCalled();
+    expect(adaBlokir).not.toHaveBeenCalled();
   });
 });
 

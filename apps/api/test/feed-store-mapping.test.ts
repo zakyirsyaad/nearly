@@ -7,7 +7,7 @@ import {
   type PostDbRow,
 } from "../src/feed-store";
 
-// Fake BlokirStore dengan tepat empat metode (lihat METODE_BLOKIR_STORE di
+// Fake BlokirStore dengan tepat lima metode (lihat METODE_BLOKIR_STORE di
 // ports.ts) — `himpunanUntuk` kosong karena tes-tes di bawah memakai
 // `viewer: null`, jadi ia tidak seharusnya pernah dipanggil.
 function blokirPalsu(): BlokirStore {
@@ -16,6 +16,7 @@ function blokirPalsu(): BlokirStore {
     adaBlokir: async () => false,
     diblokirOleh: async () => [],
     himpunanUntuk: async () => new Set<string>(),
+    pemblokirUntuk: async () => new Set<string>(),
   };
 }
 
@@ -253,6 +254,7 @@ describe("listCandidates menyaring blokir dua arah", () => {
       adaBlokir: async () => false,
       diblokirOleh: async () => [],
       himpunanUntuk: async () => himpunan,
+      pemblokirUntuk: async () => new Set<string>(),
     };
   }
 
