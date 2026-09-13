@@ -15,7 +15,7 @@ function encodeType(nama: string, fields: readonly Field[]): string {
 }
 
 /**
- * Menyebar kelima keluarga ke SATU objek. Kalau dua keluarga memakai nama
+ * Menyebar keenam keluarga ke SATU objek. Kalau dua keluarga memakai nama
  * tipe yang sama, penyebaran ini diam-diam menelan salah satunya dan
  * jumlahnya turun — itulah yang diperiksa tes "SEMUA tidak kehilangan tipe"
  * di bawah, sengaja dipisah dari tes jumlah per-keluarga.
@@ -28,7 +28,8 @@ const SEMUA: Record<string, readonly Field[]> = {
   ...BLOKIR_TYPES,
 };
 
-const JUMLAH_TIPE = 21;
+// 22 sejak C1 review akhir Fase 4a: `LihatFeed` di keluarga feed.
+const JUMLAH_TIPE = 22;
 
 const SOL_DIR = fileURLToPath(new URL("../../contracts/src/", import.meta.url));
 
@@ -51,7 +52,7 @@ describe("typehash seluruh aplikasi", () => {
     expect(Object.keys(SEMUA)).toHaveLength(JUMLAH_TIPE);
   });
 
-  it("kedua puluh satu encodeType unik", () => {
+  it("kedua puluh dua encodeType unik", () => {
     const semua = Object.entries(SEMUA).map(([n, f]) => encodeType(n, f));
     expect(new Set(semua).size).toBe(JUMLAH_TIPE);
   });
@@ -90,6 +91,22 @@ describe("typehash seluruh aplikasi", () => {
         expect(sumber).not.toContain(`${nama}(`);
       }
     }
+  });
+
+  // LihatFeed bukti BACA yang tidak pernah naik on-chain, sama seperti
+  // saudara-saudaranya di keluarga `{ who, expiresAt }`.
+  it("tidak ada typehash LihatFeed di Solidity mana pun", () => {
+    const berkasSol = readdirSync(SOL_DIR).filter((f) => f.endsWith(".sol"));
+    expect(berkasSol.length).toBeGreaterThan(0);
+    for (const berkas of berkasSol) {
+      const sumber = readFileSync(`${SOL_DIR}${berkas}`, "utf8");
+      expect(sumber).not.toContain("LihatFeed(");
+    }
+  });
+
+  it("encodeType LihatFeed persis seperti spec 4a §6", () => {
+    expect(encodeType("LihatFeed", FEED_TYPES.LihatFeed))
+      .toBe("LihatFeed(address who,uint64 expiresAt)");
   });
 
   it("encodeType blokir persis seperti spec §6", () => {

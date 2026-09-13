@@ -70,6 +70,28 @@ export type LaporPostMessage = {
   expiresAt: bigint;
 };
 
+/**
+ * Bukti BACA untuk `GET /feed?who=` (review akhir Fase 4a, C1).
+ *
+ * Sejak blokir, feed untuk `who` bergantung pada tabel `blocks`: unggahan
+ * orang yang punya hubungan blokir dengan `who` hilang, dan `hop` bergeser.
+ * Tanpa bukti, siapa pun bisa membandingkan `GET /feed` dengan
+ * `GET /feed?who=A` dan membaca daftar hubungan blokir A — padahal blokir
+ * privat (spec 4a §2). Efek blokir karena itu hanya diterapkan untuk
+ * penonton yang MEMBUKTIKAN dirinya `who` dengan tanda tangan ini.
+ *
+ * Anggota KEEMPAT keluarga berbentuk field `{ who, expiresAt }` — bersama
+ * `LihatKecocokan`, `TandaiDilihat` (meet.ts), dan `LihatBlokir` (blokir.ts).
+ * Hanya nama tipenya yang membedakan digest-nya. JANGAN menggabungkannya
+ * dengan salah satu dari mereka: bukti ini dikirim di query string setiap
+ * kali feed dibuka, dan kalau ia sah sebagai perintah lain, siapa pun yang
+ * melihat URL-nya bisa bertindak atas nama pemiliknya.
+ */
+export type LihatFeedMessage = {
+  who: Address;
+  expiresAt: bigint;
+};
+
 const TYPES = {
   Post: [
     { name: "postId", type: "bytes32" },
@@ -98,6 +120,10 @@ const TYPES = {
     { name: "postId", type: "bytes32" },
     { name: "reporter", type: "address" },
     { name: "reason", type: "string" },
+    { name: "expiresAt", type: "uint64" },
+  ],
+  LihatFeed: [
+    { name: "who", type: "address" },
     { name: "expiresAt", type: "uint64" },
   ],
 } as const;
@@ -187,4 +213,19 @@ export function recoverLaporPostSigner(
   msg: LaporPostMessage, signature: Hex, verifyingContract: Address,
 ): Promise<Address> {
   return recoverTypedDataAddress({ ...laporPostTypedData(msg, verifyingContract), signature });
+}
+
+export function lihatFeedTypedData(msg: LihatFeedMessage, verifyingContract: Address) {
+  return {
+    domain: domain(verifyingContract),
+    types: { LihatFeed: TYPES.LihatFeed },
+    primaryType: "LihatFeed",
+    message: msg,
+  } as const;
+}
+
+export function recoverLihatFeedSigner(
+  msg: LihatFeedMessage, signature: Hex, verifyingContract: Address,
+): Promise<Address> {
+  return recoverTypedDataAddress({ ...lihatFeedTypedData(msg, verifyingContract), signature });
 }

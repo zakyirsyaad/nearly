@@ -17,19 +17,20 @@ function encodeType(nama: string, fields: readonly { name: string; type: string 
 const SOL_DIR = fileURLToPath(new URL("../../contracts/src/", import.meta.url));
 
 describe("tipe EIP-712 feed", () => {
-  it("kelima nama tidak bertabrakan dengan tipe mana pun yang sudah ada", () => {
+  it("keenam nama tidak bertabrakan dengan tipe mana pun yang sudah ada", () => {
     const lama = Object.keys(EVENT_TYPES);
-    for (const nama of ["Post", "Like", "HapusPost", "LampirGambar", "LaporPost"]) {
+    for (const nama of ["Post", "Like", "HapusPost", "LampirGambar", "LaporPost", "LihatFeed"]) {
       expect(lama).not.toContain(nama);
     }
   });
 
-  // LIMA, bukan empat: LaporPost menyusul di gelombang perbaikan review
-  // akhir. Kalau angka ini turun lagi, satu tipe hilang atau bertabrakan.
-  it("kelima encodeType saling berbeda", () => {
+  // ENAM: LaporPost menyusul di gelombang perbaikan review akhir Fase 3b,
+  // LihatFeed di review akhir Fase 4a (C1). Kalau angka ini turun lagi, satu
+  // tipe hilang atau bertabrakan.
+  it("keenam encodeType saling berbeda", () => {
     const semua = Object.entries(FEED_TYPES).map(([n, f]) => encodeType(n, f));
-    expect(semua).toHaveLength(5);
-    expect(new Set(semua).size).toBe(5);
+    expect(semua).toHaveLength(6);
+    expect(new Set(semua).size).toBe(6);
   });
 
   // Post dan Like TIDAK PERNAH naik on-chain (spec §5). Kalau suatu hari ada
@@ -40,7 +41,7 @@ describe("tipe EIP-712 feed", () => {
     expect(berkasSol.length).toBeGreaterThan(0);
     for (const berkas of berkasSol) {
       const sumber = readFileSync(`${SOL_DIR}${berkas}`, "utf8");
-      for (const nama of ["Post(", "Like(", "HapusPost(", "LampirGambar(", "LaporPost("]) {
+      for (const nama of ["Post(", "Like(", "HapusPost(", "LampirGambar(", "LaporPost(", "LihatFeed("]) {
         expect(sumber).not.toContain(nama);
       }
     }
