@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useLocalSearchParams } from "expo-router";
+import { router, useLocalSearchParams } from "expo-router";
 import {
   Button, Keyboard, Pressable, ScrollView, StyleSheet, Text, TextInput, View,
 } from "react-native";
@@ -377,6 +377,14 @@ export default function ProfileScreen() {
             </Text>
           )}
           {blokirMessage && <Text style={s.pesan}>{blokirMessage}</Text>}
+        </View>
+      )}
+
+      {signer && !isOwnProfile && connected && (
+        // Hanya untuk koneksi (spec 4c §4). Server tetap menegakkan gerbangnya
+        // sendiri — tombol ini kenyamanan, bukan pengaman.
+        <View style={s.section}>
+          <Button title="Kirim pesan" onPress={() => router.push(`/pesan/${address}`)} />
         </View>
       )}
 

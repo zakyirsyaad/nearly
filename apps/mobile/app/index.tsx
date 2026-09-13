@@ -5,6 +5,8 @@ import { CONFIG } from "../src/config";
 import { createDevSigner } from "../src/signer";
 import { getKecocokan, kueriBuktiKecocokan } from "../src/meet-api";
 import { teksLencana } from "../src/messages";
+import { sesiPesan } from "../src/pesan/sesi";
+import { getBelumDibaca } from "../src/pesan/pesan-api";
 
 export default function Home() {
   // Signer null kalau kunci pengembangan belum diisi — layar bantuan di bawah
@@ -26,6 +28,7 @@ export default function Home() {
   );
 
   const [baru, setBaru] = useState(0);
+  const [belumDibaca, setBelumDibaca] = useState(0);
 
   useEffect(() => {
     if (!signer) return;
@@ -44,9 +47,23 @@ export default function Home() {
         setBaru(0);
       }
     })();
+
+    // Lencana pesan, dengan kegagalannya sendiri: beranda tidak boleh gagal
+    // hanya karena lencana. Membuka beranda memulai sesi kunci pesan — dengan
+    // signer pengembangan tanpa jendela konfirmasi; dompet sungguhan kelak
+    // akan meminta satu konfirmasi per kali buka aplikasi (spec 4c §5.1).
+    void (async () => {
+      try {
+        const { total } = await getBelumDibaca(await sesiPesan(signer));
+        setBelumDibaca(total);
+      } catch {
+        setBelumDibaca(0);
+      }
+    })();
   }, [signer]);
 
   const lencana = teksLencana(baru);
+  const lencanaPesan = teksLencana(belumDibaca);
 
   if (!signer) {
     return (
@@ -72,6 +89,9 @@ export default function Home() {
       <Link href="/feed" style={s.link}>Feed</Link>
       <Link href="/kecocokan" style={s.link}>
         Saling ingin bertemu{lencana ? `  ${lencana}` : ""}
+      </Link>
+      <Link href="/pesan" style={s.link}>
+        Pesan{lencanaPesan ? `  ${lencanaPesan}` : ""}
       </Link>
       <Link href="/blokir" style={s.link}>Daftar blokir</Link>
     </View>
