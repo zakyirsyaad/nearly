@@ -285,3 +285,27 @@ describe("setiap pemulihan tanda tangan dibungkus", () => {
     expect(telanjang).toEqual([]);
   });
 });
+
+/**
+ * Fase 4c. Verifikasi Ed25519 hanya boleh lewat fungsi `verifikasi*` di
+ * packages/shared, yang dijamin tidak pernah melempar. `ed25519.verify`
+ * telanjang di apps/api bisa melempar untuk masukan cacat — mengembalikan bug
+ * 500-alih-alih-401 yang `pulihkanTandaTangan` tutup untuk EIP-712.
+ */
+describe("verifikasi Ed25519 hanya lewat packages/shared", () => {
+  it("apps/api/src tidak mengimpor @noble/curves langsung", () => {
+    const src = join(__dirname, "..", "src");
+    const semua: string[] = [];
+    const jelajah = (dir: string) => {
+      for (const e of readdirSync(dir, { withFileTypes: true })) {
+        const p = join(dir, e.name);
+        if (e.isDirectory()) jelajah(p);
+        else if (p.endsWith(".ts")) semua.push(p);
+      }
+    };
+    jelajah(src);
+    expect(semua.length).toBeGreaterThan(10);
+    const pelanggar = semua.filter((f) => /from\s+["']@noble\/curves/.test(readFileSync(f, "utf8")));
+    expect(pelanggar).toEqual([]);
+  });
+});
