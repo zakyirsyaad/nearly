@@ -266,9 +266,19 @@ export type FeedStore = {
   /**
    * Sudah terhidrasi penuh dan siap diperingkat. `viewer` null berarti
    * penonton anonim: setiap `hop` null dan `sudahSuka` false (spec §6.5).
+   *
+   * `terbukti` memisahkan dua hal yang dulu satu (review akhir 4a, C1):
+   * `viewer` dipakai untuk urutan graf seperti Fase 3b, dan boleh datang
+   * tanpa bukti karena graf koneksi publik on-chain. Tapi efek BLOKIR —
+   * menyaring unggahan dan memutus `hop` — hanya diterapkan kalau
+   * `terbukti` true, yaitu rute sudah memverifikasi bukti LihatFeed milik
+   * `viewer`. Untuk `viewer` tak terbukti, tabel `blocks` tidak dibaca sama
+   * sekali; kalau dibaca, membandingkan feed dengan dan tanpa `who`
+   * menyingkap hubungan blokir alamat mana pun. `terbukti` tanpa `viewer`
+   * tidak bermakna dan diperlakukan false.
    */
   listCandidates(a: {
-    sinceMs: number; limit: number; viewer: Address | null;
+    sinceMs: number; limit: number; viewer: Address | null; terbukti: boolean;
   }): Promise<FeedCandidate[]>;
 };
 

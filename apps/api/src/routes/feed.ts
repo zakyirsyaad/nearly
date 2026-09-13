@@ -3,11 +3,12 @@ import { bodyLimit } from "hono/body-limit";
 import { isAddress, type Address, type Hex } from "viem";
 import {
   AttachImageRequestSchema, CreatePostRequestSchema, DeletePostRequestSchema,
-  LikeRequestSchema, ReportPostRequestSchema,
+  LikeRequestSchema, ReportPostRequestSchema, recoverLihatFeedSigner,
 } from "@nearly/shared";
 import { attachImage, createPost, deletePost, prosesUnggahGambar, reportPost, setLike } from "../feed-gate";
 import { FEED_LIMIT, rankFeed } from "../feed-rank";
 import type { FeedDeps } from "../ports";
+import { pulihkanTandaTangan } from "../pulihkan-tanda-tangan";
 
 /** Jendela kandidat (spec §11.6). */
 const JENDELA_MS = 14 * 24 * 3_600_000;
@@ -21,6 +22,34 @@ const MAKS_KANDIDAT = 500;
  */
 function sameId(pathId: string, bodyId: string) {
   return pathId.toLowerCase() === bodyId.toLowerCase();
+}
+
+/**
+ * True HANYA kalau `who`, `expiresAt`, dan `sig` lengkap, belum kedaluwarsa,
+ * dan tanda tangan LihatFeed-nya memang milik `who`. Selain itu false —
+ * TIDAK PERNAH melempar dan tidak pernah jadi 4xx: rute feed tidak boleh
+ * gagal untuk orang yang membuka tautan (review akhir 4a, C1).
+ *
+ * `recoverLihatFeedSigner` dan TIDAK PERNAH yang lain. LihatKecocokan,
+ * TandaiDilihat, dan LihatBlokir berbentuk field identik `{ who, expiresAt }`;
+ * kalau salah satunya diterima di sini, tanda tangan yang bocor dari layar
+ * lain membuka efek blokir di feed orang itu. Kelas kesalahan Ruling 23.
+ */
+async function penontonTerbukti(
+  q: Record<string, string>, deps: FeedDeps,
+): Promise<boolean> {
+  const { who, expiresAt, sig } = q;
+  if (!who || !expiresAt || !sig) return false;
+  if (!isAddress(who)) return false;
+  if (!/^\d+$/.test(expiresAt)) return false;
+  if (deps.nowMs() > Number(expiresAt) * 1000) return false;
+
+  const signer = await pulihkanTandaTangan(() => recoverLihatFeedSigner(
+    { who: who as Address, expiresAt: BigInt(expiresAt) },
+    sig as Hex,
+    deps.verifyingContract,
+  ));
+  return signer !== null && signer.toLowerCase() === who.toLowerCase();
 }
 
 export function feedRoutes(deps: FeedDeps) {
@@ -135,22 +164,29 @@ export function feedRoutes(deps: FeedDeps) {
   });
 
   /**
-   * TIDAK butuh tanda tangan bukti baca, sengaja berbeda dari
-   * GET /events/:id?who= di Fase 3a (spec §9.3).
+   * `?who=` punya DUA tingkat, sejak blokir (review akhir 4a, C1).
    *
+   * Tanpa bukti, `who` tetap dipakai untuk URUTAN graf — seperti Fase 3b,
+   * dan sengaja berbeda dari GET /events/:id?who= di Fase 3a (spec §9.3).
    * Di sana `?who=` dijaga ketat karena membocorkan NIAT seseorang berada di
-   * suatu tempat dan waktu — informasi yang belum terjadi dan tidak ada di
-   * mana pun selain database kita. Di sini `?who=` hanya membocorkan urutan
-   * berdasarkan kedekatan graf, dan graf koneksi SUDAH publik on-chain di
-   * ConnectionRegistry. Memasang gerbang di sini menambah gesekan tanpa
-   * menambah perlindungan.
+   * suatu tempat dan waktu. Urutan graf hanya membocorkan kedekatan koneksi,
+   * dan graf koneksi SUDAH publik on-chain di ConnectionRegistry.
    *
-   * `who` yang cacat bukan galat: rute ini tidak boleh gagal untuk orang yang
-   * membuka tautan. Ia cukup diperlakukan sebagai penonton anonim.
+   * Efek BLOKIR tidak begitu. Blokir privat (spec 4a §2), dan kalau feed
+   * untuk `who` tanpa bukti ikut menyaring hubungan blokir `who`, siapa pun
+   * bisa membandingkan `GET /feed` dengan `GET /feed?who=A` dan membaca
+   * daftar hubungan blokir A — gratis, tanpa tanda tangan, untuk alamat mana
+   * pun. Karena itu efek blokir hanya untuk penonton TERBUKTI: `who` +
+   * `expiresAt` + `sig` LihatFeed yang sah.
+   *
+   * `who` yang cacat dan bukti yang hilang/cacat/kedaluwarsa/salah tipe
+   * BUKAN galat: rute ini tidak boleh gagal untuk orang yang membuka tautan.
+   * `who` cacat jadi penonton anonim; bukti buruk jadi "tidak terbukti".
    */
   r.get("/feed", async (c) => {
     const q = c.req.query();
     const viewer = q.who && isAddress(q.who) ? (q.who.toLowerCase() as Address) : null;
+    const terbukti = viewer !== null && await penontonTerbukti(q, deps);
 
     const offsetMentah = Number(q.cursor);
     const offset = Number.isInteger(offsetMentah) && offsetMentah > 0
@@ -161,6 +197,7 @@ export function feedRoutes(deps: FeedDeps) {
       sinceMs: deps.nowMs() - JENDELA_MS,
       limit: MAKS_KANDIDAT,
       viewer,
+      terbukti,
     });
 
     // SELURUH jendela kandidat diperingkat sekali, lalu satu halaman dipotong

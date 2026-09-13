@@ -2,7 +2,10 @@ import { describe, expect, it, vi } from "vitest";
 import { Hono } from "hono";
 import { privateKeyToAccount } from "viem/accounts";
 import type { Address, Hex } from "viem";
-import { lampirGambarTypedData, laporPostTypedData, makePostId, postTypedData } from "@nearly/shared";
+import {
+  lampirGambarTypedData, laporPostTypedData, lihatBlokirTypedData, lihatFeedTypedData,
+  lihatKecocokanTypedData, makePostId, postTypedData, tandaiDilihatTypedData,
+} from "@nearly/shared";
 import { feedRoutes } from "../src/routes/feed";
 import type { FeedCandidate, FeedDeps, FeedStore, PostRecord } from "../src/ports";
 
@@ -296,17 +299,18 @@ describe("GET /feed", () => {
   });
 
   /**
-   * Sengaja BERBEDA dari GET /events/:id?who= di Fase 3a (spec §9.3). Di sana
-   * ?who= dijaga tanda tangan karena membocorkan NIAT seseorang berada di
-   * suatu tempat dan waktu. Di sini ia hanya membocorkan urutan berdasarkan
-   * kedekatan graf, dan graf koneksi sudah publik on-chain.
+   * `who` TANPA bukti tetap diterima dan tetap dipakai untuk urutan graf
+   * (Fase 3b): graf koneksi sudah publik on-chain. Tapi sejak blokir (C1
+   * review akhir 4a) ia TIDAK TERBUKTI — efek blokir tidak diterapkan,
+   * karena kalau diterapkan, siapa pun bisa membandingkan feed dengan dan
+   * tanpa `who` lalu membaca hubungan blokir alamat itu.
    */
-  it("menerima who tanpa tanda tangan bukti baca", async () => {
+  it("menerima who tanpa tanda tangan bukti baca, sebagai penonton TIDAK terbukti", async () => {
     const s = store({ listCandidates: vi.fn(async () => [kandidat()]) });
     const res = await app(s).request(`/feed?who=${penulis.address}`);
     expect(res.status).toBe(200);
     expect(s.listCandidates).toHaveBeenCalledWith(
-      expect.objectContaining({ viewer: penulis.address.toLowerCase() }),
+      expect.objectContaining({ viewer: penulis.address.toLowerCase(), terbukti: false }),
     );
   });
 
@@ -314,7 +318,9 @@ describe("GET /feed", () => {
     const s = store({ listCandidates: vi.fn(async () => [kandidat()]) });
     const res = await app(s).request("/feed?who=bukan-alamat");
     expect(res.status).toBe(200);
-    expect(s.listCandidates).toHaveBeenCalledWith(expect.objectContaining({ viewer: null }));
+    expect(s.listCandidates).toHaveBeenCalledWith(
+      expect.objectContaining({ viewer: null, terbukti: false }),
+    );
   });
 
   // Semua angka waktu keluar sebagai angka JSON biasa; tidak ada bigint yang
@@ -329,5 +335,113 @@ describe("GET /feed", () => {
     const s = store({ listCandidates: vi.fn(async () => [kandidat()]) });
     const res = await app(s).request("/feed?cursor=abc");
     expect(res.status).toBe(200);
+  });
+});
+
+/**
+ * C1 review akhir 4a. Penonton TERBUKTI = `who` + `expiresAt` + `sig` yang
+ * sah untuk LihatFeed, belum kedaluwarsa, penanda tangan == who. Hanya dia
+ * yang mendapat efek blokir di feed-nya.
+ *
+ * Bukti yang hilang, cacat, kedaluwarsa, milik orang lain, atau bertipe
+ * salah TIDAK PERNAH 4xx: rute ini tidak boleh gagal untuk orang yang
+ * membuka tautan. Ia turun ke "tidak terbukti" — urutan graf tetap, efek
+ * blokir tidak.
+ */
+describe("GET /feed — bukti LihatFeed", () => {
+  const WAKTU = EXP;
+
+  async function kueri(tanda: (m: { who: Address; expiresAt: bigint }) => Promise<Hex>, over: Record<string, string> = {}) {
+    const m = { who: penulis.address, expiresAt: WAKTU };
+    const sig = await tanda(m);
+    return new URLSearchParams({
+      who: penulis.address, expiresAt: WAKTU.toString(), sig, ...over,
+    }).toString();
+  }
+
+  async function panggil(q: string) {
+    const s = store({ listCandidates: vi.fn(async () => [kandidat()]) });
+    const res = await app(s).request(`/feed?${q}`);
+    return { res, s };
+  }
+
+  it("bukti LihatFeed sah → penonton terbukti", async () => {
+    const { res, s } = await panggil(await kueri((m) => penulis.signTypedData(lihatFeedTypedData(m, KONTRAK))));
+    expect(res.status).toBe(200);
+    expect(s.listCandidates).toHaveBeenCalledWith(
+      expect.objectContaining({ viewer: penulis.address.toLowerCase(), terbukti: true }),
+    );
+  });
+
+  // Keluarga `{ who, expiresAt }`: hanya nama tipe yang membedakan digest.
+  it("tanda tangan LihatKecocokan diperlakukan TIDAK terbukti", async () => {
+    const { res, s } = await panggil(await kueri((m) => penulis.signTypedData(lihatKecocokanTypedData(m, KONTRAK))));
+    expect(res.status).toBe(200);
+    expect(s.listCandidates).toHaveBeenCalledWith(
+      expect.objectContaining({ viewer: penulis.address.toLowerCase(), terbukti: false }),
+    );
+  });
+
+  it("tanda tangan LihatBlokir dan TandaiDilihat juga TIDAK terbukti", async () => {
+    const kueriSalahTipe = [
+      await kueri((m) => penulis.signTypedData(lihatBlokirTypedData(m, KONTRAK))),
+      await kueri((m) => penulis.signTypedData(tandaiDilihatTypedData(m, KONTRAK))),
+    ];
+    for (const q of kueriSalahTipe) {
+      const { res, s } = await panggil(q);
+      expect(res.status).toBe(200);
+      expect(s.listCandidates).toHaveBeenCalledWith(expect.objectContaining({ terbukti: false }));
+    }
+  });
+
+  it("bukti kedaluwarsa → 200, tidak terbukti", async () => {
+    const lewat = BigInt(Math.floor(NOW / 1000) - 1);
+    const m = { who: penulis.address, expiresAt: lewat };
+    const sig = await penulis.signTypedData(lihatFeedTypedData(m, KONTRAK));
+    const q = new URLSearchParams({ who: penulis.address, expiresAt: lewat.toString(), sig });
+    const { res, s } = await panggil(q.toString());
+    expect(res.status).toBe(200);
+    expect(s.listCandidates).toHaveBeenCalledWith(expect.objectContaining({ terbukti: false }));
+  });
+
+  it("tanda tangan orang lain atas nama who → 200, tidak terbukti", async () => {
+    const orangLain = privateKeyToAccount(`0x${"88".repeat(32)}` as Hex);
+    const { res, s } = await panggil(await kueri((m) => orangLain.signTypedData(lihatFeedTypedData(m, KONTRAK))));
+    expect(res.status).toBe(200);
+    expect(s.listCandidates).toHaveBeenCalledWith(
+      expect.objectContaining({ viewer: penulis.address.toLowerCase(), terbukti: false }),
+    );
+  });
+
+  // Byte `v` di luar {0,1,27,28}: viem melempar. Tanpa pulihkanTandaTangan
+  // ini 500 — dan rute feed tidak boleh gagal untuk orang yang membuka tautan.
+  it("tanda tangan cacat bentuk → 200, tidak terbukti, bukan 500", async () => {
+    const q = new URLSearchParams({
+      who: penulis.address, expiresAt: WAKTU.toString(), sig: `0x${"99".repeat(65)}`,
+    });
+    const { res, s } = await panggil(q.toString());
+    expect(res.status).toBe(200);
+    expect(s.listCandidates).toHaveBeenCalledWith(expect.objectContaining({ terbukti: false }));
+  });
+
+  it("expiresAt bukan angka atau sig hilang → 200, tidak terbukti", async () => {
+    for (const q of [
+      await kueri((m) => penulis.signTypedData(lihatFeedTypedData(m, KONTRAK)), { expiresAt: "besok" }),
+      new URLSearchParams({ who: penulis.address, expiresAt: WAKTU.toString() }).toString(),
+    ]) {
+      const { res, s } = await panggil(q);
+      expect(res.status).toBe(200);
+      expect(s.listCandidates).toHaveBeenCalledWith(expect.objectContaining({ terbukti: false }));
+    }
+  });
+
+  it("bukti sah untuk alamat yang bukan who tidak membuat who terbukti", async () => {
+    const lain = privateKeyToAccount(`0x${"88".repeat(32)}` as Hex);
+    const m = { who: lain.address, expiresAt: WAKTU };
+    const sig = await lain.signTypedData(lihatFeedTypedData(m, KONTRAK));
+    const q = new URLSearchParams({ who: penulis.address, expiresAt: WAKTU.toString(), sig });
+    const { res, s } = await panggil(q.toString());
+    expect(res.status).toBe(200);
+    expect(s.listCandidates).toHaveBeenCalledWith(expect.objectContaining({ terbukti: false }));
   });
 });

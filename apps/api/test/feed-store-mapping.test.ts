@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import type { Address } from "viem";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { BlokirStore } from "../src/ports";
@@ -184,7 +184,7 @@ describe("listCandidates memotong setiap .in()", () => {
 
     const jejak: Panggilan[] = [];
     const store = createFeedStore(dbPalsu({ posts }, jejak), blokirPalsu());
-    await store.listCandidates({ sinceMs: 0, limit: 500, viewer: null });
+    await store.listCandidates({ sinceMs: 0, limit: 500, viewer: null, terbukti: false });
 
     const semuaIn = jejak.flatMap((p) => p.in);
     expect(semuaIn.length).toBeGreaterThan(0);
@@ -208,7 +208,7 @@ describe("listCandidates memotong setiap .in()", () => {
 
     const jejak: Panggilan[] = [];
     const store = createFeedStore(dbPalsu({ posts }, jejak), blokirPalsu());
-    await store.listCandidates({ sinceMs: 0, limit: 250, viewer: null });
+    await store.listCandidates({ sinceMs: 0, limit: 250, viewer: null, terbukti: false });
 
     const idTerkirim = jejak
       .filter((p) => p.tabel === "post_likes")
@@ -248,14 +248,14 @@ describe("listCandidates menyaring blokir dua arah", () => {
     return { from: (tabel: string) => buat(tabel) } as unknown as SupabaseClient;
   }
 
-  function blokirPalsuDengan(himpunan: Set<string>): BlokirStore {
+  function blokirPalsuDengan(himpunan: Set<string>) {
     return {
-      setBlokir: async () => {},
-      adaBlokir: async () => false,
-      diblokirOleh: async () => [],
-      himpunanUntuk: async () => himpunan,
-      pemblokirUntuk: async () => new Set<string>(),
-    };
+      setBlokir: vi.fn(async () => {}),
+      adaBlokir: vi.fn(async () => false),
+      diblokirOleh: vi.fn(async () => []),
+      himpunanUntuk: vi.fn(async (_who: Address) => himpunan),
+      pemblokirUntuk: vi.fn(async (_who: Address) => new Set<string>()),
+    } satisfies BlokirStore;
   }
 
   const VIEWER = "0x00000000000000000000000000000000000000aa" as Address;
@@ -291,7 +291,7 @@ describe("listCandidates menyaring blokir dua arah", () => {
     const jejak: Panggilan[] = [];
     const terblokir = new Set([DIBLOKIR.toLowerCase(), MEMBLOKIR.toLowerCase()]);
     const store = createFeedStore(dbPalsu({ posts }, jejak), blokirPalsuDengan(terblokir));
-    const hasil = await store.listCandidates({ sinceMs: 0, limit: 10, viewer: VIEWER });
+    const hasil = await store.listCandidates({ sinceMs: 0, limit: 10, viewer: VIEWER, terbukti: true });
 
     const penulisTersisa = hasil.map((p) => p.author.toLowerCase());
     expect(penulisTersisa).toContain(VIEWER.toLowerCase());
@@ -299,5 +299,62 @@ describe("listCandidates menyaring blokir dua arah", () => {
     expect(penulisTersisa).not.toContain(DIBLOKIR.toLowerCase());
     expect(penulisTersisa).not.toContain(MEMBLOKIR.toLowerCase());
     expect(hasil).toHaveLength(2);
+  });
+
+  /**
+   * C1 review akhir 4a — INVARIAN. Keluaran feed untuk `who` yang TIDAK
+   * terbukti tidak boleh bergantung pada tabel `blocks` sama sekali. Kalau
+   * bergantung, `GET /feed` vs `GET /feed?who=A` (gratis, tanpa tanda
+   * tangan) menyingkap siapa yang punya hubungan blokir dengan A: penulis yang
+   * hilang dari yang kedua, dan `hop` yang bergeser.
+   *
+   * Dua lapis bukti: `himpunanUntuk` TIDAK dipanggil sama sekali, DAN hasil
+   * dengan dunia blokir kosong identik dengan hasil dengan dunia blokir
+   * penuh — termasuk `hop` orang ketiga yang hanya terjangkau lewat orang
+   * yang diblokir.
+   */
+  it("who TIDAK terbukti: himpunanUntuk tidak dipanggil, unggahan terkait blokir tetap ada, hop tak bergeser", async () => {
+    const posts: PostDbRow[] = [
+      postDari(VIEWER, 1), postDari(DIBLOKIR, 2), postDari(MEMBLOKIR, 3), postDari(LAIN, 4),
+    ];
+    // VIEWER — DIBLOKIR — LAIN: LAIN dua lompatan, dan hanya lewat DIBLOKIR.
+    const connections = [
+      { addr_a: VIEWER, addr_b: DIBLOKIR }, { addr_a: DIBLOKIR, addr_b: LAIN },
+    ];
+
+    const penuh = blokirPalsuDengan(new Set([DIBLOKIR, MEMBLOKIR]));
+    const kosong = blokirPalsuDengan(new Set());
+    const denganBlokir = await createFeedStore(dbPalsu({ posts, connections }, []), penuh)
+      .listCandidates({ sinceMs: 0, limit: 10, viewer: VIEWER, terbukti: false });
+    const tanpaBlokir = await createFeedStore(dbPalsu({ posts, connections }, []), kosong)
+      .listCandidates({ sinceMs: 0, limit: 10, viewer: VIEWER, terbukti: false });
+
+    expect(penuh.himpunanUntuk).not.toHaveBeenCalled();
+    expect(penuh.pemblokirUntuk).not.toHaveBeenCalled();
+    expect(denganBlokir).toEqual(tanpaBlokir);
+
+    const penulis = denganBlokir.map((p) => p.author.toLowerCase());
+    expect(penulis).toContain(DIBLOKIR);
+    expect(penulis).toContain(MEMBLOKIR);
+    expect(denganBlokir.find((p) => p.author === DIBLOKIR)?.hop).toBe(1);
+    expect(denganBlokir.find((p) => p.author === LAIN)?.hop).toBe(2);
+  });
+
+  it("who TERBUKTI: himpunan blokir dimuat untuk penonton itu, unggahan disaring, hop lewat yang diblokir putus", async () => {
+    const posts: PostDbRow[] = [
+      postDari(VIEWER, 1), postDari(DIBLOKIR, 2), postDari(MEMBLOKIR, 3), postDari(LAIN, 4),
+    ];
+    const connections = [
+      { addr_a: VIEWER, addr_b: DIBLOKIR }, { addr_a: DIBLOKIR, addr_b: LAIN },
+    ];
+    const penuh = blokirPalsuDengan(new Set([DIBLOKIR, MEMBLOKIR]));
+    const hasil = await createFeedStore(dbPalsu({ posts, connections }, []), penuh)
+      .listCandidates({ sinceMs: 0, limit: 10, viewer: VIEWER, terbukti: true });
+
+    expect(penuh.himpunanUntuk).toHaveBeenCalledWith(VIEWER);
+    const penulis = hasil.map((p) => p.author.toLowerCase());
+    expect(penulis).not.toContain(DIBLOKIR);
+    expect(penulis).not.toContain(MEMBLOKIR);
+    expect(hasil.find((p) => p.author === LAIN)?.hop).toBeNull();
   });
 });

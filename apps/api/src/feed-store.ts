@@ -48,11 +48,19 @@ type Tepi = { addr_a: string; addr_b: string };
  * dirinya sendiri.
  *
  * `terblokir` memuat setiap alamat yang punya hubungan blokir dengan penonton
- * ke arah mana pun. Edge yang menyentuhnya dibuang SEBELUM lompatan dihitung,
- * bukan sesudahnya — kalau disaring sesudah, orang ketiga yang hanya
- * terjangkau LEWAT orang yang diblokir tetap terhitung dua lompatan padahal
- * jalannya sudah putus, dan feed akan tidak sepakat dengan graf trust yang
- * memang membuang edge itu sepenuhnya (spec §5.1).
+ * ke arah mana pun — kosong untuk penonton yang tidak terbukti (lihat
+ * `listCandidates`). Edge yang menyentuhnya dibuang SEBELUM lompatan
+ * dihitung, bukan sesudahnya — kalau disaring sesudah, orang ketiga yang
+ * hanya terjangkau LEWAT orang yang diblokir tetap terhitung dua lompatan
+ * padahal jalannya sudah putus bagi penonton.
+ *
+ * Feed dan trust TIDAK sepakat sepenuhnya, dengan sengaja (spec §5.1). Trust
+ * membuang edge antara pasangan terblokir MANA PUN; di sini hanya edge yang
+ * menyentuh blokir PENONTON sendiri. Kalau B memblokir Z, penonton masih
+ * menjangkau Z lewat B di feed, tapi tidak di trust. Versi per-pasangan akan
+ * membutuhkan himpunan blokir pihak ketiga, dan `hop` yang dikirim ke
+ * penonton akan membocorkannya: Z yang tiba-tiba "di luar jaringanmu"
+ * memberi tahu penonton bahwa B dan Z saling memblokir.
  */
 export function petaHop(
   viewer: Address, tepi1: Tepi[], tepi2: Tepi[], terblokir: ReadonlySet<string>,
@@ -231,7 +239,7 @@ export function createFeedStore(db: SupabaseClient, blokir: BlokirStore): FeedSt
      * lalu digabung di memori. Jangan pernah menaruh kueri di dalam map/for
      * atas kandidat.
      */
-    async listCandidates({ sinceMs, limit, viewer }) {
+    async listCandidates({ sinceMs, limit, viewer, terbukti }) {
       const { data: postRows, error: e1 } = await db
         .from("posts").select(KOLOM_POST)
         .gte("created_at", new Date(sinceMs).toISOString())
@@ -245,7 +253,16 @@ export function createFeedStore(db: SupabaseClient, blokir: BlokirStore): FeedSt
       // Dua arah: unggahan orang yang kamu blokir hilang dari feedmu, DAN
       // unggahanmu hilang dari feed mereka. Yang kedua terjadi sendirinya
       // karena himpunan ini simetris (spec §5.1).
-      const terblokir = aku ? await blokir.himpunanUntuk(viewer as Address) : new Set<string>();
+      //
+      // HANYA untuk penonton TERBUKTI (review akhir 4a, C1). Untuk `who` yang
+      // datang tanpa bukti LihatFeed, `himpunanUntuk` tidak dipanggil sama
+      // sekali dan himpunannya kosong — baik untuk saringan unggahan maupun
+      // `petaHop` di bawah. Kalau tidak, `GET /feed` vs `GET /feed?who=A`
+      // gratis menyingkap siapa yang punya hubungan blokir dengan A: penulis
+      // yang hilang, dan `hop` yang bergeser.
+      const terblokir = aku && terbukti
+        ? await blokir.himpunanUntuk(viewer as Address)
+        : new Set<string>();
 
       const posts = (postRows ?? []).map((r) => rowToPost(r as PostDbRow))
         .filter((p) => !terblokir.has(p.author.toLowerCase()));
