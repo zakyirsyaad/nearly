@@ -238,7 +238,7 @@ export function createVouchStore(db: SupabaseClient): VouchStore {
 export function createReportStore(db: SupabaseClient): ReportStore {
   return {
     async recordReport(row) {
-      const { error } = await db.from("reports").upsert(
+      const { data, error } = await db.from("reports").upsert(
         {
           reporter: row.reporter.toLowerCase(),
           subject: row.subject.toLowerCase(),
@@ -246,8 +246,9 @@ export function createReportStore(db: SupabaseClient): ReportStore {
           evidence: row.evidence ?? null,
         },
         { onConflict: "reporter,subject" },
-      );
+      ).select("id").single();
       if (error) throw new Error(`catat laporan gagal: ${error.message}`);
+      return (data as { id: number }).id;
     },
 
     async listReports(subject) {

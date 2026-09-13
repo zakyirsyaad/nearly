@@ -57,7 +57,7 @@ function deps(over: { saveSnapshots?: ReturnType<typeof vi.fn> } = {}): TrustDep
       markRevoked: async () => {},
     },
     reports: {
-      recordReport: async () => {},
+      recordReport: async () => 1,
       listReports: async () => [],
       setReportStatus: async () => {},
       recordSlash: async () => {},

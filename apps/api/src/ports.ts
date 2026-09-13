@@ -85,9 +85,10 @@ export type VouchStore = {
 export type ReportRow = { reporter: Address; subject: Address; atMs: number };
 
 export type ReportStore = {
+  /** Mengembalikan `reports.id` — bukti laporan pesan menaut ke sana (spec 4c §3.4). */
   recordReport(row: {
     reporter: Address; subject: Address; reason: string; evidence?: string;
-  }): Promise<void>;
+  }): Promise<number>;
   listReports(subject: Address): Promise<ReportRow[]>;
   setReportStatus(subject: Address, status: string): Promise<void>;
   recordSlash(subject: Address, txHash: Hex): Promise<void>;
@@ -419,5 +420,88 @@ export type BlokirDeps = {
   blokir: BlokirStore;
   /** Alamat ConnectionRegistry — domain EIP-712 blokir terikat padanya (spec §6). */
   verifyingContract: Address;
+  nowMs: () => number;
+};
+
+// ── Fase 4c: pesan ──────────────────────────────────────────────────────────
+
+export type BarisPesan = {
+  id: string;
+  pengirim: Address;
+  penerima: Address;
+  /** base64 — server tidak pernah melihat plaintext. */
+  ciphertext: string;
+  nonce: Hex;
+  createdAtMs: number;
+  dibacaAtMs: number | null;
+};
+
+export type KunciPesanTerdaftar = { kunciEnkripsi: Hex; kunciTanda: Hex };
+
+export type BuktiTersimpan = {
+  pesanId: string; isi: string; dikirimMs: number; tanda: Hex; kunciTanda: Hex;
+};
+
+export type PesanStore = {
+  /** Upsert — mendaftar ulang dengan kunci yang sama tidak mengubah apa pun. */
+  simpanKunci(address: Address, kunci: KunciPesanTerdaftar): Promise<void>;
+  ambilKunci(address: Address): Promise<KunciPesanTerdaftar | null>;
+  /** "sudah_ada" bila `id` sudah tersimpan — kirim ulang idempoten. */
+  simpanPesan(row: {
+    id: string; pengirim: Address; penerima: Address; ciphertext: string; nonce: Hex;
+  }): Promise<"baru" | "sudah_ada">;
+  /** Untuk rem laju: pesan dari `pengirim` sejak `sejakMs`. */
+  hitungTerkirimSejak(pengirim: Address, sejakMs: number): Promise<number>;
+  /** Pesan masuk DAN keluar `who`, terbaru dulu, paling banyak `batas`. */
+  pesanTerbaruUntuk(who: Address, batas: number): Promise<BarisPesan[]>;
+  /** Jumlah pesan belum dibaca per pengirim, untuk `penerima`. Berhalaman penuh. */
+  belumDibacaPerPengirim(penerima: Address): Promise<Map<string, number>>;
+  /** Dua arah antara `a` dan `b`, terbaru dulu. `sebelumMs` eksklusif. */
+  riwayat(a: Address, b: Address, sebelumMs: number | null, batas: number): Promise<BarisPesan[]>;
+  /** Pesan dari `pengirim` ke `penerima` dengan `createdAtMs <= sampaiMs`. */
+  tandaiDibaca(penerima: Address, pengirim: Address, sampaiMs: number): Promise<void>;
+  /** Untuk penggabungan push (spec 4c §7.1). */
+  adaBelumDibacaLainDari(penerima: Address, pengirim: Address, kecualiId: string): Promise<boolean>;
+  /** Satu token hanya milik satu dompet: mendaftarkannya mencabutnya dari dompet lain. */
+  simpanTokenPush(address: Address, token: string): Promise<void>;
+  tokenPush(address: Address): Promise<string[]>;
+  hapusTokenPush(tokens: string[]): Promise<void>;
+  pesanBerdasarkanId(ids: string[]): Promise<BarisPesan[]>;
+  /** MENGGANTI bukti lama untuk laporan itu (spec 4c §3.4). */
+  gantiBuktiLaporan(laporanId: number, bukti: BuktiTersimpan[]): Promise<void>;
+};
+
+export const METODE_PESAN_STORE = [
+  "simpanKunci", "ambilKunci", "simpanPesan", "hitungTerkirimSejak",
+  "pesanTerbaruUntuk", "belumDibacaPerPengirim", "riwayat", "tandaiDibaca",
+  "adaBelumDibacaLainDari", "simpanTokenPush", "tokenPush", "hapusTokenPush",
+  "pesanBerdasarkanId", "gantiBuktiLaporan",
+] as const satisfies readonly (keyof PesanStore)[];
+
+// Arah kedua dari pengait, sama seperti METODE_BLOKIR_STORE.
+type SisaMetodePesanStore = Exclude<keyof PesanStore, (typeof METODE_PESAN_STORE)[number]>;
+type AssertNeverPesan<T extends never> = T;
+type _PastikanMetodePesanStoreLengkap = AssertNeverPesan<SisaMetodePesanStore>;
+
+/** Pengirim notifikasi push. Implementasi HTTP di push.ts. */
+export type PushPort = {
+  kirim(p: {
+    tokens: string[]; judul: string; badan: string; data: Record<string, string>;
+  }): Promise<{ tokenMati: string[] }>;
+};
+
+export type PesanDeps = {
+  pesan: PesanStore;
+  blokir: BlokirStore;
+  store: Pick<HandshakeStore, "areConnected">;
+  /** Nama tampilan untuk daftar percakapan dan isi push — dipotong per kelompok. */
+  meet: Pick<MeetStore, "profilRingkas">;
+  reports: Pick<ReportStore, "recordReport">;
+  /** null di tes dan saat push dimatikan. */
+  push: PushPort | null;
+  /** ConnectionRegistry — domain `DaftarKunciPesan`. */
+  verifyingContract: Address;
+  /** VouchRegistry — domain `Report`, sejak Fase 2. */
+  vouchContract: Address;
   nowMs: () => number;
 };
