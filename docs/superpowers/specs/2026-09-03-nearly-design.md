@@ -102,7 +102,7 @@ Dinyatakan eksplisit supaya tidak merembes masuk saat implementasi:
 | Penautan opsional | ENS + riwayat on-chain + X/Farcaster + POAP |
 | Handshake | QR bertanda tangan (rotasi 30 detik) + verifikasi ko-lokasi di server |
 | FYP | View-only. **Tidak bisa konek dari sana.** Ada tombol "Ingin bertemu" |
-| Pesan | XMTP, **hanya dengan alamat yang ada di graf koneksi** |
+| Pesan | Relay Nearly + E2E (`@noble/*`), **hanya dengan alamat yang ada di graf koneksi** |
 | Angka ingin bertemu | Persis & publik; tap dari akun ber-trust nol tidak dihitung |
 | Event | Siapa pun boleh mengadakan. **Discovery yang diperoleh, bukan izin membuat** |
 | Kehadiran | RSVP + check-in terverifikasi geofence + Proof of Attendance on-chain |
@@ -170,25 +170,24 @@ Konsekuensinya menjadi fitur tersendiri:
 > oleh orang yang belum pernah bertemu kamu. Bukan karena ada filter spam — karena tidak
 > ada jalurnya.
 
-**Teknologi: XMTP** (`@xmtp/react-native-sdk`). Pesan wallet-ke-wallet, E2E terenkripsi,
-identitasnya wallet — cocok betul dengan desain wallet-only kita, dan kita tidak perlu
-membangun server chat atau kriptografi sendiri.
+**Teknologi: Relay Nearly + E2E** (`@noble/*`). Rancangan awal memilih XMTP, tetapi diganti di
+Fase 4c dengan relay sendiri dan enkripsi E2E — lihat alasan dan arsitektur lengkapnya di
+`docs/superpowers/specs/2026-09-13-nearly-fase-4c-pesan-design.md` §2.1. Pesan wallet-ke-wallet,
+E2E terenkripsi, identitasnya wallet — cocok betul dengan desain wallet-only kita.
 
-**Dua batas yang harus dinyatakan jujur, jangan diklaim lebih:**
+**Batas yang harus dinyatakan jujur, jangan diklaim lebih:**
 
-1. **XMTP adalah jaringan tersendiri, bukan di BNB Chain.** Jangan pernah menyebutnya
-   bagian dari opBNB dalam pitch.
-2. **Jaminan "tanpa spam" ditegakkan di sisi client, bukan di protokol.** Siapa pun bisa
-   mengirim ke alamat XMTP-mu, dan client XMTP lain akan menampilkannya. Nearly hanya
-   menampilkan percakapan dengan alamat yang ada di graf koneksimu. Di dalam Nearly bersih;
-   alamatmu tetap bisa dijangkau di luar Nearly.
+1. **Jaminan "tanpa spam" ditegakkan di server.** Server relay menolak setiap pesan yang bukan
+   berasal dari pasangan di graf koneksi atau yang terblokir ke arah mana pun.
+2. **Batas sistem** — server melihat metadata (siapa berkirim ke siapa, kapan), tanpa forward secrecy,
+   dan nama pengirim terlihat pihak ketiga push — dirinci di spec 4c §11.
 
 **Celah baru yang dibuka fitur ini, dan harus ditutup di fase yang sama:** sebelum ada
 pesan, orang yang pernah bertemu kamu tidak punya cara mengganggumu. Sekarang ada. Karena itu
 pesan **tidak boleh dikirim ke produksi tanpa** tiga hal ini:
 
 1. **Blokir dari dalam percakapan** — satu tap. Memblokir langsung menyembunyikan percakapan,
-   menghentikan pesan masuk, dan mencabut vouch serta kontribusi trust dari orang itu.
+   menghentikan pesan masuk, dan menghentikan pengaruh vouch dan kontribusi trust pada skor (vouch on-chain tidak dicabut otomatis — lihat spec 4c §8.1).
 2. **Lapor dari dalam percakapan**, tersambung ke gerbang laporan di §9.3.
 3. **Koneksi tetap ada di graf setelah blokir** (pertemuannya memang terjadi, itu fakta), tapi
    ditandai diblokir sehingga tidak lagi menghantar trust ke arah mana pun.
@@ -396,12 +395,13 @@ nearly/
 
 ### 10.1 Mobile
 
-Expo SDK 52+, Expo Router, TypeScript, TanStack Query + Zustand, `@xmtp/react-native-sdk`
+Expo SDK 52+, Expo Router, TypeScript, TanStack Query + Zustand, relay Nearly + E2E (`@noble/*`)
 untuk pesan.
 
-**Penting bagi yang baru di mobile:** XMTP memakai native module, jadi **Expo Go tidak bisa
-dipakai** begitu XMTP masuk. Dari Fase 3 ke atas wajib pakai dev build (`expo prebuild` /
-EAS development build). Rencanakan ini sebelum Fase 3, jangan pas mepet.
+**Penting bagi yang baru di mobile:** Rencana awal memakai XMTP yang membutuhkan native module
+(sehingga Expo Go tidak bisa dipakai). Namun, XMTP diganti di Fase 4c dengan relay sendiri + E2E
+JS murni (`@noble/*`), sehingga alasan gugurnya Expo Go tersebut tidak lagi berlaku; development
+build tetap diperlukan kelak untuk Notification Service Extension (spec 4c §11.5).
 
 Wallet: **connect wallet yang sudah ada** sebagai jalur utama — persona anon seseorang *adalah*
 wallet-nya, jadi reputasi harus menempel di sana. Embedded wallet lewat Privy sebagai cadangan
@@ -467,9 +467,9 @@ pengurangan itu ada di §11.1 — tanpa daftar konkret, keputusan itu kosong dan
 justru semua fitur setengah matang.
 
 **Fase 0 — Fondasi.** Monorepo pnpm, Supabase (skema + PostGIS + RLS), skeleton Expo + Expo
-Router, connect wallet, scaffolding Foundry. **Langsung pakai dev build (`expo prebuild` /
-EAS), jangan Expo Go** — XMTP butuh native module, dan mengganti alur kerja di tengah jalan
-jauh lebih mahal daripada menyiapkannya sekarang.
+Router, connect wallet, scaffolding Foundry. (Catatan awal mewajibkan dev build karena XMTP,
+tetapi XMTP diganti di Fase 4c sehingga alasan tersebut gugur; development build tetap
+diperlukan kelak untuk Notification Service Extension — spec 4c §11.5).
 
 *Selesai = bisa masuk app dengan wallet, di atas dev build.*
 
@@ -499,7 +499,7 @@ sinilah nilainya benar-benar terwujud.*
 benar-benar berada di venue saat acara berlangsung.*
 
 **Fase 4 — Radar & pesan.** Siapa di event ini sekarang (daftar kartu), mode visibilitas,
-blokir, dan **pesan lewat XMTP — hanya dengan alamat yang ada di graf koneksi** (§7.5),
+blokir, dan **pesan (relay + E2E, spec 4c) — hanya dengan alamat yang ada di graf koneksi** (§7.5),
 lengkap dengan blokir & lapor dari dalam percakapan.
 
 *Selesai = dua orang yang pernah bertemu bisa saling berkirim pesan, dan orang yang belum
@@ -606,10 +606,10 @@ of Attendance, dan tidak boleh menyumbang apa pun ke faktor diversitas di §8.
 
 **Uji gerbang pesan** — akun yang belum pernah handshake dengan kamu **tidak boleh** muncul
 di daftar percakapan dan tidak boleh bisa dikirimi pesan dari dalam Nearly. Ini penegakan
-sisi client, jadi harus diuji di client.
+server, jadi harus diuji di server (API gerbang pesan) dan client.
 
-**Uji blokir** — setelah memblokir, pesan dari orang itu tidak boleh masuk, percakapan hilang
-dari daftar, dan kontribusi trust serta vouch-nya harus hilang dari perhitungan.
+**Uji blokir** — setelah memblokir, pesan dari orang itu tidak boleh masuk (penegakan server),
+percakapan hilang dari daftar, dan kontribusi trust serta vouch-nya harus hilang dari perhitungan.
 
 **Uji "ingin bertemu"** — tap dari akun ber-trust nol tidak menaikkan angka; saat A dan B
 saling menandai, keduanya harus terungkap dan menerima notifikasi; sebelum saling, identitas
@@ -638,16 +638,14 @@ masalah akurasi lokasi indoor dan baterai; tidak ada test yang bisa menggantikan
    - Wallet ber-reputasi yang dijual tidak bisa dicegah — hanya diredam peluruhan waktu.
    - **Nearly membuktikan seseorang manusia nyata yang hadir, bukan bahwa dia orang baik.**
      Jangan pernah mengklaim lebih dari ini.
-5. **XMTP menambah tiga batasan praktis:**
-   - **Expo Go tidak bisa dipakai** setelah XMTP masuk — wajib dev build. Karena itu dev build
-     dipasang sejak Fase 0.
-   - Alamat XMTP-mu **tetap bisa dijangkau di luar Nearly.** "Inbox tanpa spam" berlaku di
-     dalam Nearly saja. Jangan diklaim sebagai jaminan protokol.
-   - XMTP **bukan** bagian dari BNB Chain. Jangan menyebutnya begitu dalam pitch.
+5. **Batas pesan relay Nearly + E2E (menggantikan batas praktis XMTP rancangan awal):**
+   - XMTP diganti di Fase 4c dengan relay sendiri + E2E (`@noble/*`). Batas-batas arsitektur baru
+     ini (metadata server, tanpa forward secrecy, phishing tanda tangan, batas Expo Go vs Notification
+     Service Extension, dsb.) diakui terbuka dan dirinci dalam spec Fase 4c §11.
 6. **Ruang lingkup adalah risiko terbesar sekarang.** Tujuh fase untuk satu hackathon itu
    berat, dan keputusannya adalah mempertahankan Event + FYP sekaligus dengan mengurangi
    kedalaman (§11.1). **Catatan (2026-09-08):** Fase 4 dipecah tiga — 4a (blokir), 4c (pesan
-   XMTP), 4b (radar & visibilitas) — lihat spec Fase 4a §1. Kalau di tengah jalan ternyata
+   relay + E2E), 4b (radar & visibilitas) — lihat spec Fase 4a §1 dan spec Fase 4c. Kalau di tengah jalan ternyata
    tetap tidak cukup waktu, urutan pengorbanan berikutnya: **4b (radar & visibilitas) dulu,
    lalu vouch/tag** — jangan pernah memotong apa pun di §11.2.
 7. **Angka "ingin bertemu" yang publik** menciptakan dinamika papan peringkat popularitas —
