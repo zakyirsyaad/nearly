@@ -45,4 +45,8 @@ describe("rowToOffer", () => {
   it("consumed_at berisi nilai berarti sudah terpakai", () => {
     expect(rowToOffer({ ...row, consumed_at: "2026-09-03T00:00:00Z" }).consumed).toBe(true);
   });
+
+  it("cell null dipetakan ke string kosong (hasil sapuan lokasi)", () => {
+    expect(rowToOffer({ ...row, cell: null }).cell).toBe("");
+  });
 });

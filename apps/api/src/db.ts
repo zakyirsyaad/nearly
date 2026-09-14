@@ -11,7 +11,10 @@ export function orderPair(a: Address, b: Address): [Address, Address] {
 
 type OfferRow = {
   nonce: string; initiator: string; expires_at: string | number;
-  sig_offer: string; cell: string; at_ms: string | number; consumed_at: string | null;
+  sig_offer: string;
+  /** null setelah `sapuLokasi` mengosongkannya (migrasi 0008, spec 4b+5 §4.4). */
+  cell: string | null;
+  at_ms: string | number; consumed_at: string | null;
 };
 
 export function rowToOffer(row: OfferRow): PendingOffer {
@@ -20,7 +23,9 @@ export function rowToOffer(row: OfferRow): PendingOffer {
     initiator: row.initiator as Address,
     expiresAt: BigInt(row.expires_at),
     sigOffer: row.sig_offer as Hex,
-    cell: row.cell,
+    // Sel yang sudah disapu menjadi string kosong. Gerbang tidak diubah: offer
+    // bersel kosong pasti sudah kedaluwarsa > 24 jam dan ditolak lebih dulu.
+    cell: row.cell ?? "",
     atMs: Number(row.at_ms),
     consumed: row.consumed_at !== null,
   };
