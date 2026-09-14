@@ -33,6 +33,7 @@ export default function RootLayout() {
       <Stack.Screen name="pesan/index" options={{ title: "Pesan" }} />
       <Stack.Screen name="pesan/[address]" options={{ title: "Percakapan" }} />
       <Stack.Screen name="pesan/lapor/[address]" options={{ title: "Lapor" }} />
+      <Stack.Screen name="profil-saya" options={{ title: "Profil saya" }} />
     </Stack>
   );
 }
