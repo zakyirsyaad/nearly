@@ -3,7 +3,7 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "tsx watch src/index.ts",
+    "dev": "node --env-file=../../.env --watch --import=tsx src/index.ts",
     "test": "vitest run",
     "typecheck": "tsc --noEmit"
   },
