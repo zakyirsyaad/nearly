@@ -1,0 +1,254 @@
+/* Satu berkas CSS biasa untuk dua halaman (spec 6 §5): tanpa Tailwind, tanpa pustaka UI. */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  margin: 0;
+  min-height: 100%;
+}
+
+body {
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  line-height: 1.55;
+  color: #111827;
+  background: #fbfaf7;
+}
+
+button {
+  font: inherit;
+}
+
+/* ── Landing ─────────────────────────────────────────────────────────────── */
+
+.landing {
+  max-width: 46rem;
+  margin: 0 auto;
+  padding: 3rem 1.25rem 4rem;
+}
+
+.landing section {
+  margin-top: 3.5rem;
+}
+
+.landing h2 {
+  font-size: 1.5rem;
+  margin: 0 0 1rem;
+}
+
+.landing h3 {
+  font-size: 1.05rem;
+  margin: 0 0 0.25rem;
+}
+
+.landing ul,
+.landing ol {
+  padding-left: 1.25rem;
+}
+
+.landing li {
+  margin-bottom: 0.75rem;
+}
+
+.hero {
+  margin-top: 2rem;
+}
+
+.merek {
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #6b7280;
+  margin: 0;
+}
+
+.hero h1 {
+  font-size: clamp(2rem, 6vw, 3.25rem);
+  line-height: 1.1;
+  margin: 0.5rem 0 1rem;
+}
+
+.lead {
+  font-size: 1.15rem;
+  color: #374151;
+}
+
+.tombol-utama {
+  display: inline-block;
+  margin-top: 1rem;
+  padding: 0.75rem 1.25rem;
+  border-radius: 0.5rem;
+  background: #111827;
+  color: #fbfaf7;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.tombol-utama:hover {
+  background: #1f2937;
+}
+
+.langkah {
+  list-style: decimal;
+}
+
+.batas {
+  border-left: 4px solid #d97706;
+  padding-left: 1rem;
+}
+
+.kontrak {
+  list-style: none;
+  padding-left: 0 !important;
+}
+
+.kontrak li {
+  display: grid;
+  gap: 0.15rem;
+}
+
+.kontrak-nama {
+  font-weight: 600;
+}
+
+.kontrak-peran {
+  color: #4b5563;
+}
+
+.kontrak code {
+  font-size: 0.85rem;
+  word-break: break-all;
+}
+
+.kaki {
+  margin-top: 4rem;
+  color: #6b7280;
+  font-size: 0.9rem;
+}
+
+/* ── Live (proyektor, tema gelap) ────────────────────────────────────────── */
+
+.live {
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+  background: #05070d;
+  color: #e8eefc;
+}
+
+.live-memuat {
+  display: grid;
+  place-items: center;
+  font-size: 1.5rem;
+}
+
+.live-kiri,
+.live-kanan,
+.live-bawah,
+.live-status {
+  position: absolute;
+  z-index: 1;
+}
+
+.live-kiri {
+  top: 1.5rem;
+  left: 1.75rem;
+  max-width: 40vw;
+}
+
+.live-kiri h1 {
+  margin: 0 0 0.75rem;
+  font-size: clamp(1.5rem, 2.8vw, 2.5rem);
+  line-height: 1.15;
+}
+
+.live-tombol {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.live button {
+  padding: 0.45rem 0.9rem;
+  border-radius: 999px;
+  border: 1px solid rgba(232, 238, 252, 0.35);
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+}
+
+.live button[aria-pressed="true"] {
+  background: #e8eefc;
+  color: #05070d;
+}
+
+.live button:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.live-pemilih {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  margin-top: 0.75rem;
+}
+
+.live-pemilih select {
+  font: inherit;
+  max-width: 28rem;
+  padding: 0.35rem;
+  background: #0d1220;
+  color: inherit;
+  border: 1px solid rgba(232, 238, 252, 0.35);
+  border-radius: 0.4rem;
+}
+
+.live-kanan {
+  top: 1.5rem;
+  right: 1.75rem;
+  display: flex;
+  gap: 2.5rem;
+  text-align: right;
+}
+
+.live-angka strong {
+  display: block;
+  font-size: clamp(2.5rem, 6vw, 5rem);
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+.live-angka span {
+  font-size: 1.1rem;
+  opacity: 0.75;
+}
+
+.live-bawah {
+  left: 0;
+  right: 0;
+  bottom: 1.25rem;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 1rem;
+  font-size: clamp(1rem, 1.8vw, 1.5rem);
+}
+
+.live-bawah p {
+  margin: 0;
+}
+
+.live-status {
+  bottom: 1.25rem;
+  right: 1.75rem;
+  padding: 0.35rem 0.8rem;
+  border-radius: 999px;
+  background: rgba(217, 119, 6, 0.9);
+  color: #05070d;
+  font-weight: 600;
+}
