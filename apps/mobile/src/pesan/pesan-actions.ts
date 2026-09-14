@@ -24,6 +24,11 @@ export function _resetKunciLawanUntukTes(): void {
   cacheKunciLawan.clear();
 }
 
+/** Hanya untuk tes. */
+export function _resetCacheBukaUntukTes(): void {
+  cacheBuka.clear();
+}
+
 /**
  * SATU-SATUNYA tempat pesan dienkripsi dan dikirim di aplikasi mobile — aturan
  * yang sama yang membuat blokir-actions.ts ada. Dua tempat mengenkripsi satu
@@ -47,11 +52,46 @@ export type PesanTerbuka =
   | { id: string; dariAku: boolean; createdAtMs: number; status: "tidak_terverifikasi" };
 
 /**
- * Murni. Pesan yang gagal dibuka ditampilkan sebagai "tidak bisa diverifikasi",
+ * Hasil membuka baris, disimpan per isi baris. Polling layar percakapan tiap
+ * 4 detik membuka ulang seluruh riwayat; tanpa simpanan ini X25519 + Ed25519
+ * dihitung ulang untuk SETIAP pesan — di iPhone 32 pesan makan ~1.500 ms JS
+ * per polling dan membuat animasi keyboard tersendat.
+ *
+ * Kuncinya memuat SEMUA masukan yang memengaruhi hasil, termasuk ciphertext
+ * dan kunci lawan: id yang sama dengan ciphertext atau kunci tanda berbeda
+ * dibuka dan diverifikasi ulang, tidak pernah mewarisi status "sah" lama.
+ */
+const cacheBuka = new Map<string, PesanTerbuka>();
+const MAKS_CACHE_BUKA = 2000;
+
+function kunciBuka(sesi: SesiPesan, lawan: KunciLawan, b: BarisPesanApi): string {
+  return [
+    sesi.address.toLowerCase(), sesi.kunci.pubEnkripsi, sesi.kunci.pubTanda,
+    lawan.kunciEnkripsi, lawan.kunciTanda,
+    b.id, b.pengirim.toLowerCase(), b.penerima.toLowerCase(), b.createdAtMs, b.nonce, b.ciphertext,
+  ].join("|");
+}
+
+/**
+ * Pesan yang gagal dibuka ditampilkan sebagai "tidak bisa diverifikasi",
  * BUKAN disembunyikan diam-diam (spec 4c §5.2) — pesan yang hilang tanpa jejak
- * membuat pengguna tidak tahu ada yang salah.
+ * membuat pengguna tidak tahu ada yang salah. Baris yang sama mengembalikan
+ * objek yang sama (lihat `cacheBuka`).
  */
 export function bukaBaris(sesi: SesiPesan, lawan: KunciLawan, baris: BarisPesanApi): PesanTerbuka {
+  const k = kunciBuka(sesi, lawan, baris);
+  const ada = cacheBuka.get(k);
+  if (ada) return ada;
+  const hasil = bukaBarisSekarang(sesi, lawan, baris);
+  if (cacheBuka.size >= MAKS_CACHE_BUKA) {
+    // Map menjaga urutan sisip: yang pertama adalah yang paling lama.
+    cacheBuka.delete(cacheBuka.keys().next().value!);
+  }
+  cacheBuka.set(k, hasil);
+  return hasil;
+}
+
+function bukaBarisSekarang(sesi: SesiPesan, lawan: KunciLawan, baris: BarisPesanApi): PesanTerbuka {
   const dariAku = baris.pengirim.toLowerCase() === sesi.address.toLowerCase();
   const hasil = bukaPesan({
     kunci: sesi.kunci,

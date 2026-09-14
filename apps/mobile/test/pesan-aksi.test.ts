@@ -8,7 +8,8 @@ import {
 import { CONFIG } from "../src/config";
 import type { SesiPesan } from "../src/pesan/sesi";
 import {
-  _resetKunciLawanUntukTes, bukaBaris, kirimPesan, laporanSiapDikirim, laporkanPercakapan,
+  _resetCacheBukaUntukTes, _resetKunciLawanUntukTes, bukaBaris, kirimPesan, laporanSiapDikirim,
+  laporkanPercakapan,
 } from "../src/pesan/pesan-actions";
 
 const A = privateKeyToAccount(`0x${"a1".repeat(32)}` as Hex);
@@ -24,7 +25,7 @@ async function sesiDari(akun: typeof A): Promise<SesiPesan> {
 
 type Rekaman = { url: string; init: RequestInit };
 const aslinya = globalThis.fetch;
-beforeEach(() => _resetKunciLawanUntukTes());
+beforeEach(() => { _resetKunciLawanUntukTes(); _resetCacheBukaUntukTes(); });
 afterEach(() => { globalThis.fetch = aslinya; });
 
 function pasangFetch(sb: SesiPesan) {
@@ -88,6 +89,40 @@ describe("bukaBaris", () => {
     expect(k).toMatchObject({ status: "sah", isi: "dari A", dariAku: true });
     const rusak = bukaBaris(sa, lawanB, baris({ ...masuk, ciphertext: `A${masuk.ciphertext.slice(1)}` }, B.address.toLowerCase(), A.address.toLowerCase()));
     expect(rusak.status).toBe("tidak_terverifikasi");
+  });
+
+  // Polling tiap 4 detik membuka ulang seluruh riwayat. Di iPhone, 32 pesan
+  // makan ~1.500 ms JS per polling (X25519 + Ed25519 per pesan) dan membuat
+  // animasi keyboard tersendat. Baris yang sama tidak boleh dibuka dua kali.
+  describe("hasil disimpan", () => {
+    async function siapkan() {
+      const [sa, sb] = await Promise.all([sesiDari(A), sesiDari(B)]);
+      const lawanB = { kunciEnkripsi: sb.kunci.pubEnkripsi, kunciTanda: sb.kunci.pubTanda };
+      const masuk = enkripsiPesan({ kunci: sb.kunci, pubEnkripsiLawan: sa.kunci.pubEnkripsi, pengirim: B.address, penerima: A.address, isi: "dari B", dikirimMs: 1 });
+      const baris = { id: "p1", pengirim: B.address.toLowerCase(), penerima: A.address.toLowerCase(), createdAtMs: 5, dibacaAtMs: null, ...masuk };
+      return { sa, lawanB, baris };
+    }
+
+    it("baris yang sama mengembalikan objek yang sama, tanpa membuka ulang", async () => {
+      const { sa, lawanB, baris } = await siapkan();
+      const pertama = bukaBaris(sa, lawanB, baris);
+      // Salinan baru dengan isi identik — seperti hasil polling berikutnya.
+      expect(bukaBaris(sa, lawanB, { ...baris })).toBe(pertama);
+    });
+
+    it("id sama tapi ciphertext berbeda dibuka ulang, bukan memakai hasil lama", async () => {
+      const { sa, lawanB, baris } = await siapkan();
+      expect(bukaBaris(sa, lawanB, baris).status).toBe("sah");
+      const dirusak = { ...baris, ciphertext: `A${baris.ciphertext.slice(1)}` };
+      expect(bukaBaris(sa, lawanB, dirusak).status).toBe("tidak_terverifikasi");
+    });
+
+    it("kunci tanda lawan yang berbeda diverifikasi ulang, bukan memakai hasil lama", async () => {
+      const { sa, lawanB, baris } = await siapkan();
+      expect(bukaBaris(sa, lawanB, baris).status).toBe("sah");
+      const lawanPalsu = { ...lawanB, kunciTanda: sa.kunci.pubTanda };
+      expect(bukaBaris(sa, lawanPalsu, baris).status).toBe("tidak_terverifikasi");
+    });
   });
 });
 
