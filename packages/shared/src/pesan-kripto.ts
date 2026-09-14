@@ -59,15 +59,37 @@ export function turunkanKunciPesan(tandaTangan: Hex): KunciPesanTurunan {
 }
 
 /**
+ * Kunci percakapan per objek kunci privat, lalu per (lawan, pasangan alamat).
+ * Semua pesan dalam satu percakapan memakai kunci yang sama, dan X25519 adalah
+ * ~36% biaya bukaPesan — di Hermes itu ratusan milidetik saat membuka
+ * percakapan. WeakMap: begitu objek kunci privatnya (sesi) dilepas, simpanan
+ * ini ikut hilang, dan tidak ada salinan kunci privat dalam bentuk string.
+ */
+const kunciPercakapanTersimpan = new WeakMap<Uint8Array, Map<string, Uint8Array>>();
+
+/**
  * Spec 4c §5.2 butir 2. Alamat diurutkan supaya kedua pihak mendapat kunci
  * yang sama — itu yang membuat pengirim bisa membaca riwayat kirimannya.
+ * Hasilnya disimpan (lihat `kunciPercakapanTersimpan`).
  */
 export function kunciPercakapan(
   privEnkripsiKu: Uint8Array, pubEnkripsiLawan: Hex, alamatA: string, alamatB: string,
 ): Uint8Array {
   const [x, y] = [kecil(alamatA), kecil(alamatB)].sort();
-  const rahasia = x25519.getSharedSecret(privEnkripsiKu, dariHex(pubEnkripsiLawan));
-  return hkdf(sha256, rahasia, SALT, utf8ToBytes(`percakapan|${x}|${y}`), 32);
+  const kunciSimpan = `${kecil(pubEnkripsiLawan)}|${x}|${y}`;
+  let perPercakapan = kunciPercakapanTersimpan.get(privEnkripsiKu);
+  if (!perPercakapan) {
+    perPercakapan = new Map();
+    kunciPercakapanTersimpan.set(privEnkripsiKu, perPercakapan);
+  }
+  let kunci = perPercakapan.get(kunciSimpan);
+  if (!kunci) {
+    const rahasia = x25519.getSharedSecret(privEnkripsiKu, dariHex(pubEnkripsiLawan));
+    kunci = hkdf(sha256, rahasia, SALT, utf8ToBytes(`percakapan|${x}|${y}`), 32);
+    perPercakapan.set(kunciSimpan, kunci);
+  }
+  // Salinan: pemanggil yang mengubah hasilnya tidak boleh meracuni simpanan.
+  return kunci.slice();
 }
 
 export type IsiAmplop = { pengirim: string; penerima: string; dikirimMs: number; isi: string };

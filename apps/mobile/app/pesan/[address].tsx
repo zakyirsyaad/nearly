@@ -12,10 +12,15 @@ import { ApiError } from "../../src/http";
 import { aksiBlokir } from "../../src/blokir-actions";
 import { sesiPesan } from "../../src/pesan/sesi";
 import { getRiwayat, postDibaca } from "../../src/pesan/pesan-api";
-import { bukaBaris, kirimPesan, kunciLawan, type PesanTerbuka } from "../../src/pesan/pesan-actions";
+import {
+  bukaBaris, bukaBertahap, kirimPesan, kunciLawan, type PesanTerbuka,
+} from "../../src/pesan/pesan-actions";
 import {
   blokirErrorMessage, labelKirimPesan, pesanErrorMessage, sisaKarakterPesan,
 } from "../../src/messages";
+
+// Memberi event loop kesempatan memproses event keyboard dan sentuhan.
+const jedaUi = () => new Promise<void>((r) => { setTimeout(r, 0); });
 
 export default function PercakapanScreen() {
   const { address } = useLocalSearchParams<{ address: string }>();
@@ -29,13 +34,35 @@ export default function PercakapanScreen() {
   const [sibuk, setSibuk] = useState(false);
   const [galat, setGalat] = useState<string | null>(null);
   const ditandaiSampai = useRef(0);
+  const layarAktif = useRef(false);
+  // Pembukaan PERTAMA dibuat bertahap (lihat bukaBertahap). Polling sesudahnya
+  // membuka sekaligus: pesan lama sudah tersimpan dan murah, dan bertahap di
+  // setiap polling akan menyusutkan daftar ke bagian awal lalu menumbuhkannya
+  // lagi — berkedip tiap 4 detik.
+  const tahap = useRef<"belum" | "berjalan" | "selesai">("belum");
 
   const muat = useCallback(async () => {
     const sesi = await sesiPesan(signer);
     const k = await kunciLawan(sesi, lawan);
     const { pesan } = await getRiwayat(sesi, lawan);
+    if (tahap.current === "berjalan") return; // putaran polling ini dilewati
     // Terbaru dulu — FlatList `inverted` menaruhnya di bawah.
-    setDaftar(pesan.map((b) => bukaBaris(sesi, k, b)));
+    const buka = (b: (typeof pesan)[number]) => bukaBaris(sesi, k, b);
+    if (tahap.current === "belum") {
+      tahap.current = "berjalan";
+      let selesai = false;
+      try {
+        selesai = await bukaBertahap(pesan, buka, {
+          awal: 8, potongan: 4, jeda: jedaUi,
+          masihBerlaku: () => layarAktif.current, tampilkan: setDaftar,
+        });
+      } finally {
+        tahap.current = selesai ? "selesai" : "belum";
+      }
+      if (!selesai) return;
+    } else {
+      setDaftar(pesan.map(buka));
+    }
     setGalat(null);
 
     const masukTerbaru = pesan.find((b) => b.pengirim.toLowerCase() === lawan.toLowerCase());
@@ -49,6 +76,7 @@ export default function PercakapanScreen() {
 
   useFocusEffect(useCallback(() => {
     let aktif = true;
+    layarAktif.current = true;
     const jalankan = () => muat().catch((e: unknown) => {
       if (!aktif) return;
       setDaftar((d) => d ?? []);
@@ -58,7 +86,7 @@ export default function PercakapanScreen() {
     // Polling hanya selama layar aktif (spec 4c §9): pembersih di bawah
     // menghentikannya saat layar kehilangan fokus.
     const t = setInterval(() => { void jalankan(); }, 4_000);
-    return () => { aktif = false; clearInterval(t); };
+    return () => { aktif = false; layarAktif.current = false; clearInterval(t); };
   }, [muat]));
 
   async function kirim() {

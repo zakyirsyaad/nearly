@@ -1,7 +1,8 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { privateKeyToAccount } from "viem/accounts";
 import type { Address, Hex } from "viem";
 import { xchacha20poly1305 } from "@noble/ciphers/chacha";
+import { x25519 } from "@noble/curves/ed25519";
 import {
   bukaPesan, buatIdPesan, enkripsiPesan, kunciPercakapan, kunciPesanTypedData, MAKS_ISI_PESAN,
   stringAmplop, tandaAmplop, tandaRequest, turunkanKunciPesan, verifikasiAmplop,
@@ -47,6 +48,42 @@ describe("kunciPercakapan", () => {
     const dariA = kunciPercakapan(ka.privEnkripsi, kb.pubEnkripsi, A.address, B.address);
     const dariB = kunciPercakapan(kb.privEnkripsi, ka.pubEnkripsi, B.address, A.address);
     expect(hex(dariA)).toBe(hex(dariB));
+  });
+
+  // Semua pesan dalam satu percakapan memakai kunci yang sama, tapi bukaPesan
+  // dulu menghitung X25519 untuk SETIAP pesan — ~36% biaya membuka percakapan.
+  describe("disimpan per percakapan", () => {
+    afterEach(() => { vi.restoreAllMocks(); });
+
+    it("X25519 dihitung sekali untuk percakapan yang sama", async () => {
+      const [ka, kb] = await Promise.all([kunciDari(A), kunciDari(B)]);
+      const mata = vi.spyOn(x25519, "getSharedSecret");
+      const k1 = kunciPercakapan(ka.privEnkripsi, kb.pubEnkripsi, A.address, B.address);
+      // Urutan alamat terbalik dan huruf besar tetap percakapan yang sama.
+      const k2 = kunciPercakapan(ka.privEnkripsi, kb.pubEnkripsi, B.address.toUpperCase(), A.address);
+      expect(mata).toHaveBeenCalledTimes(1);
+      expect(hex(k2)).toBe(hex(k1));
+    });
+
+    it("lawan atau pasangan alamat berbeda tidak memakai kunci yang tersimpan", async () => {
+      const [ka, kb, kc] = await Promise.all([kunciDari(A), kunciDari(B), kunciDari(C)]);
+      const ab = kunciPercakapan(ka.privEnkripsi, kb.pubEnkripsi, A.address, B.address);
+      const ac = kunciPercakapan(ka.privEnkripsi, kc.pubEnkripsi, A.address, C.address);
+      const abDenganAlamatC = kunciPercakapan(ka.privEnkripsi, kb.pubEnkripsi, A.address, C.address);
+      // Pasangan alamat sama, kunci enkripsi lawan berbeda — mis. lawan memutar kuncinya.
+      const abDenganKunciC = kunciPercakapan(ka.privEnkripsi, kc.pubEnkripsi, A.address, B.address);
+      expect(hex(ac)).not.toBe(hex(ab));
+      expect(hex(abDenganKunciC)).not.toBe(hex(ab));
+      expect(hex(abDenganAlamatC)).not.toBe(hex(ab));
+    });
+
+    it("mengembalikan salinan: mengubah hasil tidak meracuni panggilan berikutnya", async () => {
+      const [ka, kb] = await Promise.all([kunciDari(A), kunciDari(B)]);
+      const k1 = kunciPercakapan(ka.privEnkripsi, kb.pubEnkripsi, A.address, B.address);
+      const asli = hex(k1);
+      k1.fill(0);
+      expect(hex(kunciPercakapan(ka.privEnkripsi, kb.pubEnkripsi, A.address, B.address))).toBe(asli);
+    });
   });
 });
 

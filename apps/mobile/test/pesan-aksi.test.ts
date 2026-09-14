@@ -8,7 +8,7 @@ import {
 import { CONFIG } from "../src/config";
 import type { SesiPesan } from "../src/pesan/sesi";
 import {
-  _resetCacheBukaUntukTes, _resetKunciLawanUntukTes, bukaBaris, kirimPesan, laporanSiapDikirim,
+  _resetCacheBukaUntukTes, _resetKunciLawanUntukTes, bukaBaris, bukaBertahap, kirimPesan, laporanSiapDikirim,
   laporkanPercakapan,
 } from "../src/pesan/pesan-actions";
 
@@ -24,6 +24,9 @@ async function sesiDari(akun: typeof A): Promise<SesiPesan> {
 }
 
 type Rekaman = { url: string; init: RequestInit };
+// Ganti karakter pertama dengan yang PASTI berbeda — base64 acak bisa saja
+// sudah diawali "A", dan "perusakan" yang tidak mengubah apa pun meloloskan tes.
+const rusakkan = (ct: string) => (ct[0] === "A" ? "B" : "A") + ct.slice(1);
 const aslinya = globalThis.fetch;
 beforeEach(() => { _resetKunciLawanUntukTes(); _resetCacheBukaUntukTes(); });
 afterEach(() => { globalThis.fetch = aslinya; });
@@ -87,7 +90,7 @@ describe("bukaBaris", () => {
     expect(m).toMatchObject({ status: "sah", isi: "dari B", dariAku: false });
     const k = bukaBaris(sa, lawanB, baris(keluar, A.address.toLowerCase(), B.address.toLowerCase()));
     expect(k).toMatchObject({ status: "sah", isi: "dari A", dariAku: true });
-    const rusak = bukaBaris(sa, lawanB, baris({ ...masuk, ciphertext: `A${masuk.ciphertext.slice(1)}` }, B.address.toLowerCase(), A.address.toLowerCase()));
+    const rusak = bukaBaris(sa, lawanB, baris({ ...masuk, ciphertext: rusakkan(masuk.ciphertext) }, B.address.toLowerCase(), A.address.toLowerCase()));
     expect(rusak.status).toBe("tidak_terverifikasi");
   });
 
@@ -113,7 +116,7 @@ describe("bukaBaris", () => {
     it("id sama tapi ciphertext berbeda dibuka ulang, bukan memakai hasil lama", async () => {
       const { sa, lawanB, baris } = await siapkan();
       expect(bukaBaris(sa, lawanB, baris).status).toBe("sah");
-      const dirusak = { ...baris, ciphertext: `A${baris.ciphertext.slice(1)}` };
+      const dirusak = { ...baris, ciphertext: rusakkan(baris.ciphertext) };
       expect(bukaBaris(sa, lawanB, dirusak).status).toBe("tidak_terverifikasi");
     });
 
@@ -123,6 +126,54 @@ describe("bukaBaris", () => {
       const lawanPalsu = { ...lawanB, kunciTanda: sa.kunci.pubTanda };
       expect(bukaBaris(sa, lawanPalsu, baris).status).toBe("tidak_terverifikasi");
     });
+  });
+});
+
+// Membuka pertama percakapan 32 pesan makan ~1 detik JS di iPhone. Layar harus
+// tampil dengan pesan terbaru dulu, dan UI harus sempat bernapas di antaranya.
+describe("bukaBertahap", () => {
+  const angka = (n: number) => Array.from({ length: n }, (_, i) => i);
+
+  function jalankan(n: number, opsi: { masihBerlaku?: () => boolean } = {}) {
+    const dibuka: number[] = [];
+    const tampil: number[][] = [];
+    const log: string[] = [];
+    const selesai = bukaBertahap(angka(n), (x) => { dibuka.push(x); return x * 10; }, {
+      awal: 3,
+      potongan: 2,
+      jeda: async () => { log.push(`jeda setelah ${dibuka.length}`); },
+      masihBerlaku: opsi.masihBerlaku ?? (() => true),
+      // Simpan referensi ASLI, bukan salinan: array yang sudah diserahkan
+      // (jadi state React) tidak boleh diubah belakangan.
+      tampilkan: (h) => { tampil.push(h); log.push(`tampil ${h.length}`); },
+    });
+    return { selesai, dibuka, tampil, log };
+  }
+
+  it("menampilkan bagian awal SEBELUM jeda pertama, lalu bertambah per potongan", async () => {
+    const r = jalankan(7);
+    expect(await r.selesai).toBe(true);
+    expect(r.log).toEqual([
+      "tampil 3", "jeda setelah 3", "tampil 5", "jeda setelah 5", "tampil 7",
+    ]);
+    // Urutan tetap: terbaru dulu, sama seperti tanpa bertahap.
+    expect(r.tampil.at(-1)).toEqual([0, 10, 20, 30, 40, 50, 60]);
+    expect(r.tampil.map((h) => h.length)).toEqual([3, 5, 7]);
+  });
+
+  it("berhenti tanpa membuka sisanya kalau layar sudah ditinggalkan", async () => {
+    let berlaku = true;
+    const r = jalankan(7, { masihBerlaku: () => berlaku });
+    berlaku = false;
+    expect(await r.selesai).toBe(false);
+    expect(r.dibuka).toEqual([0, 1, 2]);
+    expect(r.tampil).toHaveLength(1);
+  });
+
+  it("daftar yang muat di bagian awal tampil sekali tanpa jeda", async () => {
+    const r = jalankan(2);
+    expect(await r.selesai).toBe(true);
+    expect(r.log).toEqual(["tampil 2"]);
   });
 });
 

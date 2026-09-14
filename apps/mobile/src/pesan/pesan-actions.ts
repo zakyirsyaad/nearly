@@ -106,6 +106,41 @@ function bukaBarisSekarang(sesi: SesiPesan, lawan: KunciLawan, baris: BarisPesan
     : { ...dasar, status: "tidak_terverifikasi" };
 }
 
+/**
+ * Membuka daftar tanpa mengunci thread JS terlalu lama. Di Hermes, satu pesan
+ * butuh puluhan milidetik (verifikasi Ed25519), jadi membuka 32 pesan sekaligus
+ * membekukan layar ~1 detik. Bagian `awal` dibuka dan ditampilkan langsung;
+ * sisanya per `potongan`, dengan `jeda` di antaranya supaya event keyboard dan
+ * sentuhan sempat diproses. Setiap pesan TETAP dibuka penuh sebelum tampil —
+ * yang berubah hanya kapan, bukan apakah, ia diverifikasi.
+ *
+ * Mengembalikan `false` kalau dihentikan (`masihBerlaku` jadi false), mis.
+ * layar sudah ditinggalkan.
+ */
+export async function bukaBertahap<T, R>(
+  daftar: readonly T[],
+  buka: (x: T) => R,
+  opsi: {
+    awal: number;
+    potongan: number;
+    jeda: () => Promise<void>;
+    masihBerlaku: () => boolean;
+    tampilkan: (hasil: R[]) => void;
+  },
+): Promise<boolean> {
+  const hasil = daftar.slice(0, opsi.awal).map(buka);
+  // Selalu salinan: array yang diserahkan jadi state React dan tidak boleh
+  // diubah belakangan oleh push di bawah.
+  opsi.tampilkan([...hasil]);
+  for (let i = opsi.awal; i < daftar.length; i += opsi.potongan) {
+    await opsi.jeda();
+    if (!opsi.masihBerlaku()) return false;
+    hasil.push(...daftar.slice(i, i + opsi.potongan).map(buka));
+    opsi.tampilkan([...hasil]);
+  }
+  return true;
+}
+
 export const MAKS_BUKTI_LAPORAN = 5;
 /** Sama dengan `reason.min(10)` di ReportRequestSchema. */
 export const MIN_ALASAN_LAPORAN = 10;
