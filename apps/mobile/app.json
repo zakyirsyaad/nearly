@@ -11,7 +11,7 @@
       "supportsTablet": false,
       "infoPlist": {
         "NSCameraUsageDescription": "Nearly memakai kamera hanya untuk memindai QR orang yang kamu temui.",
-        "NSLocationWhenInUseUsageDescription": "Nearly memakai lokasi kasar (~150 m) hanya saat handshake, untuk memastikan kalian benar-benar berada di tempat yang sama."
+        "NSLocationWhenInUseUsageDescription": "Nearly memakai lokasi kasar (~150 m) hanya saat aplikasi terbuka: saat handshake, untuk memastikan kalian benar-benar berada di tempat yang sama, dan saat layar Radar terbuka, untuk menandai kehadiranmu di area acara."
       }
     },
     "android": {

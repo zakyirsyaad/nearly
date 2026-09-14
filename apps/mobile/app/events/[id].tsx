@@ -134,6 +134,11 @@ export default function EventDetailScreen() {
         ? <Text style={s.nonaktif}>{alasanTakBisaCheckIn}</Text>
         : <Link href="/scan" style={s.aksi}>Pindai QR host untuk check-in</Link>}
 
+      {/* Radar hanya untuk yang sudah check-in, selama acara berlangsung (spec 4b+5 §8.1). */}
+      {berlangsung && sudahCheckIn && (
+        <Link href={`/radar/${ev.eventId}`} style={s.aksi}>Buka radar</Link>
+      )}
+
       {akuHost && (
         <Link href={`/events/${ev.eventId}/host-qr`} style={s.aksi}>
           Buka QR check-in (kamu host)
