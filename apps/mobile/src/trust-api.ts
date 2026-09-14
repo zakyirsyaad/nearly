@@ -1,6 +1,7 @@
 import type { Address } from "viem";
 import { reasonHashOf, reportTypedData, tagsHashOf, vouchTypedData } from "@nearly/shared";
 import { CONFIG } from "./config";
+import { BATAS_WAKTU_MS, fetchDenganBatas } from "./http";
 import type { NearlySigner } from "./signer";
 import type { TrustEvidenceView } from "./tier";
 
@@ -12,11 +13,13 @@ export type TrustResponse = {
 };
 
 async function post(path: string, body: unknown): Promise<void> {
-  const res = await fetch(`${CONFIG.apiUrl}${path}`, {
+  // Galat jaringan tiba sebagai ApiError yang message-nya kode itu sendiri,
+  // jadi `pesanGagal(e.message)` di layar profil tetap menerjemahkannya.
+  const res = await fetchDenganBatas(`${CONFIG.apiUrl}${path}`, {
     method: "POST",
     headers: { "content-type": "application/json" },
     body: JSON.stringify(body),
-  });
+  }, BATAS_WAKTU_MS);
   if (!res.ok) {
     const detail = (await res.json().catch(() => null)) as { code?: string } | null;
     throw new Error(detail?.code ?? `gagal (${res.status})`);
@@ -24,7 +27,7 @@ async function post(path: string, body: unknown): Promise<void> {
 }
 
 export async function fetchTrust(address: Address): Promise<TrustResponse> {
-  const res = await fetch(`${CONFIG.apiUrl}/trust/${address}`);
+  const res = await fetchDenganBatas(`${CONFIG.apiUrl}/trust/${address}`, undefined, BATAS_WAKTU_MS);
   if (!res.ok) throw new Error(`gagal membaca trust (${res.status})`);
   return (await res.json()) as TrustResponse;
 }

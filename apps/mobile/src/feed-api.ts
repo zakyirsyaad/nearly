@@ -1,7 +1,7 @@
 import type { Hex } from "viem";
 import { lihatFeedTypedData } from "@nearly/shared";
 import { CONFIG } from "./config";
-import { postJson, req } from "./http";
+import { BATAS_WAKTU_MS, postJson, req } from "./http";
 import type { PenandaSigner } from "./meet-api";
 
 export type FeedPost = {
@@ -83,5 +83,8 @@ export type HapusPostBody = {
 
 export const postDelete = (id: Hex, b: HapusPostBody) =>
   postJson<{ ok: true }>(`/posts/${id}/delete`, b);
+// Badan base64 gambar sampai ~2,7 MB bisa butuh lebih dari batas bawaan untuk
+// terunggah lewat seluler. Pemrosesan di server berjalan di latar belakang,
+// jadi yang dibayar di sini hanya waktu unggah.
 export const postImage = (id: Hex, b: unknown) =>
-  postJson<{ ok: true; imageStatus: string }>(`/posts/${id}/image`, b);
+  postJson<{ ok: true; imageStatus: string }>(`/posts/${id}/image`, b, BATAS_WAKTU_MS * 4);

@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { ApiError, postJson, req } from "../src/http";
+import { ApiError, BATAS_WAKTU_MS, postJson, req } from "../src/http";
 
 const asli = globalThis.fetch;
 afterEach(() => { globalThis.fetch = asli; });
@@ -30,6 +30,50 @@ describe("req", () => {
   it("memakai code unknown kalau badan tidak bisa dibaca", async () => {
     globalThis.fetch = vi.fn(async () => new Response("bukan json", { status: 500 })) as unknown as typeof fetch;
     await expect(req("/x")).rejects.toMatchObject({ code: "unknown", status: 500 });
+  });
+});
+
+// Tanpa batas waktu, server yang diam (API mati, IP LAN salah, Wi-Fi beda)
+// membuat layar berputar selamanya — pengguna tidak pernah melihat galat.
+describe("req — server tidak terjangkau", () => {
+  afterEach(() => { vi.useRealTimers(); });
+
+  it("berhenti setelah BATAS_WAKTU_MS dan melempar server_tak_terjangkau", async () => {
+    vi.useFakeTimers();
+    // Fetch yang tidak pernah menjawab, kecuali dibatalkan lewat signal.
+    globalThis.fetch = vi.fn((_url: string, init?: RequestInit) =>
+      new Promise<Response>((_, tolak) => {
+        init?.signal?.addEventListener("abort", () =>
+          tolak(new DOMException("Aborted", "AbortError")));
+      })) as unknown as typeof fetch;
+
+    const hasil = req("/x");
+    const tangkap = expect(hasil).rejects.toMatchObject({ code: "server_tak_terjangkau", status: 0 });
+    await vi.advanceTimersByTimeAsync(BATAS_WAKTU_MS);
+    await tangkap;
+  });
+
+  it("belum membatalkan sebelum batas waktunya lewat", async () => {
+    vi.useFakeTimers();
+    let dibatalkan = false;
+    globalThis.fetch = vi.fn((_url: string, init?: RequestInit) =>
+      new Promise<Response>(() => {
+        init?.signal?.addEventListener("abort", () => { dibatalkan = true; });
+      })) as unknown as typeof fetch;
+
+    void req("/x").catch(() => {});
+    await vi.advanceTimersByTimeAsync(BATAS_WAKTU_MS - 1);
+    expect(dibatalkan).toBe(false);
+  });
+
+  // iOS menolak cepat dengan TypeError("Network request failed") kalau port
+  // tertutup — itu juga harus jadi galat yang bisa diterjemahkan layar.
+  it("menerjemahkan galat jaringan menjadi server_tak_terjangkau", async () => {
+    globalThis.fetch = vi.fn(async () => {
+      throw new TypeError("Network request failed");
+    }) as unknown as typeof fetch;
+    await expect(req("/x")).rejects.toBeInstanceOf(ApiError);
+    await expect(req("/x")).rejects.toMatchObject({ code: "server_tak_terjangkau", status: 0 });
   });
 });
 

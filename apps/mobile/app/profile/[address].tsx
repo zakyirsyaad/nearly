@@ -156,9 +156,8 @@ export default function ProfileScreen() {
     // Endpoint khusus ya/tidak, BUKAN menarik daftar koneksi — daftar itu
     // dibatasi 100 terbaru dan akan salah untuk pasangan yang koneksinya
     // lebih lama dari itu (lihat GET /connected/:a/:b di apps/api).
-    fetch(`${CONFIG.apiUrl}/connected/${signer.address}/${address}`)
-      .then((r) => r.json())
-      .then((j: { connected?: boolean }) => setConnected(!!j.connected))
+    req<{ connected?: boolean }>(`/connected/${signer.address}/${address}`)
+      .then((j) => setConnected(!!j.connected))
       .catch(() => setConnected(false));
   }, [signer, address, isOwnProfile]);
 

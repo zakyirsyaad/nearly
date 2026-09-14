@@ -1,6 +1,21 @@
 import { MAKS_ISI_PESAN } from "@nearly/shared";
 
+/**
+ * Kalimat untuk `server_tak_terjangkau` — dilempar `req` (src/http.ts) saat
+ * server tidak menjawab dalam batas waktu atau jaringan gagal. Satu kalimat
+ * untuk semua domain: masalahnya koneksi, bukan aksi yang sedang dilakukan,
+ * jadi tiap layar tidak perlu mengarang versinya sendiri.
+ */
+export const KALIMAT_SERVER_TAK_TERJANGKAU =
+  "Server Nearly tidak bisa dihubungi. Periksa koneksi internetmu, lalu coba lagi.";
+
+/** Disebar ke setiap peta galat supaya tidak ada yang jatuh ke kalimat umum. */
+export const GALAT_JARINGAN: Record<string, string> = {
+  server_tak_terjangkau: KALIMAT_SERVER_TAK_TERJANGKAU,
+};
+
 const PESAN: Record<string, string> = {
+  ...GALAT_JARINGAN,
   expired: "QR-nya sudah kedaluwarsa. Minta QR baru, lalu pindai lagi.",
   offer_not_found: "QR ini tidak dikenali. Minta dia membuka layar QR lagi.",
   offer_consumed: "QR ini sudah dipakai. Minta QR baru.",
@@ -23,6 +38,7 @@ export function handshakeErrorMessage(code: string, reason?: string): string {
 }
 
 const EVENT_MESSAGES: Record<string, string> = {
+  ...GALAT_JARINGAN,
   not_rsvped: "RSVP dulu untuk bisa check-in di acara ini.",
   already_checked_in: "Kamu sudah check-in di acara ini.",
   already_rsvped: "Kamu sudah RSVP di acara ini.",
@@ -51,6 +67,7 @@ export function eventErrorMessage(code: string, reason?: string): string {
 }
 
 const FEED_MESSAGES: Record<string, string> = {
+  ...GALAT_JARINGAN,
   post_exists: "Unggahan dengan id itu sudah ada. Coba tulis ulang.",
   post_not_found: "Unggahan ini sudah tidak ada.",
   not_author: "Hanya penulisnya yang bisa mengubah unggahan ini.",
@@ -69,6 +86,7 @@ export function feedErrorMessage(code: string): string {
 }
 
 const MEET_MESSAGES: Record<string, string> = {
+  ...GALAT_JARINGAN,
   expired: "Permintaannya sudah kedaluwarsa. Coba lagi.",
   bad_signature: "Tanda tangan tidak cocok. Coba lagi.",
   tandai_diri: "Kamu tidak bisa menandai dirimu sendiri.",
@@ -202,6 +220,7 @@ export function teksKutandaiHadir(jumlah: number | undefined): string | null {
 }
 
 const BLOKIR_MESSAGES: Record<string, string> = {
+  ...GALAT_JARINGAN,
   blokir_diri: "Kamu tidak bisa memblokir dirimu sendiri.",
   bad_signature: "Tanda tangan tidak cocok. Coba lagi.",
   expired: "Permintaannya sudah kedaluwarsa. Coba lagi.",
@@ -226,6 +245,7 @@ export function blokirTombolLabel(sudahDiblokir: boolean, sibuk: boolean): strin
 }
 
 const PESAN_MESSAGES: Record<string, string> = {
+  ...GALAT_JARINGAN,
   tidak_terhubung: "Pesan hanya bisa dikirim ke orang yang pernah kamu temui.",
   // Netral dengan sengaja, sama seperti `terblokir` di MEET_MESSAGES (Ruling R8
   // Fase 4a): benar untuk blokir satu arah, tidak mengatakan siapa memblokir.

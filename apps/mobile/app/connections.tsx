@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Link } from "expo-router";
 import { FlatList, StyleSheet, Text, View } from "react-native";
 import { CONFIG } from "../src/config";
+import { req } from "../src/http";
 import { createDevSigner } from "../src/signer";
 
 type Row = { address: string; txHash: string; at: number };
@@ -14,8 +15,7 @@ export default function Connections() {
   const [rows, setRows] = useState<Row[] | null>(null);
 
   useEffect(() => {
-    fetch(`${CONFIG.apiUrl}/connections/${signer.address}`)
-      .then((r) => r.json())
+    req<{ connections?: Row[] }>(`/connections/${signer.address}`)
       .then((j) => setRows(j.connections ?? []))
       .catch(() => setRows([]));
   }, [signer.address]);

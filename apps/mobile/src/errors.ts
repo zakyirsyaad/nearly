@@ -1,3 +1,5 @@
+import { GALAT_JARINGAN } from "./messages";
+
 /**
  * Kode kegagalan mentah dari server (spec §11.1, vouch-gate.ts dan report.ts di
  * apps/api) TIDAK PERNAH boleh mencapai layar apa adanya — snake_case Inggris
@@ -5,6 +7,7 @@
  * Satu tempat memetakan setiap kode ke kalimat Indonesia yang bisa ditindaklanjuti.
  */
 const PESAN_GAGAL: Record<string, string> = {
+  ...GALAT_JARINGAN,
   quota_exceeded: "Jatah vouch hari ini sudah habis",
   not_connected: "Vouch hanya bisa untuk orang yang sudah pernah bertemu langsung denganmu.",
   already_vouched: "Kamu sudah pernah vouch untuk orang ini.",
