@@ -15,7 +15,7 @@ import {
   bukaBaris, kunciLawan, laporanSiapDikirim, laporkanPercakapan, MAKS_BUKTI_LAPORAN,
   type PesanTerbuka,
 } from "../../../src/pesan/pesan-actions";
-import { blokirErrorMessage, pesanErrorMessage } from "../../../src/messages";
+import { blokirErrorMessage, pesanErrorMessage, petunjukLaporan } from "../../../src/messages";
 
 type PesanSah = Extract<PesanTerbuka, { status: "sah" }>;
 
@@ -92,6 +92,8 @@ export default function LaporPesanScreen() {
     ]);
   }
 
+  const petunjuk = petunjukLaporan(dipilih.size, alasan);
+
   if (masuk === null) return <ActivityIndicator style={s.tengah} />;
 
   return (
@@ -124,6 +126,7 @@ export default function LaporPesanScreen() {
           multiline
           maxLength={1000}
         />
+        {petunjuk && <Text style={s.petunjuk}>{petunjuk}</Text>}
         <Button
           title={sibuk ? "Mengirim…" : "Kirim laporan"}
           disabled={sibuk || !laporanSiapDikirim(dipilih.size, alasan)}
@@ -146,4 +149,5 @@ const s = StyleSheet.create({
   kotak: { fontSize: 18 },
   isi: { flex: 1 },
   input: { borderWidth: 1, borderColor: "#ccc", borderRadius: 8, padding: 8, minHeight: 60 },
+  petunjuk: { color: "#666", fontSize: 13 },
 });

@@ -1,4 +1,5 @@
 import { MAKS_ISI_PESAN } from "@nearly/shared";
+import { MAKS_BUKTI_LAPORAN, MIN_ALASAN_LAPORAN } from "./pesan/pesan-actions";
 
 /**
  * Kalimat untuk `server_tak_terjangkau` — dilempar `req` (src/http.ts) saat
@@ -275,3 +276,21 @@ export function sisaKarakterPesan(isi: string): number {
   return MAKS_ISI_PESAN - isi.length;
 }
 
+
+/**
+ * Syarat laporan yang BELUM terpenuhi, atau `null` kalau siap dikirim — tepat
+ * kebalikan `laporanSiapDikirim`, dari konstanta yang sama.
+ *
+ * Tombol "Kirim laporan" yang abu-abu tanpa penjelasan membuat pengguna
+ * mengira tombolnya rusak: syarat minimal alasan hanya ada di placeholder,
+ * dan placeholder hilang begitu pengguna mulai mengetik.
+ */
+export function petunjukLaporan(jumlahDipilih: number, alasan: string): string | null {
+  const kurang: string[] = [];
+  if (jumlahDipilih < 1) kurang.push("Pilih minimal 1 pesan sebagai bukti.");
+  if (jumlahDipilih > MAKS_BUKTI_LAPORAN) kurang.push(`Maksimal ${MAKS_BUKTI_LAPORAN} pesan sebagai bukti.`);
+  const panjang = alasan.trim().length;
+  if (panjang === 0) kurang.push(`Tulis alasan, minimal ${MIN_ALASAN_LAPORAN} karakter.`);
+  else if (panjang < MIN_ALASAN_LAPORAN) kurang.push(`Alasan kurang ${MIN_ALASAN_LAPORAN - panjang} karakter lagi.`);
+  return kurang.length > 0 ? kurang.join(" ") : null;
+}
