@@ -423,7 +423,7 @@ Di Expo Go kalimat ini milik Expo Go; perubahan berlaku untuk development build 
 - Visibilitas per acara, per orang, atau "terlihat hanya untuk koneksi".
 - Penyaring trust di radar (spec induk sengaja tidak menyaring trust-nol, lihat §7.6 induk).
 - Menghapus atau mengaburkan sel di `connections` dan `checkins` (keputusan #5).
-- Ekspor dan hapus data satu tap (spec induk §11.1 butir 8) — tetap wajib sebelum pengguna publik,
+- Ekspor dan hapus data satu tap (spec induk §14 butir 8) — tetap wajib sebelum pengguna publik,
   tapi di luar fase ini.
 
 ## 10. Batas yang Diakui
