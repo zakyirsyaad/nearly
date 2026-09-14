@@ -8,6 +8,7 @@ import { FEED_TYPES } from "../src/feed";
 import { MEET_TYPES } from "../src/meet";
 import { BLOKIR_TYPES } from "../src/blokir";
 import { PESAN_TYPES } from "../src/pesan";
+import { PROFIL_TYPES } from "../src/profil";
 
 type Field = { name: string; type: string };
 
@@ -26,11 +27,11 @@ function encodeType(nama: string, fields: readonly Field[]): string {
  */
 const SEMUA: Record<string, readonly Field[]> = {
   ...HANDSHAKE_TYPES, ...VOUCH_TYPES, ...EVENT_TYPES, ...FEED_TYPES, ...MEET_TYPES,
-  ...BLOKIR_TYPES, ...PESAN_TYPES,
+  ...BLOKIR_TYPES, ...PESAN_TYPES, ...PROFIL_TYPES,
 };
 
-// 24 sejak Fase 4c: KunciPesan dan DaftarKunciPesan.
-const JUMLAH_TIPE = 24;
+// 25 sejak Fase 4b + 5: AturProfil.
+const JUMLAH_TIPE = 25;
 
 const SOL_DIR = fileURLToPath(new URL("../../contracts/src/", import.meta.url));
 
@@ -46,7 +47,7 @@ describe("typehash seluruh aplikasi", () => {
     const total = Object.keys(HANDSHAKE_TYPES).length + Object.keys(VOUCH_TYPES).length
       + Object.keys(EVENT_TYPES).length + Object.keys(FEED_TYPES).length
       + Object.keys(MEET_TYPES).length + Object.keys(BLOKIR_TYPES).length
-      + Object.keys(PESAN_TYPES).length;
+      + Object.keys(PESAN_TYPES).length + Object.keys(PROFIL_TYPES).length;
     expect(total).toBe(JUMLAH_TIPE);
   });
 
@@ -135,5 +136,22 @@ describe("typehash seluruh aplikasi", () => {
       .toBe("KunciPesan(address who,uint32 versi)");
     expect(encodeType("DaftarKunciPesan", PESAN_TYPES.DaftarKunciPesan))
       .toBe("DaftarKunciPesan(address who,bytes32 kunciEnkripsi,bytes32 kunciTanda,uint64 expiresAt)");
+  });
+
+  // AturProfil TIDAK PERNAH naik on-chain (spec 4b+5 §7.1).
+  it("tidak ada typehash profil di Solidity mana pun", () => {
+    const berkasSol = readdirSync(SOL_DIR).filter((f) => f.endsWith(".sol"));
+    expect(berkasSol.length).toBeGreaterThan(0);
+    for (const berkas of berkasSol) {
+      const sumber = readFileSync(`${SOL_DIR}${berkas}`, "utf8");
+      for (const nama of Object.keys(PROFIL_TYPES)) {
+        expect(sumber).not.toContain(`${nama}(`);
+      }
+    }
+  });
+
+  it("encodeType profil persis seperti spec 4b+5 §7.1", () => {
+    expect(encodeType("AturProfil", PROFIL_TYPES.AturProfil))
+      .toBe("AturProfil(address who,string displayName,string visibilitas,uint64 expiresAt)");
   });
 });

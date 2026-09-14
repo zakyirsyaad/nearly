@@ -12,3 +12,4 @@ export * from "./meet";
 export * from "./blokir";
 export * from "./pesan";
 export * from "./pesan-kripto";
+export * from "./profil";
