@@ -10,6 +10,7 @@ import { feedRoutes } from "./routes/feed";
 import { meetRoutes } from "./routes/meet";
 import { blokirRoutes } from "./routes/blokir";
 import { pesanRoutes } from "./routes/pesan";
+import { grafRoutes } from "./routes/graf";
 import { recomputeTrust } from "./trust/recompute";
 import type {
   GateDeps, TrustStore, VouchStore, ReportStore, AttestorPort, VouchChainPort,
@@ -17,6 +18,7 @@ import type {
   PesanStore, PushPort,
 } from "./ports";
 import type { Address } from "viem";
+import type { GrafStore } from "./ports";
 
 export type TrustDeps = GateDeps & {
   trust: TrustStore;
@@ -35,6 +37,8 @@ export type TrustDeps = GateDeps & {
   blokir: BlokirStore;
   pesan: PesanStore;
   push: PushPort | null;
+  graf: GrafStore;
+  webOrigins: readonly string[];
 };
 
 // Modul-level, dengan sengaja (Task 8): relayer yang sama menandatangani
@@ -109,5 +113,9 @@ export function createApp(deps: TrustDeps) {
   // dihitung ulang. Blokir dari percakapan memakai POST /blokir yang sudah ada,
   // yang juga sengaja tanpa recompute (Ruling R10 Fase 4a).
   app.route("/", pesanRoutes(deps));
+  // Graf publik baca-saja untuk layar /live (spec 6 §4). `onChanged` TIDAK
+  // dipanggil — tidak ada yang ditulis. CORS dipasang DI DALAM grafRoutes dan
+  // hanya untuk /graf/*; rute lain di atas tidak pernah mendapat header CORS.
+  app.route("/", grafRoutes(deps));
   return app;
 }

@@ -143,6 +143,16 @@ function deps(over: { saveSnapshots?: ReturnType<typeof vi.fn> } = {}): TrustDep
       gantiBuktiLaporan: async () => {},
     },
     push: null,
+    // Fase 6: tidak dipakai test handshake, tapi TrustDeps butuh bentuknya.
+    graf: {
+      koneksiSejak: async () => [],
+      acara: async () => null,
+      acaraBeririsan: async () => [],
+      checkInAcara: async () => [],
+      koneksiDalamJendela: async () => [],
+      daftarAcara: async () => [],
+    },
+    webOrigins: [],
   };
 }
 

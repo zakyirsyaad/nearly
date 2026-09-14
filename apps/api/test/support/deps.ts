@@ -173,5 +173,17 @@ export function depsFor(overrides: {
       gantiBuktiLaporan: vi.fn(async () => {}),
     },
     push: null,
+    // Fase 6: rute graf diuji di graf.route.test.ts dengan dunia sendiri, tapi
+    // TrustDeps butuh medan ini supaya createApp bisa dibangun oleh test route
+    // lain. `webOrigins` kosong = CORS mati, sama dengan env tanpa WEB_ORIGINS.
+    graf: {
+      koneksiSejak: vi.fn(async () => []),
+      acara: vi.fn(async () => null),
+      acaraBeririsan: vi.fn(async () => []),
+      checkInAcara: vi.fn(async () => []),
+      koneksiDalamJendela: vi.fn(async () => []),
+      daftarAcara: vi.fn(async () => []),
+    },
+    webOrigins: [],
   };
 }

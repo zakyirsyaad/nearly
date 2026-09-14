@@ -15,6 +15,8 @@ import { createMeetStore } from "./meet-store";
 import { createBlokirStore } from "./blokir-store";
 import { createPesanStore } from "./pesan-store";
 import { createExpoPush } from "./push";
+import { createGrafStore } from "./graf-store";
+import { bacaPort, bacaWebOrigins } from "./server-env";
 
 function required(name: string): string {
   const v = process.env[name];
@@ -92,7 +94,10 @@ const app = createApp({
   blokir: blokirStore,
   pesan: createPesanStore(supabase),
   push: createExpoPush(),
+  graf: createGrafStore(supabase),
+  webOrigins: bacaWebOrigins(process.env.WEB_ORIGINS),
 });
 
-serve({ fetch: app.fetch, port: 8787 });
-console.log("API Nearly berjalan di http://localhost:8787");
+const port = bacaPort(process.env.PORT);
+serve({ fetch: app.fetch, port });
+console.log(`API Nearly berjalan di http://localhost:${port}`);
