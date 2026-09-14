@@ -1,0 +1,29 @@
+# Unit systemd API Nearly (spec 6 §8). Templat — dipasang pemilik project,
+# BUKAN sesi eksekusi. Langkah pasangnya di docs/demo/runbook.md bagian 1.
+#
+# Asumsi runbook: repo di /opt/nearly, pengguna sistem `nearly`, Node 24 dari
+# paket distro/NodeSource di /usr/bin/node, berkas env di /etc/nearly/api.env
+# (pemilik root, grup nearly, mode 640). Nilai rahasia TIDAK PERNAH masuk berkas ini.
+
+[Unit]
+Description=Nearly API (Hono)
+After=network-online.target
+Wants=network-online.target
+# Env yang salah membuat proses langsung keluar; jangan biarkan systemd
+# berhenti mencoba setelah beberapa kegagalan cepat berturut-turut.
+StartLimitIntervalSec=0
+
+[Service]
+Type=simple
+User=nearly
+Group=nearly
+WorkingDirectory=/opt/nearly/apps/api
+ExecStart=/usr/bin/node --env-file=/etc/nearly/api.env --import=tsx src/index.ts
+Restart=always
+RestartSec=3
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+
+[Install]
+WantedBy=multi-user.target

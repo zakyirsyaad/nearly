@@ -1,0 +1,10 @@
+# Caddy di depan API Nearly (spec 6 §8). HTTPS otomatis lewat Let's Encrypt
+# begitu DNS api.<domain> sudah menunjuk ke VPS dan port 80/443 terbuka.
+#
+# NEARLY_API_HOST diisi lewat env layanan Caddy, bukan ditulis di sini —
+# langkahnya di docs/demo/runbook.md bagian 1. Contoh nilainya: api.<domain>.
+
+{$NEARLY_API_HOST} {
+	encode gzip
+	reverse_proxy localhost:8787
+}
