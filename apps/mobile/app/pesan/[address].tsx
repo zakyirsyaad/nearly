@@ -1,5 +1,5 @@
 import { useCallback, useMemo, useRef, useState } from "react";
-import { Stack, router, useFocusEffect, useLocalSearchParams } from "expo-router";
+import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
 import {
   ActivityIndicator, Alert, Button, FlatList, StyleSheet, Text, TextInput, View,
 } from "react-native";
@@ -7,6 +7,7 @@ import type { Address } from "viem";
 import { MAKS_ISI_PESAN } from "@nearly/shared";
 import { CONFIG } from "../../src/config";
 import { createDevSigner } from "../../src/signer";
+import { HindariKeyboard } from "../../src/hindari-keyboard";
 import { ApiError } from "../../src/http";
 import { aksiBlokir } from "../../src/blokir-actions";
 import { sesiPesan } from "../../src/pesan/sesi";
@@ -103,44 +104,49 @@ export default function PercakapanScreen() {
   if (daftar === null) return <ActivityIndicator style={s.tengah} />;
 
   return (
-    <View style={s.root}>
-      <Stack.Screen options={{ title: "Pesan" }} />
-      <Text style={s.alamat}>{lawan}</Text>
-      <View style={s.aksi}>
-        <Button title="Lapor" onPress={() => router.push(`/pesan/lapor/${lawan}`)} />
-        <Button title="Blokir" color="#b00" onPress={blokir} />
-      </View>
-      {galat && <Text style={s.galat}>{galat}</Text>}
-      <FlatList
-        inverted
-        style={s.daftar}
-        data={daftar}
-        keyExtractor={(p) => p.id}
-        renderItem={({ item }) => (
-          <View style={[s.gelembung, item.dariAku ? s.milikku : s.milikLawan]}>
-            <Text style={item.status === "sah" ? s.teks : s.tidakSah}>
-              {item.status === "sah" ? item.isi : "Pesan tidak bisa diverifikasi"}
-            </Text>
-          </View>
-        )}
-      />
-      <View style={s.tulis}>
-        <TextInput
-          style={s.input}
-          value={isi}
-          onChangeText={setIsi}
-          placeholder="Tulis pesan"
-          multiline
-          maxLength={MAKS_ISI_PESAN}
+    <HindariKeyboard>
+      <View style={s.root}>
+        <Text style={s.alamat}>{lawan}</Text>
+        <View style={s.aksi}>
+          <Button title="Lapor" onPress={() => router.push(`/pesan/lapor/${lawan}`)} />
+          <Button title="Blokir" color="#b00" onPress={blokir} />
+        </View>
+        {galat && <Text style={s.galat}>{galat}</Text>}
+        <FlatList
+          inverted
+          style={s.daftar}
+          // Isian multiline: return menyisipkan baris, bukan menutup keyboard.
+          // Menggeser daftar adalah jalan keluarnya.
+          keyboardDismissMode="on-drag"
+          keyboardShouldPersistTaps="handled"
+          data={daftar}
+          keyExtractor={(p) => p.id}
+          renderItem={({ item }) => (
+            <View style={[s.gelembung, item.dariAku ? s.milikku : s.milikLawan]}>
+              <Text style={item.status === "sah" ? s.teks : s.tidakSah}>
+                {item.status === "sah" ? item.isi : "Pesan tidak bisa diverifikasi"}
+              </Text>
+            </View>
+          )}
         />
-        <Button
-          title={labelKirimPesan(sibuk)}
-          disabled={sibuk || isi.trim().length === 0 || sisa < 0}
-          onPress={() => { void kirim(); }}
-        />
+        <View style={s.tulis}>
+          <TextInput
+            style={s.input}
+            value={isi}
+            onChangeText={setIsi}
+            placeholder="Tulis pesan"
+            multiline
+            maxLength={MAKS_ISI_PESAN}
+          />
+          <Button
+            title={labelKirimPesan(sibuk)}
+            disabled={sibuk || isi.trim().length === 0 || sisa < 0}
+            onPress={() => { void kirim(); }}
+          />
+        </View>
+        {sisa < 100 && <Text style={s.sisa}>{sisa} karakter tersisa</Text>}
       </View>
-      {sisa < 100 && <Text style={s.sisa}>{sisa} karakter tersisa</Text>}
-    </View>
+    </HindariKeyboard>
   );
 }
 

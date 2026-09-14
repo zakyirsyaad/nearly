@@ -24,5 +24,15 @@ export default function RootLayout() {
     return () => langganan.remove();
   }, []);
 
-  return <Stack screenOptions={{ headerTitleStyle: { fontWeight: "600" } }} />;
+  // Judul didaftarkan di sini, bukan lewat <Stack.Screen> di dalam layar:
+  // yang di dalam layar baru berlaku setelah layar selesai memuat, jadi selama
+  // spinner tampil header (dan tombol kembali layar berikutnya) memakai nama
+  // rute mentah seperti "pesan/index".
+  return (
+    <Stack screenOptions={{ headerTitleStyle: { fontWeight: "600" } }}>
+      <Stack.Screen name="pesan/index" options={{ title: "Pesan" }} />
+      <Stack.Screen name="pesan/[address]" options={{ title: "Percakapan" }} />
+      <Stack.Screen name="pesan/lapor/[address]" options={{ title: "Lapor" }} />
+    </Stack>
+  );
 }

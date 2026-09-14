@@ -6,6 +6,7 @@ import {
 import type { Address } from "viem";
 import { CONFIG } from "../../../src/config";
 import { createDevSigner } from "../../../src/signer";
+import { HindariKeyboard } from "../../../src/hindari-keyboard";
 import { ApiError } from "../../../src/http";
 import { aksiBlokir } from "../../../src/blokir-actions";
 import { sesiPesan } from "../../../src/pesan/sesi";
@@ -94,38 +95,42 @@ export default function LaporPesanScreen() {
   if (masuk === null) return <ActivityIndicator style={s.tengah} />;
 
   return (
-    <View style={s.root}>
-      <Text style={s.peringatan}>
-        Pesan yang kamu pilih akan bisa dibaca peninjau. Pesan lain tetap terenkripsi.
-      </Text>
-      {galat && <Text style={s.galat}>{galat}</Text>}
-      <Text style={s.label}>Pilih 1–{MAKS_BUKTI_LAPORAN} pesan sebagai bukti</Text>
-      <FlatList
-        style={s.daftar}
-        data={masuk}
-        keyExtractor={(p) => p.id}
-        ListEmptyComponent={galat ? null : <Text style={s.kosong}>Tidak ada pesan masuk yang bisa dijadikan bukti.</Text>}
-        renderItem={({ item }) => (
-          <Pressable onPress={() => alih(item.id)} style={s.baris}>
-            <Text style={s.kotak}>{dipilih.has(item.id) ? "☑" : "☐"}</Text>
-            <Text style={s.isi}>{item.isi}</Text>
-          </Pressable>
-        )}
-      />
-      <TextInput
-        style={s.input}
-        value={alasan}
-        onChangeText={setAlasan}
-        placeholder="Alasan (minimal 10 karakter)"
-        multiline
-        maxLength={1000}
-      />
-      <Button
-        title={sibuk ? "Mengirim…" : "Kirim laporan"}
-        disabled={sibuk || !laporanSiapDikirim(dipilih.size, alasan)}
-        onPress={() => { void kirim(); }}
-      />
-    </View>
+    <HindariKeyboard>
+      <View style={s.root}>
+        <Text style={s.peringatan}>
+          Pesan yang kamu pilih akan bisa dibaca peninjau. Pesan lain tetap terenkripsi.
+        </Text>
+        {galat && <Text style={s.galat}>{galat}</Text>}
+        <Text style={s.label}>Pilih 1–{MAKS_BUKTI_LAPORAN} pesan sebagai bukti</Text>
+        <FlatList
+          style={s.daftar}
+          keyboardDismissMode="on-drag"
+          keyboardShouldPersistTaps="handled"
+          data={masuk}
+          keyExtractor={(p) => p.id}
+          ListEmptyComponent={galat ? null : <Text style={s.kosong}>Tidak ada pesan masuk yang bisa dijadikan bukti.</Text>}
+          renderItem={({ item }) => (
+            <Pressable onPress={() => alih(item.id)} style={s.baris}>
+              <Text style={s.kotak}>{dipilih.has(item.id) ? "☑" : "☐"}</Text>
+              <Text style={s.isi}>{item.isi}</Text>
+            </Pressable>
+          )}
+        />
+        <TextInput
+          style={s.input}
+          value={alasan}
+          onChangeText={setAlasan}
+          placeholder="Alasan (minimal 10 karakter)"
+          multiline
+          maxLength={1000}
+        />
+        <Button
+          title={sibuk ? "Mengirim…" : "Kirim laporan"}
+          disabled={sibuk || !laporanSiapDikirim(dipilih.size, alasan)}
+          onPress={() => { void kirim(); }}
+        />
+      </View>
+    </HindariKeyboard>
   );
 }
 
