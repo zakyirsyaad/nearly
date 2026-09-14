@@ -121,8 +121,22 @@ live }] }`. Satu-satunya tujuannya supaya operator proyektor tidak perlu menyali
 ```
 
 **Aturan "salaman di acara ini" wajib identik dengan aturan trust**
-(`eventOccasionFor`, `apps/api/src/trust/load-graph.ts:120`): sebuah koneksi termasuk acara E bila
-**kedua** alamat sudah check-in di E **dan** waktu koneksi berada di jendela `[starts_at, ends_at]` E.
+(`eventOccasionFor`, `apps/api/src/trust/load-graph.ts:120`). Sebuah koneksi termasuk acara E bila
+ketiga syarat ini benar:
+
+1. **kedua** alamat sudah check-in di E;
+2. waktu koneksi berada di jendela `[starts_at, ends_at]` E;
+3. di antara **semua** acara yang memenuhi syarat 1 dan 2 untuk koneksi itu, `event_id` E adalah yang
+   **terkecil secara leksikografis**.
+
+Syarat 3 adalah pemecah seri trust untuk **acara yang tumpang tindih**: kalau dua orang sama-sama
+check-in di dua acara yang jendelanya beririsan dan bersalaman di irisan itu, trust memberi salaman
+tersebut ke **satu** acara saja — aturannya sewenang-wenang tapi deterministik, supaya skor sama
+setiap kali dihitung ulang (`load-graph.ts:115-118`). Graf acara mengikutinya, sehingga **salaman itu
+hanya tampil di layar acara ber-`event_id` terkecil** dan tidak muncul di layar acara yang lain. Untuk
+hackathon satu acara ini tidak berpengaruh; runbook (§8 butir 4) meminta acara uji tidak dibuat
+dengan jendela yang beririsan dengan acara utama.
+
 Tes konsistensi (§10) menyusun data yang sama, menjalankan `rowsToGraph` yang sudah diekspor, dan
 membuktikan himpunan sisi graf acara sama persis dengan koneksi yang diberi occasion acara E oleh
 trust. Aturan dua tempat yang berselisih akan membuat layar proyektor dan skor trust menceritakan
@@ -292,8 +306,9 @@ Isi runbook:
    Wi-Fi Mac.
 4. **H-1** — isi saldo relayer dari faucet BSC testnet; siapkan CSV panitia & juri; `seed-inti.ts` uji
    coba lalu `--jalankan`; pastikan panitia bertier **Inti** dan `ScoreUpdated` terlihat di BscScan;
-   buat acara uji lewat aplikasi; uji check-in dan satu salaman; buka `/live?acara=…` di laptop
-   proyektor.
+   buat acara uji lewat aplikasi dengan jendela waktu yang **tidak beririsan** dengan acara hackathon
+   (§4.3 syarat 3 — salaman di irisan hanya tampil di satu layar); uji check-in dan satu salaman; buka
+   `/live?acara=…` di laptop proyektor.
 5. **Hari-H** — buat acara hackathon, host menampilkan QR check-in di pintu, layar `/live?acara=…`
    layar penuh; daftar periksa bila graf tidak bergerak (API hidup? `/graf/acara/:id` menjawab? relayer
    masih bersaldo?).
@@ -321,7 +336,8 @@ Runbook menulis peringatan eksplisit: uji lapangan di meetup nyata sebelum hari-
 - **Tes konsistensi aturan acara:** himpunan sisi `GET /graf/acara/:id` sama dengan koneksi yang diberi
   occasion acara itu oleh `rowsToGraph`, untuk data berisi: salaman di dalam jendela oleh dua orang
   yang check-in (masuk), salaman di luar jendela (tidak), salaman dengan satu pihak belum check-in
-  (tidak), dan dua acara tumpang tindih.
+  (tidak), dan dua acara tumpang tindih yang sama-sama dihadiri — salaman di irisan jendela masuk ke
+  acara ber-`event_id` terkecil dan **tidak** masuk ke acara yang lain (§4.3 syarat 3).
 - **Tes nama kunci JSON:** tidak ada `cell`, `center_cell`, `nonce`, `score`, `ratio`,
   `operator_cluster`, atau kunci terkait blokir di respons mana pun.
 - Sisi antara dua orang yang saling memblokir tetap tampil **tanpa penanda apa pun**.

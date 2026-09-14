@@ -86,7 +86,7 @@ Versi terbaru saat diperiksa (sengaja TIDAK dipilih): vite 8.3.0, @vitejs/plugin
 
 ## Ruling — keputusan rencana di luar teks spec
 
-- **R-A. Aturan acara menyertakan pemecah seri trust.** Spec §4.3 menulis dua syarat (keduanya check-in di E, waktu di jendela E). `eventOccasionFor` (`apps/api/src/trust/load-graph.ts:120`) punya syarat KETIGA: bila lebih dari satu acara memenuhi, dipilih `event_id` terkecil secara leksikografis. Tanpa syarat itu, tes konsistensi kasus "dua acara tumpang tindih" yang diwajibkan spec §10 tidak mungkin hijau — salaman di irisan waktu tampil di dua layar, sementara trust memberinya ke satu acara. Rencana mengikuti trust persis. Konsekuensi yang harus diketahui pemilik project: salaman di irisan dua acara yang dihadiri keduanya hanya tampil di layar acara ber-id terkecil.
+- **R-A. Aturan acara menyertakan pemecah seri trust.** (Spec §4.3 sudah diperbarui pada 2026-09-14 dan kini menulis ketiga syarat; Ruling ini dipertahankan sebagai catatan asal-usulnya.) Versi awal spec §4.3 menulis dua syarat (keduanya check-in di E, waktu di jendela E). `eventOccasionFor` (`apps/api/src/trust/load-graph.ts:120`) punya syarat KETIGA: bila lebih dari satu acara memenuhi, dipilih `event_id` terkecil secara leksikografis. Tanpa syarat itu, tes konsistensi kasus "dua acara tumpang tindih" yang diwajibkan spec §10 tidak mungkin hijau — salaman di irisan waktu tampil di dua layar, sementara trust memberinya ke satu acara. Rencana mengikuti trust persis. Konsekuensi yang harus diketahui pemilik project: salaman di irisan dua acara yang dihadiri keduanya hanya tampil di layar acara ber-id terkecil.
 - **R-B. Nama tampilan dan tier diambil lewat `MeetStore.profilRingkas`** (`apps/api/src/meet-store.ts:212`), yang sudah membaca `profiles.display_name` dan `trust_snapshots.tier` per kelompok 100 alamat. `GrafDeps.meet` = `Pick<MeetStore, "profilRingkas">`. Kueri ketiga yang sama di `graf-store.ts` hanya menduplikasi. Alamat tanpa snapshot mendapat tier 0 → `Baru`, sumber label tetap `TIER_LABELS`.
 - **R-C. CORS ditulis sendiri (`apps/api/src/cors-graf.ts`), bukan `hono/cors`.** Hono 4.13.5 yang terpasang sudah menolak origin tak terdaftar untuk permintaan biasa, tetapi untuk preflight `OPTIONS` dari origin tak terdaftar ia tetap memasang `Access-Control-Allow-Methods` — spec §4.6 meminta origin lain mendapat nol header CORS. Rentang `hono: ^4.6.0` juga mencakup versi lama yang mengembalikan origin pertama di daftar untuk origin tak dikenal. Middleware sendiri ±30 baris, terbaca utuh.
 - **R-D. Impor dari `apps/api/src/trust/**` sedikit melebihi daftar spec §11** — tanpa mengubah satu baris pun: `graf-store.ts` mengimpor `fetchAllPages` dan `PAGE_SIZE` dari `trust/store.ts` (pembaca berhalaman yang sudah menutup jebakan pemotongan 1000 baris PostgREST), dan tes mengimpor tipe `GraphRows` serta `eventOccasionIdOf` dari `trust/load-graph.ts` selain `rowsToGraph`.
@@ -4565,7 +4565,9 @@ sudo -u nearly node --env-file=/etc/nearly/api.env --import=tsx tools/seed-inti.
 5. **Periksa hasil:** panitia bertier **Inti** di aplikasi; event `ScoreUpdated` terlihat di BscScan
    testnet pada kontrak `TrustAttestor`.
 6. **Acara uji.** Buat acara lewat aplikasi dengan waktu mulai **sebelum sekarang** — pemilih acara
-   di `/live` hanya menampilkan acara yang sudah mulai (atau berakhir ≤ 7 hari lalu).
+   di `/live` hanya menampilkan acara yang sudah mulai (atau berakhir ≤ 7 hari lalu). Jendela waktunya
+   **tidak boleh beririsan** dengan acara hackathon: salaman di irisan dua acara yang sama-sama
+   dihadiri hanya tampil di layar acara ber-`event_id` terkecil (spec §4.3 syarat 3).
 7. **Check-in dan satu salaman** dengan dua HP di dalam venue uji.
 8. **Laptop proyektor:** buka `https://<vercel-domain>/live?acara=<eventId>`, pastikan sisi baru
    menyala dalam ≤ 6 detik setelah salaman, lalu tekan **Fullscreen**.
