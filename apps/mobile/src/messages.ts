@@ -1,5 +1,6 @@
 import { MAKS_ISI_PESAN } from "@nearly/shared";
 import { MAKS_BUKTI_LAPORAN, MIN_ALASAN_LAPORAN } from "./pesan/pesan-actions";
+import { MAKS_NAMA_TAMPILAN, panjangNamaTampilan, type Visibilitas } from "@nearly/shared";
 
 /**
  * Kalimat untuk `server_tak_terjangkau` — dilempar `req` (src/http.ts) saat
@@ -293,4 +294,117 @@ export function petunjukLaporan(jumlahDipilih: number, alasan: string): string |
   if (panjang === 0) kurang.push(`Tulis alasan, minimal ${MIN_ALASAN_LAPORAN} karakter.`);
   else if (panjang < MIN_ALASAN_LAPORAN) kurang.push(`Alasan kurang ${MIN_ALASAN_LAPORAN - panjang} karakter lagi.`);
   return kurang.length > 0 ? kurang.join(" ") : null;
+}
+
+export type KeadaanRadar =
+  | "tersembunyi"
+  | "di_luar_area"
+  | "belum_check_in"
+  | "tidak_berlangsung"
+  | "tidak_ditemukan"
+  | "kosong"
+  | "izin_lokasi"
+  | "sesi_tidak_sah"
+  | "server_tak_terjangkau"
+  | "gagal";
+
+const KALIMAT_RADAR: Record<KeadaanRadar, string> = {
+  tersembunyi: "Kamu sedang Tersembunyi, jadi radar tidak bisa dibuka.",
+  di_luar_area: "Kamu terlihat berada di luar area acara.",
+  belum_check_in: "Check-in dulu untuk membuka radar.",
+  tidak_berlangsung: "Radar hanya aktif selama acara berlangsung.",
+  tidak_ditemukan: "Acara ini tidak ditemukan.",
+  kosong: "Belum ada orang lain yang terlihat di sini.",
+  izin_lokasi: "Radar butuh izin lokasi saat aplikasi dibuka.",
+  sesi_tidak_sah: "Sesi tidak sah. Tutup lalu buka lagi layar ini.",
+  server_tak_terjangkau: KALIMAT_SERVER_TAK_TERJANGKAU,
+  gagal: "Radar gagal dimuat. Coba lagi sebentar.",
+};
+
+export function kalimatRadar(keadaan: KeadaanRadar): string {
+  return KALIMAT_RADAR[keadaan];
+}
+
+export function keadaanRadarDariDetak(
+  jawaban: { hadir: true } | { hadir: false; alasan: "tersembunyi" | "di_luar_area" },
+): KeadaanRadar | null {
+  if (jawaban.hadir) return null;
+  return jawaban.alasan === "tersembunyi" ? "tersembunyi" : "di_luar_area";
+}
+
+export function keadaanRadarDariKode(code: string): KeadaanRadar | null {
+  switch (code) {
+    case "terlalu_cepat":
+      return null;
+    case "tersembunyi":
+      return "tersembunyi";
+    case "belum_hadir":
+      return "di_luar_area";
+    case "belum_check_in":
+      return "belum_check_in";
+    case "event_tidak_berlangsung":
+      return "tidak_berlangsung";
+    case "event_not_found":
+      return "tidak_ditemukan";
+    case "butuh_autentikasi":
+      return "sesi_tidak_sah";
+    case "server_tak_terjangkau":
+      return "server_tak_terjangkau";
+    default:
+      return "gagal";
+  }
+}
+
+export function lencanaKartuRadar(k: {
+  pernahBertemu: boolean;
+  salingInginBertemu: boolean;
+}): string[] {
+  const lencana: string[] = [];
+  if (k.salingInginBertemu) lencana.push("Saling ingin bertemu");
+  if (k.pernahBertemu) lencana.push("Pernah bertemu");
+  return lencana;
+}
+
+export function namaKartuRadar(displayName: string): string {
+  return displayName.trim() || "Tanpa nama";
+}
+
+export function alamatSingkat(address: string): string {
+  return address.length <= 12 ? address : `${address.slice(0, 6)}…${address.slice(-4)}`;
+}
+
+export function sisaKarakterNama(nama: string): number {
+  return MAKS_NAMA_TAMPILAN - panjangNamaTampilan(nama);
+}
+
+export function kalimatVisibilitas(v: Visibilitas): string {
+  return v === "terlihat"
+    ? "Orang lain di acara yang sama bisa melihatmu di radar, dan kamu bisa membuka radar."
+    : "Kamu tidak muncul di radar dan tidak memicu notifikasi kedekatan — tapi kamu juga tidak bisa membuka radar.";
+}
+
+export const KALIMAT_BATAS_TERSEMBUNYI =
+  "Tersembunyi tidak menyembunyikan salaman dan check-in: keduanya tetap tercatat publik on-chain.";
+
+export function pesanNamaTidakSah(alasan: "terlalu_panjang" | "karakter_terlarang"): string {
+  return alasan === "terlalu_panjang"
+    ? `Nama paling panjang ${MAKS_NAMA_TAMPILAN} karakter.`
+    : "Nama memuat karakter tak terlihat atau pengatur arah teks. Hapus karakter itu lalu coba lagi.";
+}
+
+const PROFIL_MESSAGES: Record<string, string> = {
+  ...GALAT_JARINGAN,
+  nama_tidak_sah: "Nama tidak sah. Periksa panjang dan karakternya.",
+  expired: "Permintaannya sudah kedaluwarsa. Coba lagi.",
+  bad_signature: "Tanda tangan tidak cocok. Coba lagi.",
+  butuh_autentikasi: "Sesi tidak sah. Tutup lalu buka lagi layar ini.",
+  invalid_body: "Ada isian yang belum benar.",
+};
+
+export function profilErrorMessage(code: string): string {
+  return PROFIL_MESSAGES[code] ?? "Gagal. Coba lagi sebentar.";
+}
+
+export function labelSimpanProfil(sibuk: boolean): string {
+  return sibuk ? "Menyimpan…" : "Simpan";
 }

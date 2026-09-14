@@ -15,3 +15,24 @@ describe("ruteDariNotifikasi", () => {
     expect(ruteDariNotifikasi(undefined)).toBeNull();
   });
 });
+
+describe("ruteDariNotifikasi — radar (spec 4b+5 §8.3)", () => {
+  const EVENT = `0x${"e1".repeat(32)}`;
+
+  it("jenis radar dengan eventId sah membuka radar acara itu", () => {
+    expect(ruteDariNotifikasi({ jenis: "radar", eventId: EVENT })).toBe(`/radar/${EVENT}`);
+  });
+
+  it("eventId berhuruf besar dinormalkan ke huruf kecil", () => {
+    expect(
+      ruteDariNotifikasi({ jenis: "radar", eventId: EVENT.toUpperCase().replace("0X", "0x") }),
+    ).toBe(`/radar/${EVENT}`);
+  });
+
+  it("radar tanpa eventId sah tidak membuka apa pun", () => {
+    for (const eventId of [undefined, null, "", "0x123", `${EVENT}00`, "../pesan", 42]) {
+      expect(ruteDariNotifikasi({ jenis: "radar", eventId })).toBeNull();
+    }
+    expect(ruteDariNotifikasi({ jenis: "radar" })).toBeNull();
+  });
+});
