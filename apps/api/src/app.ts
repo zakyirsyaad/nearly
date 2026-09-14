@@ -10,12 +10,15 @@ import { feedRoutes } from "./routes/feed";
 import { meetRoutes } from "./routes/meet";
 import { blokirRoutes } from "./routes/blokir";
 import { pesanRoutes } from "./routes/pesan";
+import { radarRoutes } from "./routes/radar";
+import { profilRoutes } from "./routes/profil";
 import { recomputeTrust } from "./trust/recompute";
 import type {
   GateDeps, TrustStore, VouchStore, ReportStore, AttestorPort, VouchChainPort,
   EventStore, AttendanceChainPort, FeedStore, GreenfieldPort, MeetStore, BlokirStore,
   PesanStore, PushPort,
 } from "./ports";
+import type { RadarStore, ProfilSayaStore } from "./ports";
 import type { Address } from "viem";
 
 export type TrustDeps = GateDeps & {
@@ -35,6 +38,8 @@ export type TrustDeps = GateDeps & {
   blokir: BlokirStore;
   pesan: PesanStore;
   push: PushPort | null;
+  radar: RadarStore;
+  profilSaya: ProfilSayaStore;
 };
 
 // Modul-level, dengan sengaja (Task 8): relayer yang sama menandatangani
@@ -109,5 +114,9 @@ export function createApp(deps: TrustDeps) {
   // dihitung ulang. Blokir dari percakapan memakai POST /blokir yang sudah ada,
   // yang juga sengaja tanpa recompute (Ruling R10 Fase 4a).
   app.route("/", pesanRoutes(deps));
+  // `onChanged` TIDAK dipanggil dari rute radar dan profil — hadir di acara dan
+  // mengganti nama bukan bertemu, jadi graf pertemuan tidak berubah.
+  app.route("/", radarRoutes(deps));
+  app.route("/", profilRoutes(deps));
   return app;
 }

@@ -143,6 +143,23 @@ function deps(over: { saveSnapshots?: ReturnType<typeof vi.fn> } = {}): TrustDep
       gantiBuktiLaporan: async () => {},
     },
     push: null,
+    // Stub Fase 4b + 5: createApp mendaftarkan radarRoutes dan profilRoutes.
+    radar: {
+      ambilKehadiran: async () => null,
+      simpanKehadiran: async () => {},
+      hapusKehadiran: async () => {},
+      hapusSemuaKehadiran: async () => {},
+      hadirSejak: async () => [],
+      terhubungDengan: async () => new Set<string>(),
+      hitungNotifKedekatan: async () => 0,
+      sisipNotifKedekatan: async () => true,
+      sapuLokasi: async () => ({ kehadiran: 0, notifKedekatan: 0, offerSalaman: 0, offerCheckIn: 0 }),
+    },
+    profilSaya: {
+      profilSaya: async () => ({ displayName: "", visibilitas: "terlihat" as const }),
+      aturProfil: async () => {},
+      visibilitasBanyak: async () => new Map(),
+    },
   };
 }
 

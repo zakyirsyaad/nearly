@@ -15,6 +15,9 @@ import { createMeetStore } from "./meet-store";
 import { createBlokirStore } from "./blokir-store";
 import { createPesanStore } from "./pesan-store";
 import { createExpoPush } from "./push";
+import { createRadarStore } from "./radar-store";
+import { createProfilSayaStore } from "./profil-store";
+import { sapuLokasiAman } from "./penyapu-lokasi";
 
 function required(name: string): string {
   const v = process.env[name];
@@ -92,7 +95,13 @@ const app = createApp({
   blokir: blokirStore,
   pesan: createPesanStore(supabase),
   push: createExpoPush(),
+  radar: createRadarStore(supabase),
+  profilSaya: createProfilSayaStore(supabase),
 });
 
 serve({ fetch: app.fetch, port: 8787 });
 console.log("API Nearly berjalan di http://localhost:8787");
+
+// Fase 4b + 5 (spec §4.5, R3): sapuan lokasi saat API mulai. Tanpa await dan
+// tidak pernah melempar; rute detak dan tools/sapu-lokasi.ts menyusul.
+void sapuLokasiAman(createRadarStore(supabase), Date.now());

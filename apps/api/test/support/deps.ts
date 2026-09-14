@@ -173,5 +173,23 @@ export function depsFor(overrides: {
       gantiBuktiLaporan: vi.fn(async () => {}),
     },
     push: null,
+    // Fase 4b + 5: rute radar dan profil diuji lewat dunia-radar.ts, tapi
+    // TrustDeps butuh medan ini supaya createApp bisa dibangun.
+    radar: {
+      ambilKehadiran: vi.fn(async () => null),
+      simpanKehadiran: vi.fn(async () => {}),
+      hapusKehadiran: vi.fn(async () => {}),
+      hapusSemuaKehadiran: vi.fn(async () => {}),
+      hadirSejak: vi.fn(async () => []),
+      terhubungDengan: vi.fn(async () => new Set<string>()),
+      hitungNotifKedekatan: vi.fn(async () => 0),
+      sisipNotifKedekatan: vi.fn(async () => true),
+      sapuLokasi: vi.fn(async () => ({ kehadiran: 0, notifKedekatan: 0, offerSalaman: 0, offerCheckIn: 0 })),
+    },
+    profilSaya: {
+      profilSaya: vi.fn(async () => ({ displayName: "", visibilitas: "terlihat" as const })),
+      aturProfil: vi.fn(async () => {}),
+      visibilitasBanyak: vi.fn(async () => new Map()),
+    },
   };
 }
