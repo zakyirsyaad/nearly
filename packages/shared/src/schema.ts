@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { GEOHASH_PRECISION } from "./geohash";
 import { MAKS_ISI_PESAN } from "./pesan-kripto";
+import { VISIBILITAS } from "./profil";
 
 const address = z.string().regex(/^0x[0-9a-fA-F]{40}$/);
 const bytes32 = z.string().regex(/^0x[0-9a-fA-F]{64}$/);
@@ -312,5 +313,25 @@ export const LaporanPesanRequestSchema = z.object({
     dikirimMs: z.number().int().nonnegative(),
     tanda: z.string().regex(/^0x[0-9a-f]{128}$/),
   })).min(1).max(5),
+});
+
+// ── Fase 4b + 5: radar dan profil ───────────────────────────────────────────
+
+/** Badan `POST /radar/:eventId/detak`. Hanya sel geohash7 — tidak pernah koordinat. */
+export const DetakRequestSchema = z.object({ cell });
+
+/**
+ * Badan `POST /profil`. `displayName` hanya dibatasi panjang MENTAH di sini,
+ * sebagai penahan badan raksasa. Aturan nama yang sebenarnya (32 code point,
+ * tanpa Cc/Cf) ditegakkan gerbang lewat `periksaNamaTampilan`, SETELAH tanda
+ * tangan — kalau skema ikut menolaknya, 400 `nama_tidak_sah` tidak pernah
+ * terjangkau dan urutan gerbang spec 4b+5 §7.2 berbohong.
+ */
+export const AturProfilRequestSchema = z.object({
+  who: address,
+  displayName: z.string().max(256),
+  visibilitas: z.enum(VISIBILITAS),
+  expiresAt: unixSeconds,
+  sig: signature,
 });
 
