@@ -386,12 +386,17 @@ nearly/
 ├── apps/
 │   ├── mobile/          # Expo (React Native) — aplikasi utama
 │   ├── api/             # Hono di Node — backend off-chain
-│   └── web/             # Next.js — landing + halaman demo juri (visualisasi graf live)
+│   └── web/             # Vite + React — landing + layar /live (visualisasi graf live)
 └── packages/
     ├── contracts/       # Foundry — Solidity di opBNB
     ├── trust/           # Perhitungan Trust (murni, teruji)
     └── shared/          # Tipe + skema Zod bersama
 ```
+
+**Amandemen Fase 6 (2026-09-14):** `apps/web` memakai **Vite + React + TypeScript, bukan Next.js**.
+Landing page dan layar graf cukup berupa berkas statis yang memanggil API; tidak ada data yang harus
+dirender di server, dan Vite menghasilkan satu folder statis untuk Vercel. Alasan lengkap: spec
+`2026-09-14-nearly-fase-6-demo-design.md` R1.
 
 ### 10.1 Mobile
 
@@ -459,6 +464,15 @@ checkins(event_id, address, geohash7, checked_in_at, tx_hash)  -- hanya di dalam
 trust_snapshots(address, score, tier, connections, events, cities, computed_at)
 ```
 
+### 10.5 Hosting (Fase 6)
+
+- **API** berjalan di **VPS** sebagai layanan systemd (`deploy/nearly-api.service`), di belakang
+  **Caddy** yang menyediakan HTTPS otomatis untuk `api.<domain>` (`deploy/Caddyfile`).
+- **Web** (`apps/web`) di **Vercel** sebagai situs statis; alamat API lewat `VITE_API_URL`.
+- **CORS hanya untuk `/graf/*`**, terbatas pada origin di env `WEB_ORIGINS`. Rute lain — salaman,
+  pesan, feed, dan seterusnya — tidak pernah mendapat header CORS.
+- Langkah lengkap: `docs/demo/runbook.md` (spec Fase 6 §8).
+
 ## 11. Fase Pembangunan
 
 Tujuh fase. Ruang lingkup bertambah setelah fitur Event masuk, dan keputusannya adalah
@@ -518,10 +532,19 @@ page, video pitch.
 
 *Selesai = graf tumbuh hidup di layar saat orang-orang bersalaman di ruangan.*
 
+**Wujud Fase 6 (spec `2026-09-14-nearly-fase-6-demo-design.md`):** "event mode" adalah layar
+`/live?acara=<eventId>` di laptop proyektor — tanpa perubahan aplikasi mobile; seed trusted core
+lewat `apps/api/tools/seed-inti.ts`; video pitch dibuat di luar kode (kerangkanya di
+`docs/demo/runbook.md`).
+
 **Catatan urutan (2026-09-07).** Fase 3 dipecah menjadi 3a (event & kehadiran, tuntas),
 3b (feed, dokumen `2026-09-07-nearly-fase-3b-feed-design.md`), dan 3c ("ingin bertemu",
 menyusul). Feed didahulukan dari "ingin bertemu" karena penanda itu tidak punya permukaan
 untuk hidup sampai feed ada.
+
+**Catatan (2026-09-14).** Fase 6 tuntas secara kode: API graf baca-saja, `apps/web` (landing + `/live`),
+`seed-inti.ts`, dan templat deploy. Kesiapan demo bergantung pada runbook `docs/demo/runbook.md`
+(spec Fase 6 §8) yang dijalankan pemilik project — VPS, Vercel, seed trusted core, dan uji lapangan.
 
 ### 11.1 Pengurangan kedalaman yang disepakati
 
@@ -574,7 +597,7 @@ didemokan sama sekali:
 - `packages/contracts/src/ConnectionRegistry.sol` — graf on-chain.
 - `packages/contracts/src/AttendanceRegistry.sol` — Proof of Attendance SBT.
 - `packages/shared/src/schema.ts` — skema Zod dipakai mobile + api, satu sumber kebenaran.
-- `apps/web/src/app/live/page.tsx` — visualisasi graf untuk juri (react-force-graph).
+- `apps/web/src/pages/Live.tsx` — layar proyektor `/live` (`react-force-graph-2d`, Vite + React; spec Fase 6 R1, R2).
 
 ## 13. Verifikasi
 
