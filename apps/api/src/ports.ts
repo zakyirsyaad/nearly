@@ -505,3 +505,72 @@ export type PesanDeps = {
   vouchContract: Address;
   nowMs: () => number;
 };
+
+// ── Fase 6: graf publik ─────────────────────────────────────────────────────
+
+/**
+ * Satu koneksi seperti yang boleh dilihat endpoint graf publik. Sengaja TANPA
+ * `cell` dan `nonce` (spec 6 §4.4): store graf tidak pernah memilih kolom itu,
+ * jadi tidak ada yang bisa bocor lewat penyusun respons.
+ */
+export type KoneksiGraf = {
+  id: number;
+  /** Huruf kecil. */
+  a: Address;
+  /** Huruf kecil. */
+  b: Address;
+  /** MILIDETIK — `new Date(created_at).getTime()`, sama persis dengan trust. */
+  atMs: number;
+  txHash: Hex;
+};
+
+/** Jendela sebuah acara. Tanpa `center_cell` dan `host`, dengan sengaja. */
+export type AcaraGraf = {
+  /** Huruf kecil. */
+  eventId: Hex;
+  title: string;
+  /** unix DETIK */
+  startsAt: number;
+  /** unix DETIK */
+  endsAt: number;
+};
+
+export type CheckInGraf = { eventId: Hex; address: Address };
+
+export type GrafStore = {
+  /** Koneksi dengan `id > sejakId`, urut `id` naik, paling banyak `batas`. */
+  koneksiSejak(sejakId: number, batas: number): Promise<KoneksiGraf[]>;
+  acara(eventId: Hex): Promise<AcaraGraf | null>;
+  /**
+   * Acara yang jendelanya beririsan dengan `[mulaiDetik, akhirDetik]`,
+   * termasuk acara pemilik jendela itu sendiri. BOLEH mengembalikan lebih
+   * (superset): aturan acara di graf.ts yang memutuskan.
+   */
+  acaraBeririsan(mulaiDetik: number, akhirDetik: number): Promise<AcaraGraf[]>;
+  checkInAcara(eventIds: Hex[]): Promise<CheckInGraf[]>;
+  /**
+   * SELURUH koneksi yang waktunya di `[mulaiMs, akhirMs]`, urut `id` naik.
+   * BOLEH superset — aturan acara di graf.ts yang memutuskan.
+   */
+  koneksiDalamJendela(mulaiMs: number, akhirMs: number): Promise<KoneksiGraf[]>;
+  /** Acara yang sudah mulai dan belum lewat 7 hari sejak berakhir, terbaru berakhir dulu. */
+  daftarAcara(nowDetik: number, batas: number): Promise<AcaraGraf[]>;
+};
+
+export const METODE_GRAF_STORE = [
+  "koneksiSejak", "acara", "acaraBeririsan", "checkInAcara", "koneksiDalamJendela", "daftarAcara",
+] as const satisfies readonly (keyof GrafStore)[];
+
+type SisaMetodeGrafStore = Exclude<keyof GrafStore, (typeof METODE_GRAF_STORE)[number]>;
+type AssertNeverGraf<T extends never> = T;
+type _PastikanMetodeGrafStoreLengkap = AssertNeverGraf<SisaMetodeGrafStore>;
+
+export type GrafDeps = {
+  graf: GrafStore;
+  /** Nama tampilan + tier, dipotong per kelompok — sumber yang sama dengan feed dan pesan. */
+  meet: Pick<MeetStore, "profilRingkas">;
+  /** Origin web yang boleh membaca `/graf/*` lewat browser. Kosong = CORS mati. */
+  webOrigins: readonly string[];
+  nowMs: () => number;
+};
+
