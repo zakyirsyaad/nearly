@@ -6,5 +6,22 @@
 
 {$NEARLY_API_HOST} {
 	encode gzip
-	reverse_proxy localhost:8787
+
+	# /graf/* publik tanpa autentikasi dan satu-satunya yang dibuka untuk
+	# browser (spec 6 §4.5). Proxy terpisah dengan batas koneksi ke API:
+	# lonjakan permintaan graf mengantre DI SINI, dan salaman serta check-in di
+	# ruangan — yang lewat proxy di bawah — tetap mendapat koneksi sendiri.
+	# Caddy standar tidak punya batas laju per IP; itu butuh plugin, lihat
+	# runbook bagian 1.5 (opsional).
+	handle /graf/* {
+		reverse_proxy localhost:8787 {
+			transport http {
+				max_conns_per_host 16
+			}
+		}
+	}
+
+	handle {
+		reverse_proxy localhost:8787
+	}
 }

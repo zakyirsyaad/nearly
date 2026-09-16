@@ -9,6 +9,17 @@ export const BATAS_HALAMAN = 2000;
 export const JENDELA_DAFTAR_ACARA_DETIK = 7 * 86_400;
 export const BATAS_DAFTAR_ACARA = 50;
 
+/**
+ * Jendela acara terpanjang yang mau digambar layar graf (spec 6 §4.5).
+ * `AttendanceRegistry` hanya memeriksa `endsAt > startsAt`, jadi siapa pun bisa
+ * membuat acara bertahun-tahun; tanpa batas ini satu permintaan publik ke
+ * `/graf/acara/<id itu>` membaca hampir seluruh `connections` dan `checkins`.
+ */
+export const BATAS_JENDELA_ACARA_GRAF_DETIK = 7 * 86_400;
+
+/** Batas `Date` JavaScript dalam milidetik; di atasnya `toISOString()` melempar RangeError. */
+const DATE_MAKS_MS = 8.64e15;
+
 export type TierLabel = (typeof TIER_LABELS)[number];
 
 export type SimpulPublik = { address: Address; displayName: string; tierLabel: TierLabel };
@@ -152,6 +163,19 @@ export function sisiAcara(
   return koneksi
     .filter((k) => acaraMilik(k) === target)
     .sort((x, y) => x.id - y.id);
+}
+
+/**
+ * Apakah jendela acara boleh dibaca untuk layar graf: bilangan bulat detik yang
+ * aman, tidak terbalik, paling lama `BATAS_JENDELA_ACARA_GRAF_DETIK`, dan masih
+ * di dalam rentang `Date` — store mengubah `akhir + 1 ms` menjadi ISO, dan
+ * RangeError di sana akan menjadi 500 alih-alih jawaban yang jelas.
+ */
+export function jendelaAcaraDidukung(e: AcaraGraf): boolean {
+  return Number.isSafeInteger(e.startsAt) && Number.isSafeInteger(e.endsAt)
+    && e.startsAt >= 0 && e.endsAt >= e.startsAt
+    && e.endsAt - e.startsAt <= BATAS_JENDELA_ACARA_GRAF_DETIK
+    && e.endsAt * 1000 + 1 <= DATE_MAKS_MS;
 }
 
 /** Jumlah alamat unik yang check-in di acara `eventId`. */

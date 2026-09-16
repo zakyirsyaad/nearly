@@ -144,7 +144,8 @@ dua kisah berbeda tentang ruangan yang sama.
 
 `hitungan.hadir` = jumlah check-in acara (angka yang sudah publik lewat
 `GET /events/:id/attendance`). `hitungan.salaman` = jumlah seluruh sisi acara, bukan hanya di halaman
-ini. Acara tidak ada → 404 `event_not_found`.
+ini. Acara tidak ada → 404 `event_not_found`; jendela acara lebih dari 7 hari (atau di luar rentang
+tanggal) → 404 `event_window_unsupported` (catatan 2026-09-17 di §4.5).
 
 ### 4.4 Yang tidak pernah keluar
 
@@ -159,11 +160,36 @@ Endpoint graf publik dan dipanggil tiap 3 detik oleh setiap layar yang terbuka. 
 disimpan di memori proses selama **2 detik** per kunci (path + `sejakId`), sehingga sepuluh tab yang
 terbuka tidak berarti sepuluh kali kueri. Respons juga membawa `Cache-Control: public, max-age=2`.
 
+**Catatan (2026-09-17, review akhir I-2 dan M-3).** Kunci per `sejakId` di `/graf/acara/:eventId`
+adalah amplifikasi beban: setiap `sejakId` berbeda menjalankan ulang pekerjaan penuh (acara, acara
+beririsan, seluruh check-in, seluruh koneksi di jendela, profil) padahal hasilnya sama dan baru
+dipotong di akhir. Siapa pun cukup memutar `sejakId=0..999`. Ditambah lagi `AttendanceRegistry` hanya
+memeriksa `endsAt > startsAt`, sehingga acara berjendela bertahun-tahun membuat satu permintaan membaca
+hampir seluruh `connections` dan `checkins`, dan `endsAt` yang sangat besar membuat `toISOString()`
+melempar `RangeError` (500). Perilaku baru:
+
+- **`/graf/acara/:eventId`:** hasil berat (acara, sisi acara lengkap, `hitungan.hadir`, profil semua
+  alamat sisi) disimpan 2 detik **per `eventId` saja**; potongan per `sejakId` dihitung di atasnya tanpa
+  kueri. Acara yang tidak ada juga disimpan per `eventId`. `/graf/jaringan` dan `/graf/acara` tetap
+  memakai kunci lama (koneksi sejak `sejakId` memang berbeda per kunci, dan cache dibatasi 1000 kunci).
+- **Jendela acara dibatasi 7 hari** untuk layar graf, juga bilangan bulat detik yang aman, tidak
+  terbalik, dan di dalam rentang `Date`. Selain itu → **404 `event_window_unsupported`**, diputuskan
+  sebelum kueri berat apa pun. 404 dipilih seperti id berbentuk salah: acara itu memang tidak tersedia
+  sebagai layar graf, dan layar `/live` berhenti mencoba ulang pada 404 (dengan pesan tersendiri).
+- **Caddy:** `/graf/*` lewat `reverse_proxy` tersendiri dengan `max_conns_per_host 16`, sehingga
+  lonjakan permintaan graf mengantre di Caddy dan tidak menghabiskan kapasitas API untuk salaman.
+  Batas laju per IP tidak ada di Caddy standar (butuh plugin); dicatat sebagai langkah opsional di
+  runbook.
+- **`Vary: Origin`** dipasang pada **setiap** respons `/graf/*` (termasuk galat dan yang tanpa ACAO)
+  selama `WEB_ORIGINS` tidak kosong, supaya cache bersama di depan API kelak tidak menyajikan varian
+  tanpa ACAO ke web (§4.6).
+
 ### 4.6 CORS
 
 Middleware hanya untuk `/graf/*`. Env baru `WEB_ORIGINS` berisi daftar origin dipisah koma
 (mis. `https://nearly.vercel.app`). Origin di daftar → header `Access-Control-Allow-Origin` origin itu;
-origin lain → tanpa header CORS. `WEB_ORIGINS` kosong atau tidak ada → CORS mati; pengembangan lokal
+origin lain → tanpa header CORS (`Vary: Origin` tetap ada, lihat catatan §4.5). `WEB_ORIGINS` kosong
+atau tidak ada → CORS mati; pengembangan lokal
 memakai proxy dev server Vite. Hanya metode `GET`.
 
 Rute lain (salaman, pesan, feed, dll.) **tidak** mendapat CORS. Aplikasi mobile tidak butuh CORS, dan

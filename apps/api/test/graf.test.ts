@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
 import type { Address, Hex } from "viem";
 import {
-  alamatDiSisi, BATAS_HALAMAN, bacaEventId, bacaSejakId, hitungHadir, keAcaraPublik,
-  keSisiPublik, labelTier, potongHalaman, sisiAcara, susunSimpul,
+  alamatDiSisi, BATAS_HALAMAN, BATAS_JENDELA_ACARA_GRAF_DETIK, bacaEventId, bacaSejakId, hitungHadir,
+  jendelaAcaraDidukung, keAcaraPublik, keSisiPublik, labelTier, potongHalaman, sisiAcara, susunSimpul,
 } from "../src/graf";
 import type { AcaraGraf, CheckInGraf, KoneksiGraf } from "../src/ports";
 
@@ -95,6 +95,28 @@ describe("keAcaraPublik", () => {
     expect(keAcaraPublik(ev, 100).live).toBe(true);
     expect(keAcaraPublik(ev, 200).live).toBe(true);
     expect(keAcaraPublik(ev, 201).live).toBe(false);
+  });
+});
+
+describe("jendelaAcaraDidukung", () => {
+  const ev = (startsAt: number, endsAt: number) => ({ eventId: `0x${"11".repeat(32)}` as Hex, title: "x", startsAt, endsAt });
+
+  it("paling lama 7 hari, inklusif", () => {
+    expect(BATAS_JENDELA_ACARA_GRAF_DETIK).toBe(7 * 86_400);
+    expect(jendelaAcaraDidukung(ev(1_000, 1_000 + 7 * 86_400))).toBe(true);
+    expect(jendelaAcaraDidukung(ev(1_000, 1_000 + 7 * 86_400 + 1))).toBe(false);
+  });
+
+  it("jendela terbalik, bukan bilangan bulat aman, atau di luar rentang Date → tidak didukung", () => {
+    expect(jendelaAcaraDidukung(ev(2_000, 1_000))).toBe(false);
+    expect(jendelaAcaraDidukung(ev(Number.NaN, 1_000))).toBe(false);
+    expect(jendelaAcaraDidukung(ev(1.5, 100))).toBe(false);
+    expect(jendelaAcaraDidukung(ev(-100, 100))).toBe(false);
+    expect(jendelaAcaraDidukung(ev(9e12, 9e12 + 60))).toBe(false);
+    // Tepat di batas: akhirMs + 1 masih bisa diubah toISOString().
+    const maksDetik = Math.floor((8.64e15 - 1) / 1000);
+    expect(jendelaAcaraDidukung(ev(maksDetik - 60, maksDetik))).toBe(true);
+    expect(() => new Date(maksDetik * 1000 + 1).toISOString()).not.toThrow();
   });
 });
 
