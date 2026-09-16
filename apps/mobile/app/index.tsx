@@ -94,6 +94,7 @@ export default function Home() {
         Pesan{lencanaPesan ? `  ${lencanaPesan}` : ""}
       </Link>
       <Link href="/blokir" style={s.link}>Daftar blokir</Link>
+      <Link href="/profil-saya" style={s.link}>Profil saya</Link>
     </View>
   );
 }

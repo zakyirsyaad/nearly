@@ -17,6 +17,9 @@ import { createPesanStore } from "./pesan-store";
 import { createExpoPush } from "./push";
 import { createGrafStore } from "./graf-store";
 import { bacaPort, bacaWebOrigins } from "./server-env";
+import { createRadarStore } from "./radar-store";
+import { createProfilSayaStore } from "./profil-store";
+import { sapuLokasiAman } from "./penyapu-lokasi";
 
 function required(name: string): string {
   const v = process.env[name];
@@ -96,8 +99,14 @@ const app = createApp({
   push: createExpoPush(),
   graf: createGrafStore(supabase),
   webOrigins: bacaWebOrigins(process.env.WEB_ORIGINS),
+  radar: createRadarStore(supabase),
+  profilSaya: createProfilSayaStore(supabase),
 });
 
 const port = bacaPort(process.env.PORT);
 serve({ fetch: app.fetch, port });
 console.log(`API Nearly berjalan di http://localhost:${port}`);
+
+// Fase 4b + 5 (spec §4.5, R3): sapuan lokasi saat API mulai. Tanpa await dan
+// tidak pernah melempar; rute detak dan tools/sapu-lokasi.ts menyusul.
+void sapuLokasiAman(createRadarStore(supabase), Date.now());

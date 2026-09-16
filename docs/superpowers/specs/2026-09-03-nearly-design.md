@@ -41,7 +41,7 @@ Dua konsekuensi yang menjadi fondasi seluruh sistem:
 **Proof of Human tanpa membuka identitas.**
 
 Pengguna Web3 anonim di online tapi tidak anonim di offline — mereka menunjukkan wajahnya di
-event. Nearly memanfaatkan celah itu: kamu bisa tetap `0xghost` dengan PFP kartun, tidak ada
+event. Nearly memanfaatkan celah itu: kamu bisa tetap `0xanon` dengan PFP kartun, tidak ada
 yang tahu namamu, tapi **grafmu membuktikan kamu manusia nyata yang benar-benar muncul.**
 
 Semua proof-of-personhood lain memaksa menyerahkan privasi: Worldcoin memindai iris, KYC
@@ -123,7 +123,7 @@ memangkas pekerjaan, bukan menambahnya.
    menurunkannya: peluruhan waktu, dan laporan penipuan yang terkonfirmasi.
 2. **Tidak ada peta dengan pin orang.** Radar = daftar kartu. Peta pin adalah vektor stalking.
 3. **Identitas asli tidak pernah publik.** Dibuka per-orang, atas pilihan pemiliknya.
-4. **Lokasi mentah dihapus dalam 24 jam.** Yang bertahan hanya koneksi.
+4. **Lokasi mentah dihapus dalam 24 jam.** Yang bertahan hanya koneksi dan check-in — selnya masih dipakai trust dan menjadi pengecualian yang diakui (§10.2).
 
 ## 7. Tujuh Mekanik
 
@@ -154,7 +154,12 @@ Feed berisi unggahan orang Web3. Bisa dilihat, tapi **dari FYP tidak ada jalur u
 terkoneksi maupun mengirim pesan.** Pesan baru terbuka setelah bertemu fisik (§7.5).
 Yang bisa dilakukan: menandai **"ingin bertemu"**. Lalu suatu hari:
 
-> *"@0xghost yang kamu tandai sedang ada di event ini."*
+> *"Budi, yang saling ingin bertemu denganmu, ada di acara ini."*
+
+Notifikasi kedekatan hanya dikirim kepada **koneksi** (pernah bertemu) dan orang yang **saling**
+ingin bertemu — tidak pernah untuk tanda sepihak. Tanda sepihak yang memberi tahu kapan targetnya
+hadir adalah vektor penguntitan: siapa pun bisa menandai seseorang lalu menunggu pemberitahuan
+lokasinya. Rincian, batas 5 per orang per acara, dan isinya di spec Fase 4b + 5 §6.
 
 Online menciptakan keinginan, offline menyelesaikannya. Ini bukan keterbatasan — ini mesinnya.
 
@@ -415,10 +420,16 @@ untuk pendatang baru. Tanpa OTP, tanpa email wajib.
 ### 10.2 Backend off-chain
 
 Hono di Node. **Supabase**: Postgres + PostGIS (verifikasi ko-lokasi) + Realtime (radar event
-live). Menyimpan presence sementara, metadata profil, FYP, laporan, dan selective reveal
+live). Menyimpan kehadiran sementara, metadata profil, FYP, laporan, dan selective reveal
 terenkripsi.
 
-Tabel presence mentah **auto-purge 24 jam** (Postgres cron). Yang bertahan hanya koneksi.
+Data lokasi yang tidak dipakai trust — baris `kehadiran`, `notif_kedekatan`, dan sel di QR salaman
+serta QR check-in yang kedaluwarsa — dihapus atau dikosongkan **paling lambat 24 jam + interval
+sapuan** oleh API sendiri (saat mulai, dan dari rute detak paling sering sekali per 10 menit) serta
+alat CLI `apps/api/tools/sapu-lokasi.ts` untuk cron VPS — bukan `pg_cron`, yang belum tentu aktif
+di project Supabase. **Pengecualian yang diakui:** `connections.cell` dan `checkins.cell` belum
+dihapus karena dipakai sidik jari ko-lokasi trust (`load-graph.ts`); menepatinya butuh perubahan
+`packages/trust` dan menjadi pekerjaan terpisah (spec Fase 4b + 5 §4.5, §10.7–8).
 
 ### 10.3 On-chain (opBNB, Foundry, viem)
 
@@ -436,7 +447,7 @@ diverifikasi, **siapa pun bisa menghitung ulang Trust Score sendiri dan membukti
 curang.** Graf sosialnya adalah infrastruktur publik, bukan database kami. Ini yang tidak bisa
 dilakukan Postgres.
 
-**Konsekuensi yang disadari:** graf koneksi jadi publik — terlihat bahwa `0xghost` bertemu
+**Konsekuensi yang disadari:** graf koneksi jadi publik — terlihat bahwa `0xanon` bertemu
 `0xfoo` di suatu event. Untuk pengguna anon ini trade-off yang wajar, dan memang diperlukan
 agar bisa diverifikasi. Yang **tidak pernah** publik: lokasi presisi, identitas asli, isi
 laporan, dan selective reveal.
@@ -449,8 +460,9 @@ pernah melihat kata "gas". ERC-4337 + paymaster menyusul pasca-hackathon.
 ### 10.4 Sketsa model data (off-chain)
 
 ```
-profiles(address PK, display_name, pfp_url, ens, created_at, visibility)
-presence(ephemeral_id, geohash7, seen_at)              -- purge < 24 jam
+profiles(address PK, display_name, pfp_url, ens, created_at, visibilitas)
+kehadiran(event_id, address, cell, seen_at)            -- satu baris per orang per acara; dihapus ≤ 24 jam
+notif_kedekatan(event_id, penerima, subjek, sent_at)   -- sekali per pasangan per acara; dihapus ≤ 24 jam
 connections(a, b, event_id, created_at, tx_hash)        -- UNIQUE(least(a,b), greatest(a,b))
 vouches(from_addr, to_addr, tags[], created_at, revoked_at, tx_hash)
 reveals(from_addr, to_addr, payload_encrypted, created_at)
@@ -522,7 +534,7 @@ pernah bertemu tidak punya jalur apa pun untuk mengirim pesan di dalam Nearly.*
 **Fase 5 — FYP.** Feed unggahan (view-only, tanpa jalur koneksi maupun pesan), upload gambar
 ke Greenfield, tombol "Ingin bertemu" di kartu feed (mekaniknya menyusul di Fase 3c — feed
 dikerjakan lebih dulu justru karena penanda itu butuh permukaan berisi orang yang belum kamu temui),
-notifikasi proximity, lapor.
+notifikasi kedekatan (spec Fase 4b + 5 §6), lapor.
 
 *Selesai = feed berjalan dan "ingin bertemu" bisa ditandai langsung dari feed.*
 
@@ -541,6 +553,10 @@ lewat `apps/api/tools/seed-inti.ts`; video pitch dibuat di luar kode (kerangkany
 3b (feed, dokumen `2026-09-07-nearly-fase-3b-feed-design.md`), dan 3c ("ingin bertemu",
 menyusul). Feed didahulukan dari "ingin bertemu" karena penanda itu tidak punya permukaan
 untuk hidup sampai feed ada.
+
+**Catatan urutan (2026-09-14).** Fase 4 tuntas: 4a (blokir), 4c (pesan relay + E2E), dan 4b
+(radar, visibilitas Terlihat/Tersembunyi, nama tampilan — spec `2026-09-14-nearly-fase-4b5-radar-design.md`).
+Fase 5 tuntas: feed di 3b, "ingin bertemu" di 3c, notifikasi kedekatan di spec yang sama dengan 4b.
 
 **Catatan (2026-09-14).** Fase 6 tuntas secara kode: API graf baca-saja, `apps/web` (landing + `/live`),
 `seed-inti.ts`, dan templat deploy. Kesiapan demo bergantung pada runbook `docs/demo/runbook.md`
@@ -563,7 +579,7 @@ dipilih karena tidak ada satu pun yang menyentuh premis produk:
 4. **FYP diringankan** — teks + satu gambar, peringkat sederhana (event yang dihadiri +
    kebaruan), tanpa auto-hide otomatis dan tanpa peringkat berbasis riwayat geohash.
 5. **Radar pakai polling ~10 detik**, bukan Supabase Realtime. Cukup untuk satu ruangan.
-6. **Mode visibilitas 3 → 2**: hadir-terlihat vs ghost. Mode event digabung ke hadir-terlihat.
+6. **Mode visibilitas 3 → 2**: **Terlihat** dan **Tersembunyi**, satu saklar per akun. Tersembunyi bersifat timbal balik — tidak muncul di radar, tidak bisa membuka radar, tidak memicu dan tidak menerima notifikasi kedekatan. Mode event digabung ke Terlihat (spec Fase 4b + 5 §2).
 7. **Peluruhan waktu trust: skema siap, tidak diaktifkan.** Dalam rentang waktu demo tidak ada
    yang cukup tua untuk meluruh, jadi mengaktifkannya tidak terlihat sama sekali.
 8. **Kuota vouch per-event → kuota harian global.** Menghapus satu ketergantungan ke entitas
@@ -638,7 +654,9 @@ percakapan hilang dari daftar, dan kontribusi trust serta vouch-nya harus hilang
 saling menandai, keduanya harus terungkap dan menerima notifikasi; sebelum saling, identitas
 penanda tidak boleh terekspos lewat API mana pun.
 
-**Uji privasi** — verifikasi tabel presence mentah benar-benar terhapus setelah 24 jam.
+**Uji privasi** — `sapuLokasi` dengan jam palsu menghapus kehadiran dan notifikasi kedekatan yang
+lebih tua dari 24 jam, mengosongkan sel QR yang kedaluwarsa lebih dari 24 jam tanpa menghapus
+barisnya, dan tidak menyentuh `connections` maupun `checkins` (`apps/api/test/sapu-lokasi-privasi.test.ts`).
 
 **E2E manual** — dua wallet nyata: scan → koneksi tercetak → cek di opBNB explorer → trust
 bergerak.
@@ -668,7 +686,7 @@ masalah akurasi lokasi indoor dan baterai; tidak ada test yang bisa menggantikan
 6. **Ruang lingkup adalah risiko terbesar sekarang.** Tujuh fase untuk satu hackathon itu
    berat, dan keputusannya adalah mempertahankan Event + FYP sekaligus dengan mengurangi
    kedalaman (§11.1). **Catatan (2026-09-08):** Fase 4 dipecah tiga — 4a (blokir), 4c (pesan
-   relay + E2E), 4b (radar & visibilitas) — lihat spec Fase 4a §1 dan spec Fase 4c. Kalau di tengah jalan ternyata
+   relay + E2E), 4b (radar & visibilitas, tuntas bersama notifikasi kedekatan — spec Fase 4b + 5) — lihat spec Fase 4a §1 dan spec Fase 4c. Kalau di tengah jalan ternyata
    tetap tidak cukup waktu, urutan pengorbanan berikutnya: **4b (radar & visibilitas) dulu,
    lalu vouch/tag** — jangan pernah memotong apa pun di §11.2.
 7. **Angka "ingin bertemu" yang publik** menciptakan dinamika papan peringkat popularitas —

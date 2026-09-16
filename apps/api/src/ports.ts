@@ -574,3 +574,93 @@ export type GrafDeps = {
   nowMs: () => number;
 };
 
+// ── Fase 4b + 5: radar, visibilitas, notifikasi kedekatan ──────────────────
+
+import type { Visibilitas } from "@nearly/shared";
+
+/** Satu baris `kehadiran`. `seenAtMs` MILIDETIK. */
+export type BarisKehadiran = { cell: string; seenAtMs: number };
+
+/** Jumlah baris yang tersentuh satu sapuan (spec 4b+5 §4.5). */
+export type HasilSapuLokasi = {
+  kehadiran: number;
+  notifKedekatan: number;
+  offerSalaman: number;
+  offerCheckIn: number;
+};
+
+export type RadarStore = {
+  ambilKehadiran(eventId: Hex, address: Address): Promise<BarisKehadiran | null>;
+  /** Upsert satu baris per (acara, orang). BUKAN riwayat: detak baru menimpa yang lama. */
+  simpanKehadiran(eventId: Hex, address: Address, cell: string, seenAtMs: number): Promise<void>;
+  hapusKehadiran(eventId: Hex, address: Address): Promise<void>;
+  /** Semua acara — dipakai saat pindah ke Tersembunyi (spec 4b+5 §7.2). */
+  hapusSemuaKehadiran(address: Address): Promise<void>;
+  /** Alamat huruf kecil dengan `seen_at >= sejakMs` di acara ini. Berhalaman penuh. */
+  hadirSejak(eventId: Hex, sejakMs: number): Promise<Address[]>;
+  /**
+   * Subset `kandidat` (huruf kecil) yang punya baris `connections` dengan
+   * `who`. Satu kueri per kelompok, bukan satu per kandidat.
+   */
+  terhubungDengan(who: Address, kandidat: Address[]): Promise<Set<string>>;
+  hitungNotifKedekatan(eventId: Hex, penerima: Address): Promise<number>;
+  /** true HANYA bila baris benar-benar tersisip (spec 4b+5 §6.3 butir 1). */
+  sisipNotifKedekatan(eventId: Hex, penerima: Address, subjek: Address): Promise<boolean>;
+  /** Empat pernyataan spec 4b+5 §4.5. `nowMs` dari pemanggil, supaya tes bisa memakai jam palsu. */
+  sapuLokasi(nowMs: number): Promise<HasilSapuLokasi>;
+};
+
+export const METODE_RADAR_STORE = [
+  "ambilKehadiran", "simpanKehadiran", "hapusKehadiran", "hapusSemuaKehadiran",
+  "hadirSejak", "terhubungDengan", "hitungNotifKedekatan", "sisipNotifKedekatan",
+  "sapuLokasi",
+] as const satisfies readonly (keyof RadarStore)[];
+
+// Arah kedua dari pengait, sama seperti METODE_PESAN_STORE.
+type SisaMetodeRadarStore = Exclude<keyof RadarStore, (typeof METODE_RADAR_STORE)[number]>;
+type AssertNeverRadar<T extends never> = T;
+type _PastikanMetodeRadarStoreLengkap = AssertNeverRadar<SisaMetodeRadarStore>;
+
+export type ProfilSaya = { displayName: string; visibilitas: Visibilitas };
+
+export type ProfilSayaStore = {
+  /** Profil yang belum punya baris: nama kosong, `terlihat` (default kolom). */
+  profilSaya(address: Address): Promise<ProfilSaya>;
+  /** Upsert `profiles` — hanya dua kolom ini yang disentuh. */
+  aturProfil(address: Address, profil: ProfilSaya): Promise<void>;
+  /**
+   * Visibilitas SETIAP alamat yang diminta, kunci huruf kecil. Alamat tanpa
+   * baris `profiles` bernilai `terlihat` (default kolom, keputusan #2).
+   */
+  visibilitasBanyak(addresses: Address[]): Promise<Map<string, Visibilitas>>;
+};
+
+export const METODE_PROFIL_SAYA_STORE = [
+  "profilSaya", "aturProfil", "visibilitasBanyak",
+] as const satisfies readonly (keyof ProfilSayaStore)[];
+
+type SisaMetodeProfilSayaStore = Exclude<keyof ProfilSayaStore, (typeof METODE_PROFIL_SAYA_STORE)[number]>;
+type AssertNeverProfilSaya<T extends never> = T;
+type _PastikanMetodeProfilSayaStoreLengkap = AssertNeverProfilSaya<SisaMetodeProfilSayaStore>;
+
+export type RadarDeps = {
+  radar: RadarStore;
+  profilSaya: Pick<ProfilSayaStore, "visibilitasBanyak">;
+  events: Pick<EventStore, "getEvent" | "hasCheckIn">;
+  blokir: Pick<BlokirStore, "himpunanUntuk">;
+  meet: Pick<MeetStore, "tandaOleh" | "tandaKe" | "profilRingkas">;
+  /** `ambilKunci` untuk autentikasi sesi (R1); token push dipakai ulang tanpa diubah (spec 4b+5 §6.5). */
+  pesan: Pick<PesanStore, "ambilKunci" | "tokenPush" | "hapusTokenPush">;
+  /** null di tes dan saat push dimatikan. */
+  push: PushPort | null;
+  nowMs: () => number;
+};
+
+export type ProfilDeps = {
+  profilSaya: ProfilSayaStore;
+  radar: Pick<RadarStore, "hapusSemuaKehadiran">;
+  pesan: Pick<PesanStore, "ambilKunci">;
+  /** ConnectionRegistry — domain `AturProfil`, sama dengan `InginBertemu`. */
+  verifyingContract: Address;
+  nowMs: () => number;
+};

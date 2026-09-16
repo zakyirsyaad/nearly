@@ -56,6 +56,10 @@ describe("rowToCheckInOffer", () => {
   it("atMs kembali sebagai number milidetik", () => {
     expect(rowToCheckInOffer(row).atMs).toBe(1_700_000_000_000);
   });
+
+  it("cell null dipetakan ke string kosong (hasil sapuan lokasi)", () => {
+    expect(rowToCheckInOffer({ ...row, cell: null }).cell).toBe("");
+  });
 });
 
 describe("recordEvent memastikan profil host", () => {

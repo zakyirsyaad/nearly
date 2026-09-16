@@ -11,12 +11,15 @@ import { meetRoutes } from "./routes/meet";
 import { blokirRoutes } from "./routes/blokir";
 import { pesanRoutes } from "./routes/pesan";
 import { grafRoutes } from "./routes/graf";
+import { radarRoutes } from "./routes/radar";
+import { profilRoutes } from "./routes/profil";
 import { recomputeTrust } from "./trust/recompute";
 import type {
   GateDeps, TrustStore, VouchStore, ReportStore, AttestorPort, VouchChainPort,
   EventStore, AttendanceChainPort, FeedStore, GreenfieldPort, MeetStore, BlokirStore,
   PesanStore, PushPort,
 } from "./ports";
+import type { RadarStore, ProfilSayaStore } from "./ports";
 import type { Address } from "viem";
 import type { GrafStore } from "./ports";
 
@@ -39,6 +42,8 @@ export type TrustDeps = GateDeps & {
   push: PushPort | null;
   graf: GrafStore;
   webOrigins: readonly string[];
+  radar: RadarStore;
+  profilSaya: ProfilSayaStore;
 };
 
 // Modul-level, dengan sengaja (Task 8): relayer yang sama menandatangani
@@ -117,5 +122,9 @@ export function createApp(deps: TrustDeps) {
   // dipanggil — tidak ada yang ditulis. CORS dipasang DI DALAM grafRoutes dan
   // hanya untuk /graf/*; rute lain di atas tidak pernah mendapat header CORS.
   app.route("/", grafRoutes(deps));
+  // `onChanged` TIDAK dipanggil dari rute radar dan profil — hadir di acara dan
+  // mengganti nama bukan bertemu, jadi graf pertemuan tidak berubah.
+  app.route("/", radarRoutes(deps));
+  app.route("/", profilRoutes(deps));
   return app;
 }

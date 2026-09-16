@@ -10,7 +10,10 @@ export type EventDbRow = {
 
 export type OfferDbRow = {
   nonce: string; event_id: string; host: string; expires_at: string | number;
-  sig_host: string; cell: string; at_ms: string | number; consumed_at: string | null;
+  sig_host: string;
+  /** null setelah `sapuLokasi` mengosongkannya (migrasi 0008, spec 4b+5 §4.4). */
+  cell: string | null;
+  at_ms: string | number; consumed_at: string | null;
 };
 
 export function rowToEvent(row: EventDbRow): EventRecord {
@@ -33,7 +36,8 @@ export function rowToCheckInOffer(row: OfferDbRow): PendingCheckInOffer {
     host: row.host as Address,
     expiresAt: BigInt(row.expires_at),
     sigHost: row.sig_host as Hex,
-    cell: row.cell,
+    // Sel yang sudah disapu menjadi string kosong (lihat rowToOffer di db.ts).
+    cell: row.cell ?? "",
     atMs: Number(row.at_ms),
     consumed: row.consumed_at !== null,
   };
