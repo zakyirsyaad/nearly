@@ -447,6 +447,15 @@ diverifikasi, **siapa pun bisa menghitung ulang Trust Score sendiri dan membukti
 curang.** Graf sosialnya adalah infrastruktur publik, bukan database kami. Ini yang tidak bisa
 dilakukan Postgres.
 
+**Catatan (2026-09-17, review akhir Fase 6 I-3).** Klaim "siapa pun bisa menghitung ulang Trust Score"
+**gugur sebagian sejak Fase 4a** dan tidak boleh dipakai di salinan publik. Dua masukan trust tidak
+publik: **blokir** disimpan di Postgres saja (spec 4a §2, "blokir privat") tetapi ikut `rowsToGraph`,
+dan daftar **seed** (`trust_seeds`) tidak dipublikasikan on-chain maupun lewat endpoint mana pun. Yang
+tetap benar dan boleh diklaim: **graf koneksi publik, dan setiap koneksi bisa diverifikasi on-chain**
+(`ConnectionRegistry`); tier hasil hitungan dipublikasikan lewat `TrustAttestor`, tetapi pihak luar
+tidak bisa mereproduksinya dari data publik saja. Landing page (spec Fase 6 §6.4) mengikuti rumusan ini
+dan dijaga tes negatif di `apps/web/test/landing.test.ts`.
+
 **Konsekuensi yang disadari:** graf koneksi jadi publik — terlihat bahwa `0xanon` bertemu
 `0xfoo` di suatu event. Untuk pengguna anon ini trade-off yang wajar, dan memang diperlukan
 agar bisa diverifikasi. Yang **tidak pernah** publik: lokasi presisi, identitas asli, isi

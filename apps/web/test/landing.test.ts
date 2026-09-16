@@ -3,35 +3,76 @@ import { renderToString } from "react-dom/server";
 import { Landing } from "../src/pages/Landing";
 import { CHAIN_ID, KONTRAK, tautanBscScan } from "../src/kontrak";
 
+/** Teks yang terbaca pengunjung: tanpa tag, entitas umum diurai, spasi dirapatkan, huruf kecil. */
+function teksTerbaca(html: string): string {
+  return html
+    .replace(/<[^>]+>/g, " ")
+    .replace(/&#x27;|&#39;/g, "'")
+    .replace(/&quot;/g, '"')
+    .replace(/&amp;/g, "&")
+    .replace(/\s+/g, " ")
+    .toLowerCase();
+}
+
 describe("Landing component", () => {
-  it("merender struktur utama landing page dengan benar", () => {
+  it("bagian wajib spec 6 §6.4 hadir berurutan, dengan tautan ke /live", () => {
     const html = renderToString(Landing());
 
-    // Memastikan elemen utama dan kelas ada
     expect(html).toContain('class="landing"');
     expect(html).toContain('class="hero"');
     expect(html).toContain("Connections you can only make in person.");
     expect(html).toContain("See the live graph");
     expect(html).toContain('href="/live"');
 
-    // Memastikan bagian-bagian penting ada
-    expect(html).toContain("How it works");
-    expect(html).toContain("Trust comes from the graph");
-    expect(html).toContain("Privacy by design");
-    expect(html).toContain("What Nearly does not claim");
-    expect(html).toContain("On-chain");
+    const bagian = ["How it works", "Trust comes from the graph", "Privacy by design", "What Nearly does not claim", "On-chain"];
+    const posisi = bagian.map((b) => html.indexOf(b));
+    for (const [i, p] of posisi.entries()) expect(p, bagian[i]).toBeGreaterThan(-1);
+    expect([...posisi].sort((x, y) => x - y)).toEqual(posisi);
+
     expect(html).toContain("BNB Smart Chain testnet");
     expect(html).toContain(`${CHAIN_ID}`);
+    expect(html).toContain("Nearly · testnet demo");
+  });
 
-    // Memastikan kelima kontrak ditampilkan dengan tautan BscScan
+  it("kelima kontrak tampil dengan tautan BscScan (spec 6 §6.4 butir 6)", () => {
+    const html = renderToString(Landing());
     for (const k of KONTRAK) {
       expect(html).toContain(k.nama);
       expect(html).toContain(k.peran);
       expect(html).toContain(k.alamat);
       expect(html).toContain(tautanBscScan(k.alamat));
     }
+  });
+});
 
-    // Memastikan footer ada
-    expect(html).toContain("Nearly · testnet demo");
+/**
+ * Penjaga klaim (spec induk §14: "Jangan pernah mengklaim lebih dari ini").
+ * Bagian "What Nearly does not claim" justru yang dibaca juri; satu kalimat
+ * berlebihan di sana merusak seluruh bagian. Frasa di bawah pernah muncul
+ * (recompute) atau sering tergelincir masuk salinan produk.
+ */
+describe("Landing tidak mengklaim berlebihan", () => {
+  const TERLARANG = [
+    // Blokir privat dan seed off-chain sejak Fase 4a: skor tidak bisa dihitung ulang dari data publik.
+    "anyone can recompute", "anyone recompute", "recompute trust", "check our work",
+    // Sybil multi-perangkat dideteksi, tidak dicegah (induk §9.1).
+    "prevent sybil", "prevents sybil", "sybil-proof", "sybil proof",
+    "guarantee", "impossible to fake", "cannot be faked", "trustless",
+  ];
+
+  it("tidak memuat frasa overclaim", () => {
+    const teks = teksTerbaca(renderToString(Landing()));
+    for (const f of TERLARANG) expect(teks, `frasa overclaim: "${f}"`).not.toContain(f);
+  });
+
+  it("tanpa angka pengguna (spec 6 §6.4)", () => {
+    const teks = teksTerbaca(renderToString(Landing()));
+    expect(teks).not.toMatch(/\b\d[\d,.]*\s*(k\+?|\+)?\s*(users|people|members|handshakes|connections)\b/);
+  });
+
+  it("klaim graf publik yang benar: setiap koneksi bisa diverifikasi on-chain", () => {
+    const teks = teksTerbaca(renderToString(Landing()));
+    expect(teks).toContain("the connection graph is public");
+    expect(teks).toContain("verify every connection on-chain");
   });
 });

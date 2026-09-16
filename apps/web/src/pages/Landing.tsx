@@ -95,7 +95,9 @@ export function Landing() {
 
       {/* induk §9.3 dan §14 butir 4 ("jangan pernah mengklaim lebih dari ini"), §9.1 (sybil
           dideteksi, tidak dicegah), §9.5 (wallet dijual), §9.6 dan §14 butir 1 (GPS), §10.3 dan
-          §14 butir 3 (graf publik); fase 6 §6.4 butir 5 — bagian ini WAJIB ada */}
+          §14 butir 3 (graf publik; catatan 2026-09-17 di §10.3: skor TIDAK bisa dihitung ulang dari
+          data publik sejak blokir privat dan seed off-chain, spec 4a §2); fase 6 §6.4 butir 5 —
+          bagian ini WAJIB ada */}
       <section className="batas">
         <h2>What Nearly does not claim</h2>
         <ul>
@@ -117,8 +119,9 @@ export function Landing() {
             stop that, including this one.
           </li>
           <li>
-            <strong>The connection graph is public.</strong> Anyone can see that two addresses met.
-            That is the trade-off that lets anyone recompute trust and check our work.
+            <strong>The connection graph is public.</strong> Anyone can see that two addresses met, and
+            verify every connection on-chain. Trust scores are computed by our server and use some
+            private inputs, so they cannot be fully reproduced from public data alone.
           </li>
         </ul>
       </section>
