@@ -5,6 +5,8 @@
  * sekadar diharapkan.
  */
 
+import { isAddress } from "viem";
+
 export type BarisSeedInti = { address: string; catatan: string; bobot: number };
 export type KesalahanCsv = { baris: number; pesan: string };
 
@@ -14,6 +16,18 @@ export type HasilUrai =
 
 const HEADER = "address,catatan,bobot";
 const BATAS_CATATAN = 200;
+/**
+ * Bobot seed terbesar yang diterima. PageRank menormalkan bobot menjadi
+ * peluang teleport, jadi yang penting perbandingannya: satu seed berbobot
+ * 10000 (salah ketik "1.0000"?) menelan hampir seluruh teleport dan membuat
+ * seed lain tak berarti. 100 kali seed biasa sudah jauh di atas kebutuhan.
+ */
+export const BATAS_BOBOT_SEED = 100;
+/**
+ * Desimal biasa saja. `Number()` menerima "0x10" (16), "1e3" (1000), dan
+ * "Infinity" — bobot yang tidak pernah dimaksud operator lolos diam-diam.
+ */
+const POLA_BOBOT = /^\d+(\.\d+)?$/;
 
 /**
  * CSV `address,catatan,bobot`. Baris kosong dan baris diawali `#` diabaikan;
@@ -50,10 +64,21 @@ export function uraiCsvSeedInti(teks: string): HasilUrai {
     if (!/^0x[0-9a-fA-F]{40}$/.test(address)) {
       kesalahan.push({ baris: nomor, pesan: `alamat tidak sah: "${address}"` });
       sah = false;
+    } else if (/[a-f]/.test(address.slice(2)) && /[A-F]/.test(address.slice(2))
+      && !isAddress(address, { strict: true })) {
+      // Huruf campur = alamat ber-checksum EIP-55 (disalin dari dompet atau
+      // BscScan). Checksum yang tidak cocok hampir pasti salah ketik satu
+      // karakter — dan seed yang salah alamat memberi trust ke orang asing.
+      // Huruf kecil semua atau besar semua tidak membawa checksum.
+      kesalahan.push({ baris: nomor, pesan: `checksum alamat tidak cocok (salah ketik?): "${address}"` });
+      sah = false;
     }
     const bobot = Number(bobotMentah);
-    if (bobotMentah === "" || !Number.isFinite(bobot) || bobot <= 0) {
-      kesalahan.push({ baris: nomor, pesan: `bobot harus angka lebih besar dari 0: "${bobotMentah}"` });
+    if (!POLA_BOBOT.test(bobotMentah) || !(bobot > 0) || bobot > BATAS_BOBOT_SEED) {
+      kesalahan.push({
+        baris: nomor,
+        pesan: `bobot harus angka desimal lebih besar dari 0 dan paling besar ${BATAS_BOBOT_SEED}: "${bobotMentah}"`,
+      });
       sah = false;
     }
     if (catatan.length > BATAS_CATATAN) {

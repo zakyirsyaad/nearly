@@ -1,6 +1,7 @@
 # CONTOH untuk uji coba seed-inti.ts (spec 6 §7, §10 uji lapangan butir 5).
 # Alamat di bawah BUKAN orang sungguhan. JANGAN PERNAH dijalankan dengan --jalankan.
-# Kolom: address,catatan,bobot — catatan tanpa koma, bobot angka > 0.
+# Kolom: address,catatan,bobot — catatan tanpa koma, bobot desimal biasa > 0 dan <= 100.
+# Alamat huruf campur harus checksum yang benar (salin dari dompet/BscScan) atau tulis huruf kecil semua.
 address,catatan,bobot
 0x0000000000000000000000000000000000000001,Contoh ketua panitia,2
 0x0000000000000000000000000000000000000002,Contoh juri,1

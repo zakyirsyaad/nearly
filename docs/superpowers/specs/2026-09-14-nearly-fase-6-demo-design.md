@@ -334,6 +334,9 @@ Alat baru `apps/api/tools/seed-inti.ts <berkas.csv> [--jalankan]`:
 - CSV berkolom `address,catatan,bobot`; baris kosong dan baris diawali `#` diabaikan.
 - **Semua baris divalidasi sebelum satu pun ditulis**: alamat sah, bobot angka > 0, alamat tidak
   berulang. Satu baris salah → keluar dengan daftar kesalahan, tanpa menulis apa pun.
+  **Catatan (2026-09-17, review akhir M-7):** bobot hanya desimal biasa (`^\d+(\.\d+)?$`), > 0, dan
+  paling besar 100 — `Number()` dulu menerima `0x10` dan `1e3`; alamat berhuruf campur wajib lolos
+  checksum EIP-55 (`isAddress(…, { strict: true })`), supaya salah ketik satu karakter tertangkap.
 - **Tanpa `--jalankan` = uji coba**: mencetak apa yang akan di-upsert dan tidak menulis.
 - Dengan `--jalankan`: upsert ke `trust_seeds`, lalu **satu kali** hitung ulang trust dengan jalur yang
   sama dengan `tools/recompute.ts`.

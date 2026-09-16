@@ -1,9 +1,10 @@
 import { describe, expect, it, vi } from "vitest";
 import {
-  bacaArgumen, jalankanSeedInti, PERINGATAN_RELAYER, uraiCsvSeedInti, type DepsSeedInti,
+  BATAS_BOBOT_SEED, bacaArgumen, jalankanSeedInti, PERINGATAN_RELAYER, uraiCsvSeedInti, type DepsSeedInti,
 } from "../tools/seed-inti-logika";
 
-const A = "0x00000000000000000000000000000000000000Aa";
+// Vektor uji EIP-55: huruf campur dengan checksum yang BENAR.
+const A = "0x5aAeb6053F3E94C9b9A09f33669435E7Ef1BeAed";
 const B = "0x00000000000000000000000000000000000000bb";
 
 function deps() {
@@ -39,6 +40,34 @@ describe("uraiCsvSeedInti", () => {
   it("bobot kosong dan bobot negatif ditolak", () => {
     expect(uraiCsvSeedInti(`${A},x,\n`).ok).toBe(false);
     expect(uraiCsvSeedInti(`${A},x,-1\n`).ok).toBe(false);
+  });
+
+  it("bobot hanya desimal biasa: heksadesimal, eksponen, dan notasi lain ditolak (M-7)", () => {
+    // Number("0x10") = 16 dan Number("1e3") = 1000 — dulu lolos diam-diam.
+    for (const bobot of ["0x10", "1e3", "1E2", "Infinity", "1.", ".5", "+1", "1_000", "1,5", "0b1", "0o7"]) {
+      expect(uraiCsvSeedInti(`${B},x,${bobot}\n`).ok, bobot).toBe(false);
+    }
+    for (const [bobot, nilai] of [["2", 2], ["1.5", 1.5], ["0.25", 0.25], ["007", 7]] as const) {
+      expect(uraiCsvSeedInti(`${B},x,${bobot}\n`), bobot).toEqual({ ok: true, baris: [{ address: B, catatan: "x", bobot: nilai }] });
+    }
+  });
+
+  it("bobot nol dan di atas batas atas ditolak; tepat batas atas boleh", () => {
+    expect(uraiCsvSeedInti(`${B},x,0\n`).ok).toBe(false);
+    expect(uraiCsvSeedInti(`${B},x,0.0\n`).ok).toBe(false);
+    expect(uraiCsvSeedInti(`${B},x,${BATAS_BOBOT_SEED}\n`).ok).toBe(true);
+    expect(uraiCsvSeedInti(`${B},x,${BATAS_BOBOT_SEED}.5\n`).ok).toBe(false);
+    expect(uraiCsvSeedInti(`${B},x,10000\n`).ok).toBe(false);
+  });
+
+  it("alamat huruf campur wajib lolos checksum EIP-55; huruf kecil semua atau besar semua tanpa checksum", () => {
+    // Satu huruf salah kapital = salah ketik yang dulu lolos.
+    const rusak = `${A.slice(0, -1)}D`;
+    const hasil = uraiCsvSeedInti(`${rusak},x,1\n`);
+    expect(hasil).toEqual({ ok: false, kesalahan: [{ baris: 1, pesan: expect.stringContaining("checksum") }] });
+    expect(uraiCsvSeedInti(`${A},x,1\n`).ok).toBe(true);
+    expect(uraiCsvSeedInti(`${A.toLowerCase()},x,1\n`).ok).toBe(true);
+    expect(uraiCsvSeedInti(`0x${A.slice(2).toUpperCase()},x,1\n`).ok).toBe(true);
   });
 
   it("alamat berulang ditolak, termasuk beda huruf besar-kecil", () => {
