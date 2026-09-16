@@ -8,6 +8,7 @@ import { getCurrentCell } from "../../src/location";
 import { ApiError } from "../../src/api";
 import { postCreateEvent } from "../../src/events-api";
 import { eventErrorMessage } from "../../src/messages";
+import { WARNA } from "../../src/warna";
 
 /** Acara berdurasi tiga jam mulai sekarang. Fase ini tidak punya pemilih tanggal. */
 const DURASI_DETIK = 3 * 3600;
@@ -65,10 +66,14 @@ export default function NewEventScreen() {
   return (
     <View style={s.root}>
       <TextInput
-        style={s.input} placeholder="Nama acara" value={title} onChangeText={setTitle}
+        style={[s.input, { color: WARNA.teks }]}
+        placeholderTextColor={WARNA.placeholder}
+        placeholder="Nama acara" value={title} onChangeText={setTitle}
       />
       <TextInput
-        style={s.input} placeholder="Nama tempat (opsional)" value={venue} onChangeText={setVenue}
+        style={[s.input, { color: WARNA.teks }]}
+        placeholderTextColor={WARNA.placeholder}
+        placeholder="Nama tempat (opsional)" value={venue} onChangeText={setVenue}
       />
       <Text style={s.catatan}>
         Lokasi kamu saat menekan tombol ini menjadi pusat area acara

@@ -17,6 +17,7 @@ import {
 import { createDevSigner } from "../../src/signer";
 import { SUGGESTED_TAGS, tierView } from "../../src/tier";
 import { fetchTrust, sendReport, sendVouch, type TrustResponse } from "../../src/trust-api";
+import { WARNA } from "../../src/warna";
 
 type Profile = {
   address: string; displayName: string; ens: string | null;
@@ -445,7 +446,8 @@ export default function ProfileScreen() {
                 </Pressable>
               </View>
               <TextInput
-                style={s.input}
+                style={[s.input, { color: WARNA.teks }]}
+                placeholderTextColor={WARNA.placeholder}
                 placeholder="Ceritakan apa yang terjadi"
                 value={reportReason}
                 onChangeText={setReportReason}

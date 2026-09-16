@@ -18,6 +18,7 @@ import {
 import {
   blokirErrorMessage, labelKirimPesan, pesanErrorMessage, sisaKarakterPesan,
 } from "../../src/messages";
+import { WARNA } from "../../src/warna";
 
 // Memberi event loop kesempatan memproses event keyboard dan sentuhan.
 const jedaUi = () => new Promise<void>((r) => { setTimeout(r, 0); });
@@ -159,7 +160,8 @@ export default function PercakapanScreen() {
         />
         <View style={s.tulis}>
           <TextInput
-            style={s.input}
+            style={[s.input, { color: WARNA.teks }]}
+            placeholderTextColor={WARNA.placeholder}
             value={isi}
             onChangeText={setIsi}
             placeholder="Tulis pesan"

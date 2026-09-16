@@ -16,6 +16,7 @@ import {
   type PesanTerbuka,
 } from "../../../src/pesan/pesan-actions";
 import { blokirErrorMessage, pesanErrorMessage, petunjukLaporan } from "../../../src/messages";
+import { WARNA } from "../../../src/warna";
 
 type PesanSah = Extract<PesanTerbuka, { status: "sah" }>;
 
@@ -119,7 +120,8 @@ export default function LaporPesanScreen() {
           )}
         />
         <TextInput
-          style={s.input}
+          style={[s.input, { color: WARNA.teks }]}
+          placeholderTextColor={WARNA.placeholder}
           value={alasan}
           onChangeText={setAlasan}
           placeholder="Alasan (minimal 10 karakter)"

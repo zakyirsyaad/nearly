@@ -11,6 +11,7 @@ import { feedErrorMessage } from "../../src/messages";
 import {
   mimeGambarDiterima, PESAN_FORMAT_TIDAK_DIDUKUNG, type MimeGambar,
 } from "../../src/gambar";
+import { WARNA } from "../../src/warna";
 
 const MAKS = 500;
 
@@ -97,7 +98,8 @@ export default function TulisScreen() {
   return (
     <View style={s.root}>
       <TextInput
-        style={s.input}
+        style={[s.input, { color: WARNA.teks }]}
+        placeholderTextColor={WARNA.placeholder}
         multiline
         maxLength={MAKS}
         placeholder="Apa yang lagi kamu bangun?"

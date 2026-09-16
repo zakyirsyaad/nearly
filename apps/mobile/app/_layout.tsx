@@ -3,6 +3,7 @@ import { useEffect } from "react";
 import { Stack, router } from "expo-router";
 import * as Notifications from "expo-notifications";
 import { ruteDariNotifikasi } from "../src/pesan/rute-push";
+import { JUDUL_LAYAR } from "../src/judul-layar";
 
 // Notifikasi yang tiba saat aplikasi terbuka tetap ditampilkan sebagai banner.
 // Sesuaikan nama medan dengan NotificationBehavior versi terpasang (Step 1).
@@ -24,17 +25,12 @@ export default function RootLayout() {
     return () => langganan.remove();
   }, []);
 
-  // Judul didaftarkan di sini, bukan lewat <Stack.Screen> di dalam layar:
-  // yang di dalam layar baru berlaku setelah layar selesai memuat, jadi selama
-  // spinner tampil header (dan tombol kembali layar berikutnya) memakai nama
-  // rute mentah seperti "pesan/index".
+  // Judul semua layar dari JUDUL_LAYAR — alasannya di src/judul-layar.ts.
   return (
     <Stack screenOptions={{ headerTitleStyle: { fontWeight: "600" } }}>
-      <Stack.Screen name="pesan/index" options={{ title: "Pesan" }} />
-      <Stack.Screen name="pesan/[address]" options={{ title: "Percakapan" }} />
-      <Stack.Screen name="pesan/lapor/[address]" options={{ title: "Lapor" }} />
-      <Stack.Screen name="radar/[eventId]" options={{ title: "Radar" }} />
-      <Stack.Screen name="profil-saya" options={{ title: "Profil saya" }} />
+      {Object.entries(JUDUL_LAYAR).map(([name, title]) => (
+        <Stack.Screen key={name} name={name} options={{ title }} />
+      ))}
     </Stack>
   );
 }

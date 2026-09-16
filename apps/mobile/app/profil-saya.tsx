@@ -14,6 +14,7 @@ import {
   profilErrorMessage,
   sisaKarakterNama,
 } from "../src/messages";
+import { WARNA } from "../src/warna";
 
 const MODE: { nilai: Visibilitas; judul: string }[] = [
   { nilai: "terlihat", judul: "Terlihat" },
@@ -79,7 +80,8 @@ export default function ProfilSayaScreen() {
         placeholder="Tanpa nama"
         editable={dimuat && !sibuk}
         autoCorrect={false}
-        style={s.isian}
+        style={[s.isian, { color: WARNA.teks }]}
+        placeholderTextColor={WARNA.placeholder}
       />
       {/* Penghitung code point, bukan maxLength — maxLength menghitung unit UTF-16 dan memotong emoji. */}
       <Text style={[s.penghitung, sisa < 0 && s.lebih]}>{sisa}</Text>
