@@ -29,7 +29,7 @@ Diputuskan pemilik project saat brainstorming. Tidak dibuka ulang saat implement
 | # | Keputusan | Pilihan |
 |---|---|---|
 | 1 | Cakupan graf | **Keduanya, bisa diganti**: "Acara ini" dan "Seluruh jaringan" |
-| 2 | Label simpul | **Nama tampilan + alamat singkat**, mis. `Budi · 0x12ab…` |
+| 2 | Label simpul | **Nama tampilan + alamat singkat**, mis. `Budi · 0x12ab…cdef` (awalnya `Budi · 0x12ab…`; diubah 2026-09-17, lihat §6.3) |
 | 3 | Hosting API | **VPS** milik pemilik project |
 | 4 | Hosting web | **Vercel** |
 | 5 | Bahasa landing page | **Inggris** (aplikasi tetap berbahasa Indonesia) |
@@ -289,8 +289,14 @@ Perilaku baru:
 
 ### 6.3 Tampilan simpul dan sisi
 
-- Label (`label.ts`): `Budi · 0x12ab…` bila nama ada, `0x12ab…` bila kosong. Nama dipotong 20 karakter.
-  Alamat singkat = 6 karakter pertama + `…`. **Tidak pernah** "Tanpa nama" di layar proyektor.
+- Label (`label.ts`): `Budi · 0x12ab…cdef` bila nama ada, `0x12ab…cdef` bila kosong. Nama dipotong 20
+  karakter. Alamat singkat = 6 karakter awal (termasuk `0x`) + `…` + 4 karakter akhir. **Tidak pernah**
+  "Tanpa nama" di layar proyektor.
+
+  **Catatan (2026-09-17, review akhir M-2, keputusan pemilik project).** Semula alamat singkat hanya 6
+  karakter awal (`0x12ab…`) = 16 bit, sehingga alamat berawalan sama bisa di-grind dalam hitungan detik
+  untuk menyamar, mis. `Budi · 0x12ab…` palsu di proyektor — padahal spec induk §9.2 bersandar pada
+  alamat yang selalu tampil di samping nama. Awal + akhir menaikkannya ke 32 bit.
 - Ukuran simpul naik dengan tier (Baru terkecil, Inti terbesar); warna simpul sama untuk semua tier,
   karena warna tier akan dibaca sebagai peringkat di depan ruangan.
 - Sisi baru **menyala selama 4 detik**, simpul baru muncul dengan animasi membesar. Inilah momen yang

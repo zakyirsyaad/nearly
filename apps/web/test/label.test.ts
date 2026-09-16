@@ -4,28 +4,31 @@ import { alamatSingkat, labelSimpul, perluLabel, radiusSimpul } from "../src/lab
 const ALAMAT = "0x12ab34cd56ef7890123456789012345678901234";
 
 describe("label simpul", () => {
-  it("alamat singkat = 6 karakter pertama + elipsis", () => {
-    expect(alamatSingkat(ALAMAT)).toBe("0x12ab…");
+  it("alamat singkat = 6 karakter awal (termasuk 0x) + elipsis + 4 karakter akhir", () => {
+    // 16 bit saja (`0x12ab…`) bisa di-grind dalam hitungan detik untuk menyamar di proyektor;
+    // awal + akhir = 32 bit.
+    expect(alamatSingkat(ALAMAT)).toBe("0x12ab…1234");
+    expect(alamatSingkat("0x00000000000000000000000000000000000000ab")).toBe("0x0000…00ab");
   });
 
   it("nama ada → nama · alamat singkat", () => {
-    expect(labelSimpul("Budi", ALAMAT)).toBe("Budi · 0x12ab…");
+    expect(labelSimpul("Budi", ALAMAT)).toBe("Budi · 0x12ab…1234");
   });
 
   it("nama kosong atau spasi saja → alamat singkat saja, tidak pernah 'Tanpa nama'", () => {
-    expect(labelSimpul("", ALAMAT)).toBe("0x12ab…");
-    expect(labelSimpul("   ", ALAMAT)).toBe("0x12ab…");
+    expect(labelSimpul("", ALAMAT)).toBe("0x12ab…1234");
+    expect(labelSimpul("   ", ALAMAT)).toBe("0x12ab…1234");
     expect(labelSimpul("", ALAMAT)).not.toMatch(/tanpa nama/i);
   });
 
   it("nama panjang dipotong 20 karakter", () => {
-    expect(labelSimpul("Bartholomew Kusumawardhana", ALAMAT)).toBe("Bartholomew Kusumawa… · 0x12ab…");
-    expect(labelSimpul("12345678901234567890", ALAMAT)).toBe("12345678901234567890 · 0x12ab…");
+    expect(labelSimpul("Bartholomew Kusumawardhana", ALAMAT)).toBe("Bartholomew Kusumawa… · 0x12ab…1234");
+    expect(labelSimpul("12345678901234567890", ALAMAT)).toBe("12345678901234567890 · 0x12ab…1234");
   });
 
   it("emoji di batas potongan tidak terbelah", () => {
     const nama = `${"a".repeat(19)}😀😀`;
-    expect(labelSimpul(nama, ALAMAT)).toBe(`${"a".repeat(19)}😀… · 0x12ab…`);
+    expect(labelSimpul(nama, ALAMAT)).toBe(`${"a".repeat(19)}😀… · 0x12ab…1234`);
   });
 });
 

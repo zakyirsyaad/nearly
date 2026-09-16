@@ -7,13 +7,19 @@ export const BATAS_SIMPUL_BERLABEL = 300;
 /** Skala zoom kanvas di atas ini dianggap "diperbesar": semua label digambar. */
 export const SKALA_LABEL_PENUH = 2.5;
 
-/** `0x12ab…` — enam karakter pertama alamat + elipsis. */
+/**
+ * `0x12ab…cdef` — enam karakter awal (termasuk `0x`), elipsis, empat karakter
+ * akhir. Awal saja (`0x12ab…`) hanya 16 bit: alamat dengan awalan yang sama
+ * bisa di-grind dalam hitungan detik untuk menyamar sebagai orang lain di
+ * layar proyektor, padahal spec induk §9.2 bersandar pada alamat yang selalu
+ * tampil di samping nama. Awal + akhir = 32 bit (spec 6 §6.3).
+ */
 export function alamatSingkat(address: string): string {
-  return `${address.slice(0, 6)}…`;
+  return `${address.slice(0, 6)}…${address.slice(-4)}`;
 }
 
 /**
- * `Budi · 0x12ab…`, atau `0x12ab…` saja bila nama kosong. TIDAK PERNAH
+ * `Budi · 0x12ab…cdef`, atau `0x12ab…cdef` saja bila nama kosong. TIDAK PERNAH
  * "Tanpa nama": di depan ruangan, label itu terbaca sebagai ejekan.
  * Nama dipotong per karakter Unicode (bukan per unit UTF-16), supaya emoji di
  * batas potongan tidak terbelah jadi kotak rusak.
