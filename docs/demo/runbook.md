@@ -29,6 +29,25 @@ corepack enable
 caddy version
 ```
 
+**Firewall — tutup semua selain SSH dan HTTP(S).** API (`@hono/node-server`) mendengarkan di SEMUA
+antarmuka pada port 8787. Tanpa firewall, siapa pun bisa memanggil `http://<vps>:8787` langsung,
+melewati HTTPS dan batas koneksi Caddy. Izinkan SSH **sebelum** mengaktifkan, supaya sesi tidak
+terkunci:
+
+```bash
+sudo ufw default deny incoming
+sudo ufw default allow outgoing
+sudo ufw allow 22/tcp
+sudo ufw allow 80/tcp
+sudo ufw allow 443/tcp
+sudo ufw enable
+sudo ufw status verbose          # hanya 22, 80, 443 yang ALLOW IN
+```
+
+Periksa dari laptop (bukan dari VPS): `curl -m 5 http://<vps>:8787/health` harus **gagal/timeout**,
+sedangkan `curl https://api.<domain>/health` tetap `{"ok":true}` (setelah bagian 1.5). Kalau penyedia
+VPS punya firewall di panel web (security group), atur aturan yang sama di sana juga.
+
 ### 1.2 Kode
 
 ```bash
@@ -95,8 +114,48 @@ sudo systemctl edit caddy
 #   tambahkan di bagian yang dibuka editor:
 #   [Service]
 #   Environment=NEARLY_API_HOST=api.<domain>
+sudo NEARLY_API_HOST=api.<domain> caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile
 sudo systemctl restart caddy
 ```
+
+`caddy validate` harus berakhir dengan `Valid configuration` sebelum restart. Caddyfile ini belum
+pernah dijalankan oleh sesi kode (tidak ada Caddy di mesin pengembang) — kalau validasi gagal di blok
+`handle /graf/*`, hapus blok `transport http { max_conns_per_host 16 }` saja; sisanya konfigurasi
+standar.
+
+`/graf/*` lewat proxy tersendiri yang dibatasi 16 koneksi ke API (spec 6 §4.5): lonjakan permintaan
+graf mengantre di Caddy, dan salaman di ruangan tetap mendapat koneksi sendiri.
+
+**Opsional — batas laju per IP untuk `/graf/*`.** Caddy standar tidak punya ini; butuh plugin
+[`caddy-ratelimit`](https://github.com/mholt/caddy-ratelimit), yang berarti membangun biner Caddy
+sendiri dengan `xcaddy` dan mengganti biner paket. Lakukan **hanya** bila endpoint graf benar-benar
+dibanjiri, dan jauh sebelum hari-H — biner kustom tidak ikut pembaruan `apt`. Sketsa (periksa README
+plugin untuk sintaks versi terbaru):
+
+```caddyfile
+{
+	# Harus sebelum `handle`: blok handle menghentikan rantai, jadi urutan
+	# "before reverse_proxy" membuat rate_limit tidak pernah dijalankan.
+	order rate_limit before basic_auth
+}
+
+{$NEARLY_API_HOST} {
+	rate_limit {
+		zone graf {
+			match {
+				path /graf/*
+			}
+			key {remote_host}
+			events 120
+			window 1m
+		}
+	}
+	# ... blok handle yang sudah ada ...
+}
+```
+
+Satu layar `/live` memanggil ±20 kali per menit. Jangan pasang batas yang terlalu ketat: semua laptop
+di Wi-Fi venue bisa keluar lewat SATU IP publik yang sama.
 
 3. Verifikasi dari laptop, bukan dari VPS:
 
@@ -121,7 +180,9 @@ sudo systemctl restart nearly-api
 1. Hubungkan repo di Vercel. **Root Directory:** `apps/web`. Framework preset: Vite.
 2. **Build Command:** `pnpm build`. **Output Directory:** `dist`.
 3. **Environment Variables:** `VITE_API_URL` = `https://api.<domain>` (Production dan Preview).
-   `VITE_*` ikut terbundel ke browser — jangan pernah menaruh rahasia di sana.
+   `VITE_*` ikut terbundel ke browser — jangan pernah menaruh rahasia di sana. Nilai ini dibaca **saat
+   build**: menambah atau mengubahnya setelah deploy butuh **Redeploy**. Build tanpa nilai ini
+   menampilkan **API not configured: set VITE_API_URL and redeploy** di `/live`.
 4. Repo memakai `packageManager: pnpm@11.x`. Kalau build Vercel gagal karena versi pnpm, tambahkan
    env `ENABLE_EXPERIMENTAL_COREPACK` = `1` lalu deploy ulang.
 5. Setelah deploy: tambahkan `https://<vercel-domain>` (dan domain kustom web bila ada) ke
@@ -151,7 +212,9 @@ curl -s -D - -o /dev/null -H "Origin: https://<vercel-domain>" https://api.<doma
 1. **Saldo relayer.** Isi tBNB dompet relayer dari faucet BSC testnet. Setiap salaman, check-in,
    dan perubahan tier mengirim transaksi.
 2. **CSV panitia & juri.** Format `address,catatan,bobot` (lihat `docs/demo/seed-inti-contoh.csv`).
-   Catatan tanpa koma.
+   Catatan tanpa koma. Bobot desimal biasa, > 0 dan ≤ 100 (`1`, `1.5`, `2`). Salin alamat apa adanya
+   dari dompet/BscScan: alamat huruf campur diperiksa checksum-nya, jadi salah ketik satu karakter
+   ditolak.
 3. **Seed trusted core — uji coba dulu:**
 
 ```bash
@@ -168,6 +231,21 @@ sudo -u nearly node --env-file=/etc/nearly/api.env --import=tsx tools/seed-inti.
 ```
 
    Hitung ulang berjalan satu kali dan dapat mengirim `setScore` untuk setiap tier yang berubah.
+
+   > **Jalankan saat TIDAK ada salaman, atau hentikan API sebentar.** Alat ini dan API memakai
+   > `RELAYER_PRIVATE_KEY` yang sama, tetapi pengaman "satu hitung ulang pada satu waktu" hanya
+   > berlaku di dalam proses API. Salaman (termasuk salaman uji H-1) yang memicu hitung ulang di API
+   > bersamaan dengan alat ini bisa mengambil **nonce yang sama**; satu `setScore` lalu tergantikan
+   > diam-diam dan tier di chain tidak cocok dengan tier di aplikasi. Cara paling aman:
+   >
+   > ```bash
+   > sudo systemctl stop nearly-api
+   > sudo -u nearly node --env-file=/etc/nearly/api.env --import=tsx tools/seed-inti.ts /path/panitia.csv --jalankan
+   > sudo systemctl start nearly-api
+   > curl -s https://api.<domain>/health        # {"ok":true}
+   > ```
+   >
+   > Hal yang sama berlaku untuk `tools/recompute.ts`.
 5. **Periksa hasil:** panitia bertier **Inti** di aplikasi; event `ScoreUpdated` terlihat di BscScan
    testnet pada kontrak `TrustAttestor`.
 6. **Acara uji.** Buat acara lewat aplikasi dengan waktu mulai **sebelum sekarang** — pemilih acara
@@ -177,7 +255,26 @@ sudo -u nearly node --env-file=/etc/nearly/api.env --import=tsx tools/seed-inti.
 7. **Check-in dan satu salaman** dengan dua HP di dalam venue uji.
 8. **Laptop proyektor:** buka `https://<vercel-domain>/live?acara=<eventId>`, pastikan sisi baru
    menyala dalam ≤ 6 detik setelah salaman, lalu tekan **Fullscreen**.
-9. **Rekam layar** graf selama uji ini — itulah rencana cadangan (bagian 6).
+9. **Uji jaringan venue — DARI Wi-Fi venue, bukan dari rumah.** Kalau bisa, datang ke venue H-1;
+   kalau tidak, lakukan paling awal di hari-H sebelum pintu dibuka. Dari laptop proyektor DAN satu HP
+   yang tersambung ke Wi-Fi venue:
+
+   ```bash
+   curl -s -m 10 https://api.<domain>/health              # {"ok":true}
+   curl -s -m 10 -o /dev/null -w "%{http_code}\n" https://<vercel-domain>/live   # 200
+   ```
+
+   Buka juga `https://<vercel-domain>/live` di browser laptop dan pastikan graf memuat (bukan
+   **Reconnecting…**). Wi-Fi venue yang **memfilter DNS** bisa memblokir domain baru atau
+   `*.vercel.app` tanpa pesan galat yang jelas — ini **pernah terjadi saat uji lapangan**: RPC
+   blockchain diarahkan ke halaman blokir, dan yang menolong adalah **WARP / 1.1.1.1** di laptop.
+   Dengan API di VPS, RPC dipanggil dari VPS, jadi pemblokiran RPC tidak lagi mengenai salaman — tetapi
+   domain API dan domain web tetap bisa diblokir. Siapkan:
+   - **Hotspot HP cadangan** (kuota cukup) untuk laptop proyektor, dan beri tahu panitia bahwa peserta
+     bisa pindah ke data seluler bila salaman gagal karena jaringan;
+   - **WARP / 1.1.1.1** terpasang dan sudah dicoba di laptop proyektor (atau DNS publik `1.1.1.1`);
+   - jika Wi-Fi venue gagal uji ini: laptop proyektor langsung pakai hotspot, jangan menunggu.
+10. **Rekam layar** graf selama uji ini — itulah rencana cadangan (bagian 6).
 
 ---
 
@@ -186,22 +283,36 @@ sudo -u nearly node --env-file=/etc/nearly/api.env --import=tsx tools/seed-inti.
 1. Buat acara hackathon lewat aplikasi (waktu mulai sebelum pintu dibuka).
 2. Host menampilkan QR check-in di pintu.
 3. Laptop proyektor: `https://<vercel-domain>/live?acara=<eventId>`, layar penuh.
+4. Sebelum pintu dibuka: ulangi uji jaringan venue (H-1 butir 9) dari laptop proyektor dan satu HP di
+   Wi-Fi venue. Hotspot HP cadangan menyala dan siap dipakai.
 
 **Daftar periksa bila graf tidak bergerak** — urut, berhenti di yang pertama gagal:
 
-1. Pojok kanan bawah menampilkan **Reconnecting…**? → masalah jaringan laptop atau API.
-2. `curl -s https://api.<domain>/health` → `{"ok":true}`? Kalau tidak:
+1. Layar menampilkan pesan yang tidak hilang?
+   - **API not configured: set VITE_API_URL and redeploy** → env `VITE_API_URL` tidak ada saat build
+     Vercel. Isi di Vercel (bagian 2 butir 3), lalu **Redeploy** — mengisi env saja tidak mengubah build
+     yang sudah jalan.
+   - **This event is longer than 7 days and cannot be shown live** → acara dibuat dengan jendela lebih
+     dari 7 hari; buat ulang acara dengan jendela yang benar.
+   - **Event not found** → `eventId` di URL salah atau acara belum tersimpan.
+2. Pojok kanan bawah menampilkan **Reconnecting…**? → masalah jaringan laptop atau API. Coba
+   `curl -s https://api.<domain>/health` dari laptop yang sama; kalau gagal di Wi-Fi venue tapi berhasil
+   lewat hotspot HP, Wi-Fi venue memblokir domain API → pindah ke hotspot atau nyalakan WARP / 1.1.1.1
+   (H-1 butir 9).
+3. `curl -s https://api.<domain>/health` → `{"ok":true}`? Kalau tidak:
    `sudo systemctl status nearly-api` dan `journalctl -u nearly-api -n 100`.
-3. `curl -s "https://api.<domain>/graf/acara/<eventId>"` → `hitungan.salaman` naik setelah salaman?
+4. `curl -s "https://api.<domain>/graf/acara/<eventId>"` → `hitungan.salaman` naik setelah salaman?
    - Tidak naik, tapi salaman di HP berhasil → kedua orang sudah check-in di acara ini? Salaman
-     dihitung untuk acara hanya bila **keduanya** check-in dan waktunya di dalam jendela acara.
+     dihitung untuk acara hanya bila **keduanya** check-in dan waktunya di dalam jendela acara. Salaman
+     yang terjadi SEBELUM salah satu pihak check-in ikut muncul begitu check-in-nya masuk (layar memuat
+     ulang penuh saat hitungan berubah, atau paling lambat tiap 60 detik).
    - Salaman di HP gagal → lihat pesan galat di HP.
-4. Relayer masih bersaldo? Periksa saldo dompet relayer di BscScan testnet. Saldo habis = salaman
+5. Relayer masih bersaldo? Periksa saldo dompet relayer di BscScan testnet. Saldo habis = salaman
    dan check-in gagal dengan `chain_error`.
-5. Satu orang tidak bisa bersalaman lagi → kuota koneksi harian (30 per orang per hari,
+6. Satu orang tidak bisa bersalaman lagi → kuota koneksi harian (30 per orang per hari,
    `DAILY_CONNECTION_QUOTA` di `apps/api/src/handshake-gate.ts`) mungkin habis. Itu perilaku
    yang disengaja, bukan kerusakan.
-6. Web memuat tapi graf kosong dan tidak ada **Reconnecting…** → buka DevTools; galat CORS berarti
+7. Web memuat tapi graf kosong dan tidak ada **Reconnecting…** → buka DevTools; galat CORS berarti
    origin web belum ada di `WEB_ORIGINS`.
 
 ---
