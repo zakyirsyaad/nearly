@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { HalamanGraf } from "../src/api";
-import { DURASI_SOROT_MS, gabungHalaman, KEADAAN_KOSONG, type KeadaanGraf } from "../src/gabung-graf";
+import { DURASI_SOROT_MS, gabungHalaman, gantiHalaman, KEADAAN_KOSONG, type KeadaanGraf } from "../src/gabung-graf";
 
 const A = "0x00000000000000000000000000000000000000AA";
 const B = "0x00000000000000000000000000000000000000bb";
@@ -92,5 +92,72 @@ describe("gabungHalaman", () => {
     expect(k.simpul.get(A.toLowerCase())).toEqual({
       address: A.toLowerCase(), displayName: "", tierLabel: "Baru", baruSampaiMs: null,
     });
+  });
+});
+
+describe("gantiHalaman (muat ulang penuh mode acara, spec 6 §6.2 catatan 2026-09-17)", () => {
+  const D = "0x00000000000000000000000000000000000000dd";
+
+  it("sisi yang masih ada mempertahankan objeknya; yang baru menyala; yang hilang dibuang beserta simpul yatimnya", () => {
+    const lama = gabungHalaman(KEADAAN_KOSONG, halaman({
+      simpul: [
+        { address: A, displayName: "Budi", tierLabel: "Baru" },
+        { address: B, displayName: "", tierLabel: "Dikenal" },
+        { address: C, displayName: "", tierLabel: "Baru" },
+        { address: D, displayName: "", tierLabel: "Baru" },
+      ],
+      sisi: [
+        { id: 1, a: A, b: B, atMs: 10, txHash: "0x01" },
+        { id: 300, a: C, b: D, atMs: 30, txHash: "0x03" },
+      ],
+      kursor: 300,
+    }), { nowMs: 0, sorot: false });
+
+    // Sisi 300 pindah ke acara lain; sisi 5 (id di bawah kursor) baru menjadi milik acara ini.
+    const baru = gantiHalaman(lama, [halaman({
+      simpul: [
+        { address: A, displayName: "Budi", tierLabel: "Baru" },
+        { address: B, displayName: "", tierLabel: "Dikenal" },
+        { address: C, displayName: "", tierLabel: "Baru" },
+      ],
+      sisi: [
+        { id: 1, a: A, b: B, atMs: 10, txHash: "0x01" },
+        { id: 5, a: B, b: C, atMs: 50, txHash: "0x05" },
+      ],
+      kursor: 5,
+    })], { nowMs: 9_000, sorot: true });
+
+    expect([...baru.sisi.keys()].sort((x, y) => x - y)).toEqual([1, 5]);
+    expect(baru.sisi.get(1)).toBe(lama.sisi.get(1));
+    expect(baru.sisi.get(5)!.baruSampaiMs).toBe(9_000 + DURASI_SOROT_MS);
+    expect(baru.simpul.get(A.toLowerCase())).toBe(lama.simpul.get(A.toLowerCase()));
+    expect(baru.simpul.get(C.toLowerCase())).toBe(lama.simpul.get(C.toLowerCase()));
+    expect(baru.simpul.has(D)).toBe(false);
+    expect(baru.kursor).toBe(5);
+  });
+
+  it("dari beberapa halaman sekaligus; data simpul baru menimpa tanpa menyalakan ulang", () => {
+    const lama = gabungHalaman(KEADAAN_KOSONG, halaman(), { nowMs: 0, sorot: false });
+    const baru = gantiHalaman(lama, [
+      halaman({ simpul: [{ address: A, displayName: "Budi S", tierLabel: "Inti" }, { address: B, displayName: "", tierLabel: "Dikenal" }], lengkap: false }),
+      halaman({ simpul: [{ address: C, displayName: "", tierLabel: "Baru" }], sisi: [{ id: 2, a: B, b: C, atMs: 20, txHash: "0x02" }], kursor: 2 }),
+    ], { nowMs: 1_000, sorot: true });
+    expect([...baru.sisi.keys()]).toEqual([1, 2]);
+    expect(baru.simpul.get(A.toLowerCase())).toEqual({
+      address: A.toLowerCase(), displayName: "Budi S", tierLabel: "Inti", baruSampaiMs: null,
+    });
+    expect(baru.simpul.get(C.toLowerCase())!.baruSampaiMs).toBe(1_000 + DURASI_SOROT_MS);
+  });
+
+  it("tanpa perubahan → keadaan yang sama persis (kanvas tidak digambar ulang)", () => {
+    const lama = gabungHalaman(KEADAAN_KOSONG, halaman(), { nowMs: 0, sorot: false });
+    expect(gantiHalaman(lama, [halaman()], { nowMs: 5, sorot: true })).toBe(lama);
+  });
+
+  it("keadaan lama tidak termutasi", () => {
+    const lama = gabungHalaman(KEADAAN_KOSONG, halaman(), { nowMs: 0, sorot: false });
+    const sebelum = potret(lama);
+    gantiHalaman(lama, [halaman({ simpul: [], sisi: [], kursor: 0 })], { nowMs: 1, sorot: true });
+    expect(potret(lama)).toEqual(sebelum);
   });
 });

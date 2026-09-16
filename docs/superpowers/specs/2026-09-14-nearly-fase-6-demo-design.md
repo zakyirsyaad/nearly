@@ -233,6 +233,34 @@ Siklus: muat halaman berturut-turut sampai `lengkap: true`, lalu polling tiap **
 coba lagi dengan jeda naik 3 → 6 → 12 detik (maks 12), kembali ke 3 detik saat berhasil. Mengganti
 cakupan menyetel ulang keadaan dan memuat dari awal.
 
+**Catatan (2026-09-17, review akhir I-1 dan M-1).** Desain kursor di atas mengandaikan himpunan sisi
+hanya bertambah dengan `id` yang naik. Dua andaian itu tidak selalu benar:
+
+1. **Keanggotaan sisi acara bukan fakta tetap.** Salaman tidak mensyaratkan check-in, dan check-in sah
+   selama acara berlangsung. A dan B bersalaman pukul 09:05 (id 41, belum milik acara), B baru check-in
+   pukul 09:10 — id 41 *menjadi* milik acara setelah kursor sudah lewat, sehingga `sejakId = kursor`
+   tidak pernah mengembalikannya, sementara `hitungan.salaman` sudah menghitungnya. Sebaliknya,
+   check-in belakangan di acara tumpang tindih ber-`event_id` lebih kecil *memindahkan* sisi ke acara
+   lain (§4.3 syarat 3), tetapi penggabung yang hanya menambah tetap menggambarnya. Akar masalahnya di
+   desain kursor spec ini, bukan di pelaksanaan.
+2. **`bigserial` bisa commit tidak berurutan.** Dua salaman bersamaan dapat membuat id 11 terbaca
+   sebelum id 10; polling di sela itu memajukan kursor melewati id 10.
+
+Perilaku baru:
+
+- Setelah muatan awal, polling memakai **`sejakId = max(0, kursor − 50)`**. Gabung idempoten per `id`,
+  jadi baris yang terbaca ulang tidak menggandakan apa pun. Muatan awal tetap persis di kursor.
+- **Mode acara:** bila `hitungan.salaman` ≠ jumlah sisi yang dimiliki layar, **atau** sudah 60 detik
+  sejak muat penuh terakhir (untuk pertukaran yang jumlahnya sama), layar memuat ulang dari
+  `sejakId = 0` dan **mengganti** himpunan sisi dan simpul (`gantiHalaman`). Graf lama tetap tampil
+  selama halaman muat ulang dikumpulkan; sisi dan simpul yang masih ada memakai objek lamanya (tidak
+  berkedip, tidak melompat, tidak menyala ulang); hanya sisi yang benar-benar baru yang menyala; sisi
+  yang pindah ke acara lain dan simpul yang tak lagi punya sisi dibuang. Setelah satu muat ulang,
+  pemeriksaan hitungan baru dilakukan lagi di polling berikutnya, supaya server yang tidak konsisten
+  tidak dibanjiri muat ulang beruntun. Biayanya kecil karena hasil acara di server disimpan per
+  `eventId` (§4.5).
+- Mode jaringan tidak memuat ulang: koneksi tidak pernah berpindah atau menghilang.
+
 ### 6.3 Tampilan simpul dan sisi
 
 - Label (`label.ts`): `Budi · 0x12ab…` bila nama ada, `0x12ab…` bila kosong. Nama dipotong 20 karakter.

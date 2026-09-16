@@ -242,6 +242,9 @@ function susunDataGraf(
       l = { id: s.id, source: s.a, target: s.b, baruSampaiMs: s.baruSampaiMs };
       kolamSisi.set(s.id, l);
     }
+    // Sisi yang dibuang lalu masuk lagi lewat muat ulang acara memakai objek
+    // kolam lamanya, tapi harus tetap menyala sebagai sisi baru.
+    l.baruSampaiMs = s.baruSampaiMs;
     links.push(l);
   }
   return { nodes, links };

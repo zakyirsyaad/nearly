@@ -88,3 +88,50 @@ export function gabungHalaman(
   if (simpul === null && sisi === null && kursor === lama.kursor) return lama;
   return { simpul: simpul ?? lama.simpul, sisi: sisi ?? lama.sisi, kursor };
 }
+
+/**
+ * MENGGANTI himpunan sisi dan simpul dengan hasil muat ulang penuh (seluruh
+ * halaman dari `sejakId = 0`) — untuk mode acara, di mana keanggotaan sisi
+ * BISA berubah di belakang kursor (spec 6 §6.2, catatan 2026-09-17):
+ * check-in yang datang belakangan membuat koneksi lama menjadi milik acara,
+ * dan check-in di acara tumpang tindih ber-`event_id` lebih kecil
+ * memindahkannya ke acara lain. `gabungHalaman` hanya menambah, jadi tidak
+ * bisa menangani keduanya.
+ *
+ * Supaya layar tidak berkedip: sisi dan simpul yang masih ada memakai OBJEK
+ * LAMA (termasuk `baruSampaiMs`-nya), hanya yang benar-benar baru menyala, dan
+ * yang tidak ada lagi dibuang — termasuk simpul yang tak lagi punya sisi (R5).
+ * Kursor diambil dari hasil muat ulang: seluruh himpunan baru saja dibaca.
+ */
+export function gantiHalaman(
+  lama: KeadaanGraf,
+  halaman: readonly HalamanGraf[],
+  opsi: { nowMs: number; sorot: boolean },
+): KeadaanGraf {
+  const segar = halaman.reduce((k, h) => gabungHalaman(k, h, opsi), KEADAAN_KOSONG);
+  let berubah = segar.kursor !== lama.kursor
+    || segar.sisi.size !== lama.sisi.size || segar.simpul.size !== lama.simpul.size;
+
+  const sisi = new Map<number, SisiLayar>();
+  for (const [id, s] of segar.sisi) {
+    const ada = lama.sisi.get(id);
+    if (ada) sisi.set(id, ada);
+    else {
+      sisi.set(id, s);
+      berubah = true;
+    }
+  }
+
+  const simpul = new Map<string, SimpulLayar>();
+  for (const [kunci, s] of segar.simpul) {
+    const ada = lama.simpul.get(kunci);
+    if (ada && ada.displayName === s.displayName && ada.tierLabel === s.tierLabel) {
+      simpul.set(kunci, ada);
+      continue;
+    }
+    berubah = true;
+    simpul.set(kunci, ada ? { ...s, baruSampaiMs: ada.baruSampaiMs } : s);
+  }
+
+  return berubah ? { simpul, sisi, kursor: segar.kursor } : lama;
+}
