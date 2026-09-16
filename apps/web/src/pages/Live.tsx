@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import ForceGraph2D, {
   type ForceGraphMethods, type GraphData, type LinkObject, type NodeObject,
 } from "react-force-graph-2d";
-import { basisApi, buatKlienGraf, type AcaraApi } from "../api";
+import { apiBelumDiatur, basisApi, buatKlienGraf, type AcaraApi } from "../api";
 import { KEADAAN_KOSONG, type KeadaanGraf } from "../gabung-graf";
 import { labelSimpul, perluLabel, radiusSimpul } from "../label";
 import { bacaParamAcara } from "../rute";
@@ -26,7 +26,11 @@ const WARNA_SOROT = "#ffd166";
 const WARNA_LABEL = "rgba(232, 238, 252, 0.9)";
 const DURASI_TUMBUH_MS = 600;
 
-const klien = buatKlienGraf(basisApi(import.meta.env.VITE_API_URL as string | undefined));
+const URL_API = import.meta.env.VITE_API_URL as string | undefined;
+const klien = buatKlienGraf(basisApi(URL_API));
+/** Build produksi tanpa `VITE_API_URL`: jangan polling, katakan saja (runbook §5). */
+const TANPA_API = apiBelumDiatur(URL_API, import.meta.env.PROD);
+if (TANPA_API) console.error("Nearly: VITE_API_URL is empty in this production build; /live cannot reach the API.");
 const tunda = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
 
 function ukuranJendela() {
@@ -57,7 +61,7 @@ export function Live() {
 
   // Pemilih acara hanya muncul tanpa ?acara (spec 6 §6.1).
   useEffect(() => {
-    if (eventIdUrl) return;
+    if (eventIdUrl || TANPA_API) return;
     let hidup = true;
     klien.daftarAcara().then((a) => { if (hidup) setDaftarAcara(a); }).catch(() => {});
     return () => { hidup = false; };
@@ -77,6 +81,7 @@ export function Live() {
     kolamSisi.current = new Map();
     sudahPas.current = false;
     setTampilan({ keadaan: KEADAAN_KOSONG, status: "memuat", acara: null, hitungan: null });
+    if (TANPA_API) return;
     const siklus = mulaiSiklus({
       klien, cakupan, nowMs: () => Date.now(), tunda, saatBerubah: setTampilan,
     });
@@ -193,11 +198,14 @@ export function Live() {
         <button type="button" onClick={() => void layarPenuh()}>Fullscreen</button>
       </footer>
 
-      {tampilan.status !== "live" && (
+      {TANPA_API ? (
+        <div className="live-status" role="status">API not configured: set VITE_API_URL and redeploy</div>
+      ) : tampilan.status !== "live" && (
         <div className="live-status" role="status">
           {tampilan.status === "memuat" && "Loading…"}
           {tampilan.status === "menyambung-ulang" && "Reconnecting…"}
           {tampilan.status === "tidak-ditemukan" && "Event not found"}
+          {tampilan.status === "jendela-tak-didukung" && "This event is longer than 7 days and cannot be shown live"}
         </div>
       )}
     </div>

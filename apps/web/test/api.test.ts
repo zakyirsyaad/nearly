@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { basisApi, buatKlienGraf, GalatApi, urlGraf } from "../src/api";
+import { apiBelumDiatur, basisApi, buatKlienGraf, GalatApi, urlGraf } from "../src/api";
 
 const HALAMAN = { simpul: [], sisi: [], kursor: 0, lengkap: true };
 
@@ -12,6 +12,14 @@ describe("klien graf", () => {
     expect(basisApi("https://api.nearly.xyz/")).toBe("https://api.nearly.xyz");
     expect(basisApi(undefined)).toBe("");
     expect(urlGraf("", "/graf/jaringan", 5)).toBe("/graf/jaringan?sejakId=5");
+  });
+
+  it("build produksi tanpa VITE_API_URL = API belum diatur; dev boleh kosong (proxy Vite)", () => {
+    expect(apiBelumDiatur(undefined, true)).toBe(true);
+    expect(apiBelumDiatur("", true)).toBe(true);
+    expect(apiBelumDiatur("  / ", true)).toBe(true);
+    expect(apiBelumDiatur("https://api.nearly.xyz", true)).toBe(false);
+    expect(apiBelumDiatur(undefined, false)).toBe(false);
   });
 
   it("jaringan dan acara memakai sejakId; hanya header Accept", async () => {

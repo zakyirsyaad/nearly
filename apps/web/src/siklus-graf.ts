@@ -10,7 +10,8 @@ import { jedaBerikutnya } from "./jeda";
  * 2. lalu polling tiap 3 detik dengan `sejakId = max(0, kursor − TUMPANG_KURSOR)`;
  * 3. gagal → status "menyambung-ulang", graf yang sudah ada DIPERTAHANKAN,
  *    coba lagi dengan jeda 3 → 6 → 12 detik; berhasil → kembali 3 detik;
- * 4. acara tidak ada (404) → berhenti; mencoba ulang tidak akan menolong;
+ * 4. acara tidak ada atau jendelanya tak didukung (404) → berhenti; mencoba
+ *    ulang tidak akan menolong;
  * 5. mode acara: bila `hitungan.salaman` ≠ jumlah sisi yang dimiliki, atau
  *    sudah `MUAT_ULANG_ACARA_MS` sejak muat penuh terakhir, muat ulang dari
  *    `sejakId = 0` dan GANTI himpunan sisi (catatan 2026-09-17 di §6.2).
@@ -37,7 +38,7 @@ export const TUMPANG_KURSOR = 50;
 export const MUAT_ULANG_ACARA_MS = 60_000;
 
 export type Cakupan = { jenis: "jaringan" } | { jenis: "acara"; eventId: string };
-export type StatusSiklus = "memuat" | "live" | "menyambung-ulang" | "tidak-ditemukan";
+export type StatusSiklus = "memuat" | "live" | "menyambung-ulang" | "tidak-ditemukan" | "jendela-tak-didukung";
 
 export type Tampilan = {
   keadaan: KeadaanGraf;
@@ -124,7 +125,9 @@ export function mulaiSiklus(o: OpsiSiklus): { hentikan: () => void; selesai: Pro
       } catch (e) {
         if (!hidup) return;
         if (e instanceof GalatApi && e.status === 404) {
-          kirim({ ...t, status: "tidak-ditemukan" });
+          // Acara berjendela > 7 hari ada, tapi API menolak menggambarnya (spec 6 §4.5).
+          // "Event not found" akan membuat operator mencari id yang salah.
+          kirim({ ...t, status: e.kode === "event_window_unsupported" ? "jendela-tak-didukung" : "tidak-ditemukan" });
           return;
         }
         gagalBeruntun += 1;

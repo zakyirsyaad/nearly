@@ -94,6 +94,14 @@ describe("siklus graf", () => {
     expect(akhir.status).toBe("tidak-ditemukan");
   });
 
+  it("jendela acara tak didukung (404 event_window_unsupported): berhenti dengan status tersendiri", async () => {
+    const { klien, sejak } = klienDari([new GalatApi(404, "event_window_unsupported", "404")]);
+    const { jeda, akhir } = await jalankan(klien, 99, { jenis: "acara", eventId: "0xabc" });
+    expect(jeda).toEqual([]);
+    expect(sejak).toEqual([0]);
+    expect(akhir.status).toBe("jendela-tak-didukung");
+  });
+
   it("mode acara menyimpan acara dan hitungan dari respons", async () => {
     const r: HalamanAcara = {
       ...h(1, true),

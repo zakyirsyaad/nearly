@@ -32,6 +32,16 @@ export function basisApi(nilai: string | undefined): string {
   return (nilai ?? "").trim().replace(/\/+$/, "");
 }
 
+/**
+ * Build produksi tanpa `VITE_API_URL` tidak punya proxy Vite: permintaan jatuh
+ * ke Vercel sendiri, rewrite mengembalikan `index.html`, JSON gagal diurai,
+ * dan layar menampilkan "Reconnecting…" selamanya — tak bisa dibedakan dari API
+ * yang mati. Keadaan itu dideteksi di sini supaya layar bisa mengatakannya.
+ */
+export function apiBelumDiatur(nilai: string | undefined, produksi: boolean): boolean {
+  return produksi && basisApi(nilai) === "";
+}
+
 export function urlGraf(basis: string, jalur: string, sejakId?: number): string {
   return sejakId === undefined ? `${basis}${jalur}` : `${basis}${jalur}?sejakId=${sejakId}`;
 }
