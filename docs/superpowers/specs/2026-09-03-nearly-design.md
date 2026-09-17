@@ -413,9 +413,17 @@ untuk pesan.
 JS murni (`@noble/*`), sehingga alasan gugurnya Expo Go tersebut tidak lagi berlaku; development
 build tetap diperlukan kelak untuk Notification Service Extension (spec 4c §11.5).
 
-Wallet: **connect wallet yang sudah ada** sebagai jalur utama — persona anon seseorang *adalah*
-wallet-nya, jadi reputasi harus menempel di sana. Embedded wallet lewat Privy sebagai cadangan
-untuk pendatang baru. Tanpa OTP, tanpa email wajib.
+Wallet: persona anon seseorang *adalah* wallet-nya, jadi reputasi menempel di sana. Tanpa OTP,
+tanpa email wajib.
+
+**Amandemen (2026-09-17) — dompet dibuat di HP.** Jalur saat ini BUKAN connect wallet: aplikasi
+membuat dompet sendiri saat pertama dibuka — 12 kata BIP-39, jalur `m/44'/60'/0'/0/0`, kunci di
+Keychain HP lewat `expo-secure-store` — dengan impor 12 kata untuk memakai alamat yang sudah ada dan
+impor kunci privat khusus `__DEV__`. Alasan: aplikasi tetap di Expo Go dan belum ada Apple Developer
+Program, sehingga dompet luar (WalletConnect) dan dompet tersemat (Privy) tidak tersedia. Aman karena HP
+hanya menandatangani EIP-712 dan relayer yang membayar gas. Batas yang diakui — terutama: tanpa 12 kata,
+hapus aplikasi atau ganti HP berarti identitas hilang — di spec `2026-09-17-nearly-dompet-per-pengguna-design.md`
+§8. Menyambung dompet luar tetap mungkin kelak di development build, tetapi tidak direncanakan.
 
 ### 10.2 Backend off-chain
 
@@ -570,6 +578,11 @@ Fase 5 tuntas: feed di 3b, "ingin bertemu" di 3c, notifikasi kedekatan di spec y
 **Catatan (2026-09-14).** Fase 6 tuntas secara kode: API graf baca-saja, `apps/web` (landing + `/live`),
 `seed-inti.ts`, dan templat deploy. Kesiapan demo bergantung pada runbook `docs/demo/runbook.md`
 (spec Fase 6 §8) yang dijalankan pemilik project — VPS, Vercel, seed trusted core, dan uji lapangan.
+
+**Catatan (2026-09-17).** "Connect wallet" di Fase 0 diwujudkan sebagai **dompet yang dibuat di HP**
+(amandemen §10.1, spec `2026-09-17-nearly-dompet-per-pengguna-design.md`). Kunci pengembangan yang
+terbundel (`EXPO_PUBLIC_DEV_PRIVATE_KEY`) tidak lagi dibaca aplikasi, sehingga setiap HP adalah orang
+yang berbeda dan graf demo bisa tumbuh.
 
 ### 11.1 Pengurangan kedalaman yang disepakati
 

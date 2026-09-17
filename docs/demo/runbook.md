@@ -204,6 +204,10 @@ curl -s -D - -o /dev/null -H "Origin: https://<vercel-domain>" https://api.<doma
 1. Di **`apps/mobile/.env`** (BUKAN `.env` di root repo): `EXPO_PUBLIC_API_URL=https://api.<domain>`.
 2. Jalankan ulang Metro dengan cache bersih: `cd apps/mobile && npx expo start -c`.
 3. Dengan domain HTTPS, HP tidak lagi bergantung pada IP Wi-Fi Mac — HP dan laptop boleh di jaringan berbeda.
+4. **Hapus nilai `EXPO_PUBLIC_DEV_PRIVATE_KEY` dari `apps/mobile/.env`.** Aplikasi tidak lagi membacanya:
+   setiap HP membuat dompetnya sendiri di layar **Mulai** saat pertama dibuka. Untuk memakai identitas uji
+   lama di HP pengembang, pilih **Impor kunci privat (khusus pengembangan)** — tombol itu hanya ada saat
+   Metro berjalan dalam mode pengembangan.
 
 ---
 
@@ -211,10 +215,14 @@ curl -s -D - -o /dev/null -H "Origin: https://<vercel-domain>" https://api.<doma
 
 1. **Saldo relayer.** Isi tBNB dompet relayer dari faucet BSC testnet. Setiap salaman, check-in,
    dan perubahan tier mengirim transaksi.
-2. **CSV panitia & juri.** Format `address,catatan,bobot` (lihat `docs/demo/seed-inti-contoh.csv`).
-   Catatan tanpa koma. Bobot desimal biasa, > 0 dan ≤ 100 (`1`, `1.5`, `2`). Salin alamat apa adanya
-   dari dompet/BscScan: alamat huruf campur diperiksa checksum-nya, jadi salah ketik satu karakter
-   ditolak.
+2. **CSV panitia & juri.** Setiap panitia dan juri membuka aplikasi di HP-nya sendiri: **Buat dompet baru**
+   (atau **Pakai dompet yang sudah ada (12 kata)** bila sudah punya), lalu layar **Dompet** →
+   **Lihat 12 kata pemulihan** → catat → **Sudah saya catat**, lalu **Bagikan alamat** dan kirim alamatnya
+   ke penyusun CSV. Tanpa 12 kata yang tercatat, HP hilang atau aplikasi terhapus berarti alamat seed itu
+   hilang dan CSV harus diulang. Format `address,catatan,bobot` (lihat `docs/demo/seed-inti-contoh.csv`).
+   Catatan tanpa koma. Bobot desimal biasa, > 0 dan ≤ 100 (`1`, `1.5`, `2`). Tempel alamat apa adanya
+   dari **Bagikan alamat** (atau BscScan): alamat huruf campur diperiksa checksum-nya, jadi salah ketik
+   satu karakter ditolak.
 3. **Seed trusted core — uji coba dulu:**
 
 ```bash
@@ -281,7 +289,8 @@ sudo -u nearly node --env-file=/etc/nearly/api.env --import=tsx tools/seed-inti.
 ## 5. Hari-H
 
 1. Buat acara hackathon lewat aplikasi (waktu mulai sebelum pintu dibuka).
-2. Host menampilkan QR check-in di pintu.
+2. Host menampilkan QR check-in di pintu. Peserta yang baru memasang aplikasi membuat dompet di layar
+   **Mulai** lebih dulu (beberapa detik "Menyiapkan dompet…"), baru memindai QR check-in.
 3. Laptop proyektor: `https://<vercel-domain>/live?acara=<eventId>`, layar penuh.
 4. Sebelum pintu dibuka: ulangi uji jaringan venue (H-1 butir 9) dari laptop proyektor dan satu HP di
    Wi-Fi venue. Hotspot HP cadangan menyala dan siap dipakai.
