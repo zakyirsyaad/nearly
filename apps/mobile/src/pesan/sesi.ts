@@ -52,7 +52,11 @@ async function bukaSesi(signer: PenandaSigner): Promise<SesiPesan> {
   return { address: signer.address, kunci };
 }
 
-/** Hanya untuk tes. */
-export function _resetSesiPesanUntukTes(): void {
+/**
+ * Membuang semua sesi di memori. Dipanggil saat dompet dihapus dari HP (Ganti
+ * dompet): kunci privat pesan dompet lama tidak boleh tinggal di memori
+ * setelah dompetnya pergi.
+ */
+export function lupakanSemuaSesiPesan(): void {
   sesiPerAlamat.clear();
 }

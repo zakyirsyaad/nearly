@@ -8,8 +8,8 @@ import {
 import { CONFIG } from "../src/config";
 import type { SesiPesan } from "../src/pesan/sesi";
 import {
-  _resetCacheBukaUntukTes, _resetKunciLawanUntukTes, bukaBaris, bukaBertahap, kirimPesan, laporanSiapDikirim,
-  laporkanPercakapan,
+  bukaBaris, bukaBertahap, kirimPesan, laporanSiapDikirim, laporkanPercakapan, lupakanCacheBuka,
+  lupakanCacheKunciLawan,
 } from "../src/pesan/pesan-actions";
 
 const A = privateKeyToAccount(`0x${"a1".repeat(32)}` as Hex);
@@ -28,7 +28,7 @@ type Rekaman = { url: string; init: RequestInit };
 // sudah diawali "A", dan "perusakan" yang tidak mengubah apa pun meloloskan tes.
 const rusakkan = (ct: string) => (ct[0] === "A" ? "B" : "A") + ct.slice(1);
 const aslinya = globalThis.fetch;
-beforeEach(() => { _resetKunciLawanUntukTes(); _resetCacheBukaUntukTes(); });
+beforeEach(() => { lupakanCacheKunciLawan(); lupakanCacheBuka(); });
 afterEach(() => { globalThis.fetch = aslinya; });
 
 function pasangFetch(sb: SesiPesan) {

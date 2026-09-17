@@ -19,13 +19,16 @@ export async function kunciLawan(sesi: SesiPesan, lawan: string): Promise<KunciL
   return kunci;
 }
 
-/** Hanya untuk tes. */
-export function _resetKunciLawanUntukTes(): void {
+/** Dipanggil saat dompet dihapus dari HP (Ganti dompet), dan oleh tes. */
+export function lupakanCacheKunciLawan(): void {
   cacheKunciLawan.clear();
 }
 
-/** Hanya untuk tes. */
-export function _resetCacheBukaUntukTes(): void {
+/**
+ * Dipanggil saat dompet dihapus dari HP (Ganti dompet), dan oleh tes: isi
+ * pesan yang sudah dibuka tidak boleh tinggal di memori setelah dompetnya pergi.
+ */
+export function lupakanCacheBuka(): void {
   cacheBuka.clear();
 }
 

@@ -5,7 +5,7 @@ import {
   kunciPesanTypedData, recoverDaftarKunciPesanSigner, turunkanKunciPesan, verifikasiRequest, VERSI_KUNCI_PESAN,
 } from "@nearly/shared";
 import { CONFIG } from "../src/config";
-import { _resetSesiPesanUntukTes, sesiPesan } from "../src/pesan/sesi";
+import { lupakanSemuaSesiPesan, sesiPesan } from "../src/pesan/sesi";
 import { getRiwayat, postPesan, reqPesan } from "../src/pesan/pesan-api";
 
 const A = privateKeyToAccount(`0x${"a1".repeat(32)}` as Hex);
@@ -28,7 +28,7 @@ function pasangFetch(jawab: (url: string) => { status?: number; body?: unknown }
 }
 
 const aslinya = globalThis.fetch;
-beforeEach(() => _resetSesiPesanUntukTes());
+beforeEach(() => lupakanSemuaSesiPesan());
 afterEach(() => { globalThis.fetch = aslinya; });
 
 describe("sesiPesan", () => {
