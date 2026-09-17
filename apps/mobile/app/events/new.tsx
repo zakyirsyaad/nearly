@@ -1,9 +1,10 @@
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { useRouter } from "expo-router";
 import { Button, StyleSheet, Text, TextInput, View } from "react-native";
 import { cellToBytes32, createEventTypedData, makeEventId, GEOFENCE_SPAN_M } from "@nearly/shared";
 import { CONFIG } from "../../src/config";
-import { createDevSigner } from "../../src/signer";
+import type { NearlySigner } from "../../src/signer";
+import { useNearlySigner } from "../../src/dompet/konteks-dompet";
 import { getCurrentCell } from "../../src/location";
 import { ApiError } from "../../src/api";
 import { postCreateEvent } from "../../src/events-api";
@@ -14,12 +15,16 @@ import { WARNA } from "../../src/warna";
 const DURASI_DETIK = 3 * 3600;
 
 export default function NewEventScreen() {
+  const signer = useNearlySigner(CONFIG.attendanceRegistry);
+  // Dompet belum siap — mis. sesaat setelah Ganti dompet, selagi layar ini
+  // masih di tumpukan. Isi layar tidak dirender, supaya hook di dalamnya tidak
+  // pernah berjalan tanpa signer (Ruling D4).
+  if (!signer) return null;
+  return <NewEventScreenIsi key={signer.address} signer={signer} />;
+}
+
+function NewEventScreenIsi({ signer }: { signer: NearlySigner }) {
   const router = useRouter();
-  // WAJIB useMemo — signer di badan komponen lahir baru tiap render.
-  const signer = useMemo(
-    () => createDevSigner(CONFIG.devPrivateKey!, CONFIG.attendanceRegistry),
-    [],
-  );
 
   const [title, setTitle] = useState("");
   const [venue, setVenue] = useState("");

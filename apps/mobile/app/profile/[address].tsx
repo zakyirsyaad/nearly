@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { router, useLocalSearchParams } from "expo-router";
 import {
   Button, Keyboard, Pressable, ScrollView, StyleSheet, Text, TextInput, View,
@@ -14,10 +14,10 @@ import {
   blokirErrorMessage, blokirTombolLabel,
   meetErrorMessage, meetSuccessMessage, teksInginBertemuCount, tombolTandaLabel,
 } from "../../src/messages";
-import { createDevSigner } from "../../src/signer";
 import { SUGGESTED_TAGS, tierView } from "../../src/tier";
 import { fetchTrust, sendReport, sendVouch, type TrustResponse } from "../../src/trust-api";
 import { WARNA } from "../../src/warna";
+import { useNearlySigner } from "../../src/dompet/konteks-dompet";
 
 type Profile = {
   address: string; displayName: string; ens: string | null;
@@ -70,14 +70,9 @@ export default function ProfileScreen() {
   const [p, setP] = useState<Profile | null>(null);
   const [trust, setTrust] = useState<TrustResponse | null>(null);
 
-  // Signer pengembangan, sama seperti layar lain di Fase 1 — wallet sungguhan
-  // menyusul setelah alur ini terbukti jalan (lihat catatan di index.tsx).
-  const signer = useMemo(
-    () => (CONFIG.devPrivateKey
-      ? createDevSigner(CONFIG.devPrivateKey, CONFIG.verifyingContract)
-      : null),
-    [],
-  );
+  // Null sesaat setelah Ganti dompet; layar ini memang sudah menangani signer
+  // null, jadi tidak perlu dipecah seperti layar lain (Ruling D4).
+  const signer = useNearlySigner(CONFIG.verifyingContract);
   const isOwnProfile = !!signer && !!address
     && signer.address.toLowerCase() === address.toLowerCase();
 

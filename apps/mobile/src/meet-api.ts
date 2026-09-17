@@ -5,7 +5,7 @@ import {
 import { CONFIG } from "./config";
 import { postJson, req } from "./http";
 
-/** Bentuk minimal yang dibutuhkan; createDevSigner memenuhinya. */
+/** Bentuk minimal yang dibutuhkan; signer dari useNearlySigner memenuhinya. */
 export type PenandaSigner = {
   address: Address;
   signTypedData: (td: never) => Promise<`0x${string}`>;

@@ -2,7 +2,7 @@ import {
   createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode,
 } from "react";
 import type { Address, Hex } from "viem";
-import { createDevSigner, type NearlySigner } from "../signer";
+import { createSignerDariKunci, type NearlySigner } from "../signer";
 import { lupakanPendaftaranPush } from "../pesan/push";
 import {
   buatDompetBaru, imporDompetKunciDev, imporDompetMnemonik, lupakanDompet, muatInfoDompet,
@@ -121,7 +121,7 @@ export function useDompet(): NilaiDompet {
 export function useNearlySigner(verifyingContract: Address): NearlySigner | null {
   const kunci = useContext(KonteksKunci);
   return useMemo(
-    () => (kunci === null ? null : createDevSigner(kunci, verifyingContract)),
+    () => (kunci === null ? null : createSignerDariKunci(kunci, verifyingContract)),
     [kunci, verifyingContract],
   );
 }

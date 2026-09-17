@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useState } from "react";
 import { Link, useFocusEffect } from "expo-router";
 import {
   ActivityIndicator, FlatList, Image, Pressable, StyleSheet, Text, View,
@@ -7,7 +7,8 @@ import * as ImagePicker from "expo-image-picker";
 import { lampirGambarTypedData, likeTypedData } from "@nearly/shared";
 import type { Address } from "viem";
 import { CONFIG } from "../../src/config";
-import { createDevSigner } from "../../src/signer";
+import type { NearlySigner } from "../../src/signer";
+import { useNearlySigner } from "../../src/dompet/konteks-dompet";
 import { ApiError } from "../../src/http";
 import {
   getFeed, kueriBuktiFeed, postImage, postLike, type FeedPost,
@@ -22,11 +23,15 @@ import {
 } from "../../src/messages";
 
 export default function FeedScreen() {
-  const signer = useMemo(
-    // Domain feed terikat ke ConnectionRegistry, BUKAN AttendanceRegistry.
-    () => createDevSigner(CONFIG.devPrivateKey!, CONFIG.verifyingContract),
-    [],
-  );
+  const signer = useNearlySigner(CONFIG.verifyingContract);
+  // Dompet belum siap — mis. sesaat setelah Ganti dompet, selagi layar ini
+  // masih di tumpukan. Isi layar tidak dirender, supaya hook di dalamnya tidak
+  // pernah berjalan tanpa signer (Ruling D4).
+  if (!signer) return null;
+  return <FeedScreenIsi key={signer.address} signer={signer} />;
+}
+
+function FeedScreenIsi({ signer }: { signer: NearlySigner }) {
   const [posts, setPosts] = useState<FeedPost[] | null>(null);
   const [pesan, setPesan] = useState<string | null>(null);
   // Hapus tidak bisa dibatalkan, jadi butuh dua ketukan. Disimpan sebagai

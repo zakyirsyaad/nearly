@@ -3,13 +3,27 @@ import { CameraView, useCameraPermissions } from "expo-camera";
 import { Button, StyleSheet, Text, View } from "react-native";
 import { checkInAcceptTypedData, decodeCheckInQr, decodeQr, isQrExpired } from "@nearly/shared";
 import { CONFIG } from "../src/config";
-import { createDevSigner } from "../src/signer";
+import type { NearlySigner } from "../src/signer";
+import { useNearlySigner } from "../src/dompet/konteks-dompet";
 import { getCurrentCell } from "../src/location";
 import { ApiError, postAccept } from "../src/api";
 import { eventErrorMessage, handshakeErrorMessage } from "../src/messages";
 import { postCheckIn } from "../src/events-api";
 
 export default function ScanScreen() {
+  // Dua domain EIP-712: check-in terikat AttendanceRegistry, salaman terikat
+  // ConnectionRegistry. Keduanya diambil di tingkat komponen — hook tidak boleh
+  // dipanggil di dalam callback pemindai.
+  const signerHadir = useNearlySigner(CONFIG.attendanceRegistry);
+  const signerSalaman = useNearlySigner(CONFIG.verifyingContract);
+  // Dompet belum siap — mis. sesaat setelah Ganti dompet, selagi layar ini
+  // masih di tumpukan. Isi layar tidak dirender, supaya hook di dalamnya tidak
+  // pernah berjalan tanpa signer (Ruling D4).
+  if (!signerHadir || !signerSalaman) return null;
+  return <ScanIsi key={signerSalaman.address} signerHadir={signerHadir} signerSalaman={signerSalaman} />;
+}
+
+function ScanIsi({ signerHadir, signerSalaman }: { signerHadir: NearlySigner; signerSalaman: NearlySigner }) {
   const [permission, requestPermission] = useCameraPermissions();
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState<string | null>(null);
@@ -37,7 +51,7 @@ export default function ScanScreen() {
             setResult(eventErrorMessage("expired"));
             return;
           }
-          const signer = createDevSigner(CONFIG.devPrivateKey!, CONFIG.attendanceRegistry);
+          const signer = signerHadir;
           const { cell, atMs } = await getCurrentCell();
           const sigAttendee = await signer.signTypedData(
             checkInAcceptTypedData(
@@ -73,7 +87,7 @@ export default function ScanScreen() {
         return;
       }
 
-      const signer = createDevSigner(CONFIG.devPrivateKey!, CONFIG.verifyingContract);
+      const signer = signerSalaman;
       if (signer.address.toLowerCase() === payload.initiator.toLowerCase()) {
         setResult("Itu QR-mu sendiri.");
         return;

@@ -1,11 +1,12 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useState } from "react";
 import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
 import {
   ActivityIndicator, Alert, Button, FlatList, Pressable, StyleSheet, Text, TextInput, View,
 } from "react-native";
 import type { Address } from "viem";
 import { CONFIG } from "../../../src/config";
-import { createDevSigner } from "../../../src/signer";
+import type { NearlySigner } from "../../../src/signer";
+import { useNearlySigner } from "../../../src/dompet/konteks-dompet";
 import { HindariKeyboard } from "../../../src/hindari-keyboard";
 import { ApiError } from "../../../src/http";
 import { aksiBlokir } from "../../../src/blokir-actions";
@@ -21,12 +22,17 @@ import { WARNA } from "../../../src/warna";
 type PesanSah = Extract<PesanTerbuka, { status: "sah" }>;
 
 export default function LaporPesanScreen() {
+  const signer = useNearlySigner(CONFIG.verifyingContract);
+  // Dompet belum siap — mis. sesaat setelah Ganti dompet, selagi layar ini
+  // masih di tumpukan. Isi layar tidak dirender, supaya hook di dalamnya tidak
+  // pernah berjalan tanpa signer (Ruling D4).
+  if (!signer) return null;
+  return <LaporPesanScreenIsi key={signer.address} signer={signer} />;
+}
+
+function LaporPesanScreenIsi({ signer }: { signer: NearlySigner }) {
   const { address } = useLocalSearchParams<{ address: string }>();
   const lawan = address as Address;
-  const signer = useMemo(
-    () => createDevSigner(CONFIG.devPrivateKey!, CONFIG.verifyingContract),
-    [],
-  );
   const [masuk, setMasuk] = useState<PesanSah[] | null>(null);
   const [dipilih, setDipilih] = useState<Set<string>>(new Set());
   const [alasan, setAlasan] = useState("");

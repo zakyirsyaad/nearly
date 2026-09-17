@@ -1,8 +1,9 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useState } from "react";
 import { Link, useFocusEffect, useLocalSearchParams } from "expo-router";
 import { ActivityIndicator, FlatList, StyleSheet, Text, View } from "react-native";
 import { CONFIG } from "../../src/config";
-import { createDevSigner } from "../../src/signer";
+import type { NearlySigner } from "../../src/signer";
+import { useNearlySigner } from "../../src/dompet/konteks-dompet";
 import { ApiError } from "../../src/http";
 import { getCurrentCell, LocationDeniedError } from "../../src/location";
 import { sesiPesan, type SesiPesan } from "../../src/pesan/sesi";
@@ -18,11 +19,16 @@ const JEDA_DETAK_MS = 60_000;
 const JEDA_RADAR_MS = 10_000;
 
 export default function RadarScreen() {
+  const signer = useNearlySigner(CONFIG.verifyingContract);
+  // Dompet belum siap — mis. sesaat setelah Ganti dompet, selagi layar ini
+  // masih di tumpukan. Isi layar tidak dirender, supaya hook di dalamnya tidak
+  // pernah berjalan tanpa signer (Ruling D4).
+  if (!signer) return null;
+  return <RadarScreenIsi key={signer.address} signer={signer} />;
+}
+
+function RadarScreenIsi({ signer }: { signer: NearlySigner }) {
   const { eventId } = useLocalSearchParams<{ eventId: string }>();
-  const signer = useMemo(
-    () => createDevSigner(CONFIG.devPrivateKey!, CONFIG.verifyingContract),
-    [],
-  );
   const [kartu, setKartu] = useState<KartuRadarApi[] | null>(null);
   const [keadaan, setKeadaan] = useState<KeadaanRadar | null>(null);
 

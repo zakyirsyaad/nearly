@@ -1,8 +1,10 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
+import { Link } from "expo-router";
 import { Button, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { periksaNamaTampilan, type Visibilitas } from "@nearly/shared";
 import { CONFIG } from "../src/config";
-import { createDevSigner } from "../src/signer";
+import type { NearlySigner } from "../src/signer";
+import { useNearlySigner } from "../src/dompet/konteks-dompet";
 import { ApiError } from "../src/http";
 import { sesiPesan } from "../src/pesan/sesi";
 import { getProfilSaya, simpanProfil } from "../src/radar/radar-api";
@@ -22,10 +24,15 @@ const MODE: { nilai: Visibilitas; judul: string }[] = [
 ];
 
 export default function ProfilSayaScreen() {
-  const signer = useMemo(
-    () => createDevSigner(CONFIG.devPrivateKey!, CONFIG.verifyingContract),
-    [],
-  );
+  const signer = useNearlySigner(CONFIG.verifyingContract);
+  // Dompet belum siap — mis. sesaat setelah Ganti dompet, selagi layar ini
+  // masih di tumpukan. Isi layar tidak dirender, supaya hook di dalamnya tidak
+  // pernah berjalan tanpa signer (Ruling D4).
+  if (!signer) return null;
+  return <ProfilSayaScreenIsi key={signer.address} signer={signer} />;
+}
+
+function ProfilSayaScreenIsi({ signer }: { signer: NearlySigner }) {
   const [nama, setNama] = useState("");
   const [visibilitas, setVisibilitas] = useState<Visibilitas>("terlihat");
   const [dimuat, setDimuat] = useState(false);
@@ -114,6 +121,9 @@ export default function ProfilSayaScreen() {
         />
       </View>
       {pesan && <Text style={s.pesan}>{pesan}</Text>}
+
+      <Text style={s.label}>Dompet</Text>
+      <Link href="/dompet" style={s.tautan}>Alamat, 12 kata pemulihan, dan ganti dompet</Link>
     </ScrollView>
   );
 }
@@ -131,4 +141,5 @@ const s = StyleSheet.create({
   modePenjelasan: { fontSize: 14, lineHeight: 20, opacity: 0.75 },
   tombol: { paddingTop: 8 },
   pesan: { fontSize: 15, lineHeight: 22 },
+  tautan: { fontSize: 15, fontWeight: "600", paddingVertical: 6 },
 });

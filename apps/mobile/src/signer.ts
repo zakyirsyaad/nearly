@@ -14,15 +14,14 @@ export type NearlySigner = {
 };
 
 /**
- * Signer untuk pengembangan: menandatangani dengan private key lokal, sehingga
- * seluruh alur handshake bisa diuji di simulator tanpa memasang aplikasi wallet
- * di dua perangkat.
+ * Signer dari kunci privat dompet di HP ini (spec dompet §3). Tanda tangan
+ * lokal viem deterministik (RFC 6979) — syarat kunci pesan Fase 4c.
  *
- * PERINGATAN: private key yang masuk lewat EXPO_PUBLIC_* IKUT TERBUNDEL dan bisa
- * dibaca siapa pun yang punya file aplikasinya. Pakai HANYA dompet sekali pakai
- * berisi tBNB testnet, dan jangan pernah aktif di build produksi.
+ * Satu-satunya pemanggil di aplikasi adalah useNearlySigner
+ * (src/dompet/konteks-dompet.tsx); layar tidak pernah memegang kunci privat.
+ * Dijaga test/dompet-tanpa-kunci-dev.test.ts.
  */
-export function createDevSigner(privateKey: Hex, verifyingContract: Address): NearlySigner {
+export function createSignerDariKunci(privateKey: Hex, verifyingContract: Address): NearlySigner {
   const account = privateKeyToAccount(privateKey);
   return {
     address: account.address,

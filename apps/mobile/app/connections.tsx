@@ -1,17 +1,23 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { Link } from "expo-router";
 import { FlatList, StyleSheet, Text, View } from "react-native";
 import { CONFIG } from "../src/config";
 import { req } from "../src/http";
-import { createDevSigner } from "../src/signer";
+import type { NearlySigner } from "../src/signer";
+import { useNearlySigner } from "../src/dompet/konteks-dompet";
 
 type Row = { address: string; txHash: string; at: number };
 
 export default function Connections() {
-  const signer = useMemo(
-    () => createDevSigner(CONFIG.devPrivateKey!, CONFIG.verifyingContract),
-    [],
-  );
+  const signer = useNearlySigner(CONFIG.verifyingContract);
+  // Dompet belum siap — mis. sesaat setelah Ganti dompet, selagi layar ini
+  // masih di tumpukan. Isi layar tidak dirender, supaya hook di dalamnya tidak
+  // pernah berjalan tanpa signer (Ruling D4).
+  if (!signer) return null;
+  return <ConnectionsIsi key={signer.address} signer={signer} />;
+}
+
+function ConnectionsIsi({ signer }: { signer: NearlySigner }) {
   const [rows, setRows] = useState<Row[] | null>(null);
 
   useEffect(() => {
