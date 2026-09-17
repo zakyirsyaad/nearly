@@ -25,8 +25,12 @@ describe("tanpa kunci dev terbundel", () => {
     expect(kode.length).toBeGreaterThan(0);
   });
 
-  it("tidak ada createDevSigner di app/ dan src/", () => {
-    expect(yangMemuat(/createDevSigner/)).toEqual([]);
+  it("tidak ada createDevSigner, devPrivateKey, atau EXPO_PUBLIC_DEV_PRIVATE_KEY di app/ dan src/", () => {
+    expect(yangMemuat(/createDevSigner|devPrivateKey|EXPO_PUBLIC_DEV_PRIVATE_KEY/)).toEqual([]);
+  });
+
+  it("tidak ada pickSigner atau createWalletSigner di app/ dan src/", () => {
+    expect(yangMemuat(/pickSigner|createWalletSigner/)).toEqual([]);
   });
 
   it("signer dari kunci hanya dibuat di konteks dompet", () => {
