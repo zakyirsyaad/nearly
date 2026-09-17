@@ -1,7 +1,7 @@
 import { readdirSync, readFileSync } from "node:fs";
 import { join, relative } from "node:path";
 import { describe, expect, it } from "vitest";
-import { JUDUL_LAYAR } from "../src/judul-layar";
+import { JUDUL_LAYAR, layarMenurutDompet } from "../src/judul-layar";
 
 const APP = join(__dirname, "..", "app");
 
@@ -39,9 +39,24 @@ describe("judul layar", () => {
   // Memeriksa pemakaian, bukan sekadar nama: impor saja tanpa pendaftaran
   // meloloskan tes versi awal, dan judul yang ditulis tangan di layout akan
   // lolos dari tes "setiap layar punya judul" di atas.
-  it("_layout.tsx mendaftarkan SEMUA judul dari JUDUL_LAYAR, tanpa judul tulisan tangan", () => {
+  it("_layout.tsx mendaftarkan judul dari kedua sisi gerbang dompet, tanpa judul tulisan tangan", () => {
     const layout = readFileSync(join(APP, "_layout.tsx"), "utf8");
-    expect(layout).toMatch(/Object\.entries\(JUDUL_LAYAR\)\.map\(/);
+    expect(layout).toMatch(/layarMenurutDompet\(true\)\.map\(/);
+    expect(layout).toMatch(/layarMenurutDompet\(false\)\.map\(/);
     expect(layout).not.toMatch(/title:\s*"/);
+  });
+
+  it("layarMenurutDompet membagi SEMUA judul tanpa irisan", () => {
+    const dengan = layarMenurutDompet(true).map(([r]) => r);
+    const tanpa = layarMenurutDompet(false).map(([r]) => r);
+    expect([...dengan, ...tanpa].sort()).toEqual(Object.keys(JUDUL_LAYAR).sort());
+    expect(dengan.filter((r) => tanpa.includes(r))).toEqual([]);
+  });
+
+  // Tanpa dompet hanya layar Mulai; dengan dompet, beranda adalah layar pertama
+  // yang dituju saat penjaga berubah.
+  it("mulai hanya tanpa dompet; index layar pertama dengan dompet", () => {
+    expect(layarMenurutDompet(false).map(([r]) => r)).toEqual(["mulai"]);
+    expect(layarMenurutDompet(true)[0]?.[0]).toBe("index");
   });
 });
