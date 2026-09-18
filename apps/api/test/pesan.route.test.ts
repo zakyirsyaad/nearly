@@ -145,7 +145,7 @@ describe("push dari rute", () => {
     await tunggu();
 
     expect(d.push.kirim).toHaveBeenCalledTimes(1);
-    expect(d.push.kirim.mock.calls[0]![0].badan).toBe("Pesan baru dari Ani");
+    expect(d.push.kirim.mock.calls[0]![0].badan).toBe("New message from Ani");
   });
 
   it("push yang gagal tidak menggagalkan pengiriman", async () => {

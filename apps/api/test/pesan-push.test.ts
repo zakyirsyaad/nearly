@@ -20,10 +20,10 @@ function dengPesanBelumDibaca(d: ReturnType<typeof duniaPesan>, id: string) {
 }
 
 describe("teksPush", () => {
-  it("nama tampilan, atau fallback bila kosong", () => {
-    expect(teksPush("Ani")).toBe("Pesan baru dari Ani");
-    expect(teksPush("  ")).toBe("Pesan baru dari koneksimu");
-    expect(teksPush("")).toBe("Pesan baru dari koneksimu");
+  it("nama tampilan, atau fallback bila kosong (spec desain UI §7.4)", () => {
+    expect(teksPush("Ani")).toBe("New message from Ani");
+    expect(teksPush("  ")).toBe("New message from a connection");
+    expect(teksPush("")).toBe("New message from a connection");
   });
 });
 
@@ -34,7 +34,7 @@ describe("kirimPushPesan", () => {
     dengPesanBelumDibaca(d, "id-1");
     await kirimPushPesan(d.deps, baris("id-1"));
     expect(d.push.kirim).toHaveBeenCalledWith({
-      tokens: ["ExponentPushToken[b]"], judul: "Nearly", badan: "Pesan baru dari Ani", data: { jenis: "pesan" },
+      tokens: ["ExponentPushToken[b]"], judul: "Nearly", badan: "New message from Ani", data: { jenis: "pesan" },
     });
   });
 
