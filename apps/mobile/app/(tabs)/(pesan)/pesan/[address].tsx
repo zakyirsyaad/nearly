@@ -13,6 +13,7 @@ import { ApiError } from "../../../../src/http";
 import { aksiBlokir } from "../../../../src/blokir-actions";
 import { sesiPesan } from "../../../../src/pesan/sesi";
 import { getRiwayat, postDibaca } from "../../../../src/pesan/pesan-api";
+import { useLencana } from "../../../../src/lencana/konteks-lencana";
 import {
   bukaBaris, bukaBertahap, kirimPesan, kunciLawan, type PesanTerbuka,
 } from "../../../../src/pesan/pesan-actions";
@@ -42,6 +43,7 @@ function PercakapanScreenIsi({ signer }: { signer: NearlySigner }) {
   const [galat, setGalat] = useState<string | null>(null);
   const ditandaiSampai = useRef(0);
   const layarAktif = useRef(false);
+  const { muatUlangLencana } = useLencana();
   // Pembukaan PERTAMA dibuat bertahap (lihat bukaBertahap). Polling sesudahnya
   // membuka sekaligus: pesan lama sudah tersimpan dan murah, dan bertahap di
   // setiap polling akan menyusutkan daftar ke bagian awal lalu menumbuhkannya
@@ -78,8 +80,10 @@ function PercakapanScreenIsi({ signer }: { signer: NearlySigner }) {
       // Sesudah berhasil, bukan sebelum: yang gagal harus dicoba lagi saat
       // polling berikutnya.
       ditandaiSampai.current = masukTerbaru.createdAtMs;
+      // Lencana tab Pesan turun sekarang, bukan 30 detik lagi (spec desain UI §4.4).
+      muatUlangLencana();
     }
-  }, [signer, lawan]);
+  }, [signer, lawan, muatUlangLencana]);
 
   useFocusEffect(useCallback(() => {
     let aktif = true;

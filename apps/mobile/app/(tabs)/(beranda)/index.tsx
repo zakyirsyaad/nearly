@@ -1,14 +1,11 @@
-import { useEffect, useState } from "react";
 import { Link } from "expo-router";
 import { StyleSheet, Text, View } from "react-native";
 import { CONFIG } from "../../../src/config";
 import type { NearlySigner } from "../../../src/signer";
 import { useDompet, useNearlySigner } from "../../../src/dompet/konteks-dompet";
 import { perluPengingatCadangan, TEKS_PENGINGAT_CADANGAN } from "../../../src/dompet/teks-dompet";
-import { getKecocokan, kueriBuktiKecocokan } from "../../../src/meet-api";
+import { useLencana } from "../../../src/lencana/konteks-lencana";
 import { teksLencana } from "../../../src/messages";
-import { sesiPesan } from "../../../src/pesan/sesi";
-import { getBelumDibaca } from "../../../src/pesan/pesan-api";
 
 export default function Home() {
   const signer = useNearlySigner(CONFIG.verifyingContract);
@@ -27,40 +24,10 @@ export default function Home() {
 }
 
 function HomeIsi({ signer, pengingatCadangan }: { signer: NearlySigner; pengingatCadangan: boolean }) {
-  const [baru, setBaru] = useState(0);
-  const [belumDibaca, setBelumDibaca] = useState(0);
-
-  useEffect(() => {
-    // Satu tanda tangan per pembukaan beranda, hanya untuk angka lencana.
-    // Ongkos yang dipilih sadar (spec §6.2): endpoint hitung tanpa autentikasi
-    // akan membocorkan berapa kecocokan dimiliki sebuah alamat.
-    //
-    // Fungsi async DI DALAM useEffect, bukan useEffect yang async —
-    // useEffect yang mengembalikan Promise merusak jalur pembersihannya.
-    void (async () => {
-      try {
-        const { baru } = await getKecocokan(await kueriBuktiKecocokan(signer));
-        setBaru(baru);
-      } catch {
-        // Beranda tidak boleh gagal hanya karena lencana gagal dimuat.
-        setBaru(0);
-      }
-    })();
-
-    // Lencana pesan, dengan kegagalannya sendiri: beranda tidak boleh gagal
-    // hanya karena lencana. Membuka beranda memulai sesi kunci pesan — dompet
-    // di HP menandatangani tanpa jendela konfirmasi (spec dompet §3).
-    void (async () => {
-      try {
-        const { total } = await getBelumDibaca(await sesiPesan(signer));
-        setBelumDibaca(total);
-      } catch {
-        setBelumDibaca(0);
-      }
-    })();
-  }, [signer]);
-
-  const lencana = teksLencana(baru);
+  // Angka lencana dari (tabs)/_layout.tsx (spec desain UI §4.4, Ruling A11):
+  // beranda tidak lagi menandatangani bukti sendiri hanya untuk lencana.
+  const { belumDibaca, kecocokanBaru } = useLencana();
+  const lencana = teksLencana(kecocokanBaru);
   const lencanaPesan = teksLencana(belumDibaca);
 
   return (

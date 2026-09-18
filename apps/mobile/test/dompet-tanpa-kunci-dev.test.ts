@@ -67,6 +67,8 @@ describe("tanpa kunci dev terbundel", () => {
   it("setiap layar memakai kontrak EIP-712 yang benar untuk signernya", () => {
     const V = "verifyingContract";
     const HARAPAN: Record<string, string[]> = {
+      // Pemakai signer untuk lencana tab (spec desain UI §4.4, §10.1).
+      "app/(tabs)/_layout.tsx": [`signer:${V}`],
       "app/(tabs)/(acara)/events/[id].tsx": ["signer:attendanceRegistry"],
       "app/(tabs)/(acara)/events/[id]/host-qr.tsx": ["signer:attendanceRegistry"],
       "app/(tabs)/(acara)/events/new.tsx": ["signer:attendanceRegistry"],

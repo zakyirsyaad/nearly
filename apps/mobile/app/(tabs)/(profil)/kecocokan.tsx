@@ -10,6 +10,7 @@ import {
   getKecocokan, kueriBuktiKecocokan, tandaiKecocokanDilihat, type BarisKecocokan,
 } from "../../../src/meet-api";
 import { meetErrorMessage } from "../../../src/messages";
+import { useLencana } from "../../../src/lencana/konteks-lencana";
 
 export default function KecocokanScreen() {
   const signer = useNearlySigner(CONFIG.verifyingContract);
@@ -23,6 +24,7 @@ export default function KecocokanScreen() {
 function KecocokanScreenIsi({ signer }: { signer: NearlySigner }) {
   const [baris, setBaris] = useState<BarisKecocokan[] | null>(null);
   const [pesan, setPesan] = useState<string | null>(null);
+  const { muatUlangLencana } = useLencana();
 
   const muat = useCallback(async () => {
     try {
@@ -32,11 +34,13 @@ function KecocokanScreenIsi({ signer }: { signer: NearlySigner }) {
       // Membuka layar ini MENANDAI sudah dilihat. Kegagalannya tidak boleh
       // mengosongkan daftar yang sudah berhasil dimuat.
       await tandaiKecocokanDilihat(signer).catch(() => {});
+      // Titik lencana tab Profil hilang sekarang, bukan 30 detik lagi (spec desain UI §4.4).
+      muatUlangLencana();
     } catch (e) {
       setBaris([]);
       setPesan(e instanceof ApiError ? meetErrorMessage(e.code) : "Kecocokan gagal dimuat.");
     }
-  }, [signer]);
+  }, [signer, muatUlangLencana]);
 
   // SATU pemicu, bukan dua. `useFocusEffect` sudah menyala saat layar pertama
   // kali fokus — yaitu saat mount — jadi `useEffect` di sini akan menjadi
