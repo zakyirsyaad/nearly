@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { english, generateMnemonic, mnemonicToAccount, privateKeyToAccount } from "viem/accounts";
 import { hexToBytes, type Hex } from "viem";
 import {
@@ -71,6 +71,45 @@ describe("buatMnemonik", () => {
     expect(mnemonikSah(a)).toBe(true);
     expect(mnemonikSah(b)).toBe(true);
     expect(a).not.toBe(b);
+  });
+});
+
+describe("buatMnemonik — sumber acak", () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+    vi.unstubAllGlobals();
+  });
+
+  it("entropi diambil dari crypto.getRandomValues (16 bait), bukan sumber lain", () => {
+    const acak = vi.spyOn(globalThis.crypto, "getRandomValues").mockImplementation(<T extends ArrayBufferView>(a: T) => {
+      const b = a as unknown as Uint8Array;
+      for (let i = 0; i < b.length; i++) b[i] = i * 17;
+      return a;
+    });
+    const m = buatMnemonik();
+    expect(acak).toHaveBeenCalledTimes(1);
+    const arg = acak.mock.calls[0]![0] as unknown;
+    expect(arg).toBeInstanceOf(Uint8Array);
+    expect((arg as Uint8Array).length).toBe(16);
+    expect(m).toBe(mnemonikDariEntropi(Uint8Array.from({ length: 16 }, (_, i) => i * 17)));
+  });
+
+  it("tanpa crypto → melempar, tidak jatuh ke sumber acak lain", () => {
+    vi.stubGlobal("crypto", undefined);
+    expect(() => buatMnemonik()).toThrow();
+  });
+
+  it("getRandomValues yang tidak mengisi (entropi nol) → entropi_lemah", () => {
+    vi.spyOn(globalThis.crypto, "getRandomValues").mockImplementation(<T extends ArrayBufferView>(a: T) => a);
+    expect(() => buatMnemonik()).toThrow("entropi_lemah");
+  });
+
+  it("semua bait sama (bukan hanya nol) → entropi_lemah", () => {
+    vi.spyOn(globalThis.crypto, "getRandomValues").mockImplementation(<T extends ArrayBufferView>(a: T) => {
+      (a as unknown as Uint8Array).fill(0xab);
+      return a;
+    });
+    expect(() => buatMnemonik()).toThrow("entropi_lemah");
   });
 });
 

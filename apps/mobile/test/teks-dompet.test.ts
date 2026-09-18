@@ -37,7 +37,7 @@ describe("kataBernomor", () => {
 describe("pesanGalatDompet", () => {
   it("setiap kode galat dompet punya kalimat sendiri", () => {
     const kode = ["mnemonik_tidak_sah", "kunci_tidak_sah", "hanya_pengembangan", "dompet_sudah_ada", "dompet_rusak",
-      "dompet_tidak_konsisten"];
+      "dompet_tidak_konsisten", "entropi_lemah"];
     const kalimat = kode.map((k) => pesanGalatDompet(new Error(k)));
     expect(new Set(kalimat).size).toBe(kode.length);
     for (const t of kalimat) expect(t).not.toBe(pesanGalatDompet(new Error("lain")));

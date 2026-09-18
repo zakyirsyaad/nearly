@@ -40,10 +40,16 @@ export function mnemonikDariEntropi(entropi: Uint8Array): string {
  * mengambil `globalThis.crypto` saat modul @noble/hashes pertama kali dimuat,
  * dan di Hermes objek itu baru ada setelah src/polyfills.ts berjalan. Di sini
  * `globalThis.crypto` dibaca saat fungsi DIPANGGIL.
+ *
+ * Penjaga kewarasan: bila semua bait sama (mis. `getRandomValues` tidak
+ * mengisi buffer sehingga tetap nol → "abandon … about", kata yang dikenal
+ * publik), MELEMPAR `entropi_lemah`. Peluang 16 bait acak sungguhan semuanya
+ * sama adalah 2^-120.
  */
 export function buatMnemonik(): string {
   const entropi = new Uint8Array(BAIT_ENTROPI);
   globalThis.crypto.getRandomValues(entropi);
+  if (entropi.every((b) => b === entropi[0])) throw new Error("entropi_lemah");
   return mnemonikDariEntropi(entropi);
 }
 
