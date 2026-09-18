@@ -61,6 +61,55 @@ describe("tanpa kunci dev terbundel", () => {
     expect(salah).toEqual([]);
   });
 
+  // Domain EIP-712 per layar: check-in terikat AttendanceRegistry, sisanya
+  // ConnectionRegistry. Kontrak yang salah tetap lolos tsc, tetapi tanda
+  // tangannya ditolak API. Layar baru pemakai signer wajib ditambahkan di sini.
+  it("setiap layar memakai kontrak EIP-712 yang benar untuk signernya", () => {
+    const V = "verifyingContract";
+    const HARAPAN: Record<string, string[]> = {
+      "app/blokir.tsx": [`signer:${V}`],
+      "app/connections.tsx": [`signer:${V}`],
+      "app/events/[id].tsx": ["signer:attendanceRegistry"],
+      "app/events/[id]/host-qr.tsx": ["signer:attendanceRegistry"],
+      "app/events/new.tsx": ["signer:attendanceRegistry"],
+      "app/feed/index.tsx": [`signer:${V}`],
+      "app/feed/new.tsx": [`signer:${V}`],
+      "app/index.tsx": [`signer:${V}`],
+      "app/kecocokan.tsx": [`signer:${V}`],
+      "app/pesan/[address].tsx": [`signer:${V}`],
+      "app/pesan/index.tsx": [`signer:${V}`],
+      "app/pesan/lapor/[address].tsx": [`signer:${V}`],
+      "app/profil-saya.tsx": [`signer:${V}`],
+      "app/profile/[address].tsx": [`signer:${V}`],
+      "app/qr.tsx": [`signer:${V}`],
+      "app/radar/[eventId].tsx": [`signer:${V}`],
+      "app/scan.tsx": ["signerHadir:attendanceRegistry", `signerSalaman:${V}`],
+    };
+    const nyata = Object.fromEntries(
+      kode.filter((k) => k.isi.includes("useNearlySigner(") && k.berkas.startsWith("app/")).map((k) => [
+        k.berkas,
+        [...k.isi.matchAll(/const (\w+) = useNearlySigner\(CONFIG\.(\w+)\)/g)].map((m) => `${m[1]}:${m[2]}`),
+      ]),
+    );
+    expect(nyata).toEqual(HARAPAN);
+  });
+
+  it("layar pindai meneruskan signer hadir dan salaman ke prop yang sesuai", () => {
+    const scan = kode.find((k) => k.berkas === "app/scan.tsx")!.isi;
+    expect(scan).toMatch(/<ScanIsi\b[^>]*signerHadir=\{signerHadir\}[^>]*signerSalaman=\{signerSalaman\}/);
+  });
+
+  // key={signer.address}: saat dompet berganti, isi layar dipasang ulang
+  // dari nol — tidak ada state dompet lama yang terbawa ke dompet baru.
+  it("setiap pembungkus memasang isi dengan key alamat signer", () => {
+    const PENGECUALIAN = new Set(["app/profile/[address].tsx"]);
+    const layar = kode.filter((k) => k.berkas.startsWith("app/") && k.isi.includes("useNearlySigner(")
+      && !PENGECUALIAN.has(k.berkas));
+    expect(layar.length).toBeGreaterThan(0);
+    const salah = layar.filter((k) => !/<\w+Isi\b[^>]*\bkey=\{signer\w*\.address\}/.test(k.isi)).map((k) => k.berkas);
+    expect(salah).toEqual([]);
+  });
+
   it("layar pemakai signer tidak lagi membuat signer sendiri lewat useMemo", () => {
     expect(yangMemuat(/const signer = useMemo\(/)).toEqual([]);
   });

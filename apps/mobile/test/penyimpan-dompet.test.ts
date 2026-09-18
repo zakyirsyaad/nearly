@@ -73,6 +73,33 @@ describe("penyimpan dompet", () => {
     expect(tulisan.at(-1)).toBe(KUNCI_PENYIMPAN.kunci);
   });
 
+  // Urutan GABUNGAN tulis dan hapus: menghapus 12 kata sisa dompet lama atau
+  // penanda cadangan SETELAH kunci ditulis membuat dompet kunci-dev terbaca
+  // bersama 12 kata yang bukan miliknya.
+  function urutanTulisHapus(): string[] {
+    const tulis = vi.mocked(SecureStore.setItemAsync).mock;
+    const hapus = vi.mocked(SecureStore.deleteItemAsync).mock;
+    return [
+      ...tulis.calls.map((c, i) => ({ k: `tulis ${c[0]}`, n: tulis.invocationCallOrder[i]! })),
+      ...hapus.calls.map((c, i) => ({ k: `hapus ${c[0]}`, n: hapus.invocationCallOrder[i]! })),
+    ].sort((a, b) => a.n - b.n).map((x) => x.k);
+  }
+
+  it("kunci ditulis terakhir, juga dibanding penghapusan — dompet dari kunci privat", async () => {
+    keychain.set(KUNCI_PENYIMPAN.mnemonik, "sisa dompet lama");
+    await simpanDompet({ kunci: KUNCI, mnemonik: null, sudahDicadangkan: true });
+    const urutan = urutanTulisHapus();
+    expect(urutan).toContain(`hapus ${KUNCI_PENYIMPAN.mnemonik}`);
+    expect(urutan.at(-1)).toBe(`tulis ${KUNCI_PENYIMPAN.kunci}`);
+  });
+
+  it("kunci ditulis terakhir, juga dibanding penghapusan — dompet 12 kata belum dicadangkan", async () => {
+    await simpanDompet({ kunci: KUNCI, mnemonik: MNEMONIK, sudahDicadangkan: false });
+    const urutan = urutanTulisHapus();
+    expect(urutan).toContain(`hapus ${KUNCI_PENYIMPAN.sudahDicadangkan}`);
+    expect(urutan.at(-1)).toBe(`tulis ${KUNCI_PENYIMPAN.kunci}`);
+  });
+
   it("hapusDompet menghapus ketiganya, kunci lebih dulu", async () => {
     await simpanDompet({ kunci: KUNCI, mnemonik: MNEMONIK, sudahDicadangkan: true });
     vi.clearAllMocks();
