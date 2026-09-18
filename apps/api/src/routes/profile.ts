@@ -1,12 +1,16 @@
 import { Hono } from "hono";
 import { isAddress, type Address, type Hex } from "viem";
 import { recoverLihatProfilSigner } from "@nearly/shared";
-import type { BlokirStore, GateDeps, MeetStore } from "../ports";
+import type { BlokirStore, GateDeps, MeetStore, PertemuanStore, RadarStore } from "../ports";
+import { bacaPertemuan, hitungDijaminKenalan } from "../pertemuan";
 import { pulihkanTandaTangan } from "../pulihkan-tanda-tangan";
 
 type ProfileMeetDeps = {
   meet: MeetStore;
   blokir: BlokirStore;
+  /** Desain UI §8.1–§8.2: riwayat pertemuan dan penjamin, cabang terbukti saja. */
+  pertemuan: PertemuanStore;
+  radar: Pick<RadarStore, "terhubungDengan">;
   verifyingContract: Address;
   nowMs: () => number;
 };
@@ -142,16 +146,26 @@ export function profileRoutes(deps: GateDeps & ProfileMeetDeps) {
     // tetap tahu tanda itu ada supaya tombol cabutnya muncul. Yang tersaring
     // hanya `diaMenandaiku` (kolom `who` = `addr`), sehingga `salingMenandai`
     // jatuh ke false untuk pasangan terblokir.
-    const [sudahKutandai, diaMenandaiku, sudahKublokir] = await Promise.all([
+    // Data baru desain UI (spec 2026-09-18 §8.1–§8.2) HANYA di cabang ini:
+    // yang melihat riwayat pertemuan hanyalah salah satu dari dua orangnya.
+    // Gagal = kunci hilang (aturan bersama §8 #2), bukan profil yang gagal dan
+    // bukan angka karangan. Profil sendiri tidak mendapat dijaminKenalan.
+    const [sudahKutandai, diaMenandaiku, sudahKublokir, pertemuan, dijaminKenalan] = await Promise.all([
       deps.meet.adaTanda(addr, pemanggil, kecuali),
       deps.meet.adaTanda(pemanggil, addr, kecuali),
       deps.blokir.adaBlokir(pemanggil, addr),
+      bacaPertemuan(pemanggil, addr, deps.pertemuan).catch(() => undefined),
+      pemanggil === addr
+        ? Promise.resolve(undefined)
+        : hitungDijaminKenalan(pemanggil, addr, new Set(kecuali), deps).catch(() => undefined),
     ]);
     return c.json({
       ...dasar,
       sudahKutandai,
       salingMenandai: sudahKutandai && diaMenandaiku,
       sudahKublokir,
+      ...(pertemuan !== undefined ? { pertemuan } : {}),
+      ...(dijaminKenalan !== undefined ? { dijaminKenalan } : {}),
     });
   });
 
