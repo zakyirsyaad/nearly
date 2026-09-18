@@ -44,6 +44,7 @@ const PESAN_GALAT: Record<string, string> = {
   dompet_sudah_ada: "HP ini sudah punya dompet. Hapus dulu lewat Ganti dompet.",
   entropi_lemah: "HP ini gagal menghasilkan angka acak, jadi dompet tidak dibuat. Tutup aplikasi lalu coba lagi.",
   dompet_tidak_konsisten: "Dompet gagal tersimpan dengan benar dan sudah dibatalkan. Coba lagi.",
+  dompet_gagal_dihapus: "Dompet gagal dihapus dari HP. Coba lagi.",
   dompet_rusak:
     "Data dompet di HP ini tidak terbaca. Jangan hapus aplikasi dulu — coba lagi, dan siapkan 12 kata pemulihanmu.",
 };

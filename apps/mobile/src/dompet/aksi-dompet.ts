@@ -24,6 +24,25 @@ export async function muatInfoDompet(): Promise<InfoDompet | null> {
   return d === null ? null : { ...d, address: alamatDariKunci(d.kunci) };
 }
 
+export type KeadaanPenyimpan =
+  | { keadaan: "belum-ada" }
+  | { keadaan: "siap"; info: InfoDompet }
+  | { keadaan: "galat"; galat: unknown };
+
+/**
+ * Keadaan dompet menurut isi penyimpan — tidak pernah melempar. Dipakai saat
+ * aplikasi dibuka dan setelah Ganti dompet yang gagal di tengah jalan, supaya
+ * keadaan di layar selalu mengikuti Keychain, bukan kunci yang masih di memori.
+ */
+export async function keadaanPenyimpan(): Promise<KeadaanPenyimpan> {
+  try {
+    const info = await muatInfoDompet();
+    return info === null ? { keadaan: "belum-ada" } : { keadaan: "siap", info };
+  } catch (galat) {
+    return { keadaan: "galat", galat };
+  }
+}
+
 /**
  * Antrian tingkat modul: buat, impor, dan lupakan berjalan SATU per SATU.
  * `simpanDompet` memeriksa "sudah ada?" lalu menulis — dua pemanggilan yang
@@ -104,7 +123,13 @@ export function lupakanDompet(): Promise<void> {
       lupakanCacheKunciLawan();
       lupakanCacheBuka();
     } finally {
-      await hapusDompet();
+      try {
+        await hapusDompet();
+      } catch {
+        // Bisa gagal SETELAH kunci terhapus. Pemanggil menyamakan keadaan
+        // lewat keadaanPenyimpan(); pesan mentah Keychain tidak diteruskan.
+        throw new Error("dompet_gagal_dihapus");
+      }
     }
   });
 }

@@ -18,12 +18,13 @@ vi.mock("expo-secure-store", () => ({
   deleteItemAsync: vi.fn(async (k: string) => { keychain.delete(k); }),
 }));
 
+import * as SecureStore from "expo-secure-store";
 import { CONFIG } from "../src/config";
 import {
-  buatDompetBaru, imporDompetKunciDev, imporDompetMnemonik, lupakanDompet, muatInfoDompet,
+  buatDompetBaru, imporDompetKunciDev, imporDompetMnemonik, keadaanPenyimpan, lupakanDompet, muatInfoDompet,
 } from "../src/dompet/aksi-dompet";
 import { mnemonikSah } from "../src/dompet/dompet";
-import { bacaMnemonik } from "../src/dompet/penyimpan-dompet";
+import { bacaMnemonik, KUNCI_PENYIMPAN } from "../src/dompet/penyimpan-dompet";
 import { sesiPesan, type SesiPesan } from "../src/pesan/sesi";
 import { bukaBaris, kunciLawan } from "../src/pesan/pesan-actions";
 
@@ -85,12 +86,43 @@ describe("imporDompetKunciDev", () => {
   });
 });
 
+describe("keadaanPenyimpan", () => {
+  it("kosong → belum-ada; ada → siap; isi rusak → galat, bukan belum-ada", async () => {
+    expect(await keadaanPenyimpan()).toEqual({ keadaan: "belum-ada" });
+    const info = await imporDompetMnemonik(MNEMONIK_UJI);
+    expect(await keadaanPenyimpan()).toEqual({ keadaan: "siap", info });
+    keychain.set(KUNCI_PENYIMPAN.kunci, "bukan kunci");
+    const k = await keadaanPenyimpan();
+    expect(k.keadaan).toBe("galat");
+    expect(k.keadaan === "galat" && (k.galat as Error).message).toBe("dompet_rusak");
+  });
+});
+
 describe("lupakanDompet", () => {
   it("menghapus dompet dari penyimpan", async () => {
     await buatDompetBaru();
     await lupakanDompet();
     expect(await muatInfoDompet()).toBeNull();
     expect(keychain.size).toBe(0);
+  });
+
+  it("hapus gagal di tengah jalan → dompet_gagal_dihapus, dan keadaan penyimpan tidak lagi siap", async () => {
+    await buatDompetBaru();
+    // Kunci terhapus, lalu Keychain menolak menghapus 12 kata.
+    vi.mocked(SecureStore.deleteItemAsync)
+      .mockImplementationOnce(async (k: string) => { keychain.delete(k); })
+      .mockImplementationOnce(async () => { throw new Error("User interaction is not allowed"); });
+    await expect(lupakanDompet()).rejects.toThrow("dompet_gagal_dihapus");
+    expect(keychain.has(KUNCI_PENYIMPAN.kunci)).toBe(false);
+    expect(await keadaanPenyimpan()).toEqual({ keadaan: "belum-ada" });
+  });
+
+  it("hapus gagal sebelum kunci terhapus → dompet tetap siap dengan kunci yang sama", async () => {
+    const info = await buatDompetBaru();
+    vi.mocked(SecureStore.deleteItemAsync)
+      .mockImplementationOnce(async () => { throw new Error("User interaction is not allowed"); });
+    await expect(lupakanDompet()).rejects.toThrow("dompet_gagal_dihapus");
+    expect(await keadaanPenyimpan()).toEqual({ keadaan: "siap", info });
   });
 
   it("membuang sesi pesan, kunci lawan, dan pesan terbuka di memori", async () => {

@@ -5,7 +5,7 @@ import type { Address, Hex } from "viem";
 import { createSignerDariKunci, type NearlySigner } from "../signer";
 import { lupakanPendaftaranPush } from "../pesan/push";
 import {
-  buatDompetBaru, imporDompetKunciDev, imporDompetMnemonik, lupakanDompet, muatInfoDompet,
+  buatDompetBaru, imporDompetKunciDev, imporDompetMnemonik, keadaanPenyimpan, lupakanDompet,
   type InfoDompet,
 } from "./aksi-dompet";
 import { bacaMnemonik, tandaiSudahDicadangkan as tandaiDiPenyimpan } from "./penyimpan-dompet";
@@ -48,9 +48,7 @@ export function DompetProvider({ children }: { children: ReactNode }) {
 
   const muatUlang = useCallback(() => {
     setStatus({ keadaan: "memuat" });
-    muatInfoDompet()
-      .then((info) => setStatus(info === null ? { keadaan: "belum-ada" } : { keadaan: "siap", info }))
-      .catch((galat: unknown) => setStatus({ keadaan: "galat", galat }));
+    void keadaanPenyimpan().then(setStatus);
   }, []);
 
   useEffect(() => { muatUlang(); }, [muatUlang]);
@@ -71,7 +69,17 @@ export function DompetProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const gantiDompet = useCallback(async () => {
-    await lupakanDompet();
+    try {
+      await lupakanDompet();
+    } catch (galat) {
+      // Penghapusan bisa gagal SETELAH kunci terhapus. Keadaan mengikuti isi
+      // penyimpan — tidak tetap "siap" menandatangani dengan kunci yang sudah
+      // tidak ada di Keychain. Tanpa "memuat", supaya layar Dompet (bila
+      // dompet masih ada) tetap terpasang dan menampilkan galatnya.
+      lupakanPendaftaranPush();
+      setStatus(await keadaanPenyimpan());
+      throw galat;
+    }
     // Dompet berikutnya mendaftarkan token push ulang; API memindahkan token
     // itu dari dompet lama (pesan-store.ts simpanTokenPush).
     lupakanPendaftaranPush();

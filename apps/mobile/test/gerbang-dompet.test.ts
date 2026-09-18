@@ -40,6 +40,23 @@ describe("gerbang dompet", () => {
     expect(jalankan).toMatch(/finally \{[\s\S]*?sibukRef\.current = false;/);
   });
 
+  it("Ganti dompet: push dilupakan setelah dompet dihapus, lalu keadaan belum-ada", () => {
+    const konteks = baca("src/dompet/konteks-dompet.tsx");
+    const ganti = konteks.slice(konteks.indexOf("const gantiDompet = useCallback("));
+    expect(ganti).toMatch(/^[\s\S]*?await lupakanDompet\(\);[\s\S]*?lupakanPendaftaranPush\(\);[\s\S]*?setStatus\(\{ keadaan: "belum-ada" \}\)/);
+  });
+
+  it("Ganti dompet yang gagal di tengah jalan menyamakan keadaan dengan isi penyimpan", () => {
+    const konteks = baca("src/dompet/konteks-dompet.tsx");
+    const ganti = konteks.slice(konteks.indexOf("const gantiDompet = useCallback("), konteks.indexOf("}, []);", konteks.indexOf("const gantiDompet = useCallback(")));
+    expect(ganti).toMatch(/catch \(galat\) \{[\s\S]*?lupakanPendaftaranPush\(\);[\s\S]*?setStatus\(await keadaanPenyimpan\(\)\);[\s\S]*?throw galat;/);
+  });
+
+  it("muatUlang membaca keadaan lewat keadaanPenyimpan", () => {
+    const konteks = baca("src/dompet/konteks-dompet.tsx");
+    expect(konteks).toMatch(/const muatUlang = useCallback\(\(\) => \{\s*setStatus\(\{ keadaan: "memuat" \}\);\s*void keadaanPenyimpan\(\)\.then\(setStatus\);/);
+  });
+
   it("konteks meneruskan __DEV__ ke imporDompetKunciDev", () => {
     expect(baca("src/dompet/konteks-dompet.tsx")).toContain("imporDompetKunciDev(teks, __DEV__)");
   });
