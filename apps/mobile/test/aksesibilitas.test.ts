@@ -35,4 +35,16 @@ describe("aksesibilitas — penjaga baca-kode", () => {
         .map((m) => `${b}: ${m[0]}`));
     expect(salah).toEqual([]);
   });
+
+  it("BatangTrust adalah satu elemen aksesibel berlabel labelAksesTrust", () => {
+    const isi = baca("components/batang-trust.tsx");
+    expect(isi).toContain("accessibilityLabel={labelAksesTrust(tier)}");
+    expect(isi).toMatch(/<View\s+accessible\b/);
+  });
+
+  it("Lencana dan Avatar membatasi pembesaran huruf 1,3×", () => {
+    for (const b of ["components/lencana.tsx", "components/avatar.tsx"]) {
+      expect(baca(b), b).toContain("maxFontSizeMultiplier={MAKS_SKALA_HURUF_KECIL}");
+    }
+  });
 });

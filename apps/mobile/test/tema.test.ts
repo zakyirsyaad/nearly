@@ -119,3 +119,12 @@ describe("tema gelap navigasi (spec §3.2)", () => {
   });
 });
 
+describe("batang trust (spec §3.4, #16B)", () => {
+  it("ruas kosong memakai segmentEmpty, bukan border", () => {
+    const isi = baca("components/batang-trust.tsx");
+    expect(isi).toContain('useColor("segmentEmpty")');
+    expect(isi).not.toContain('useColor("border")');
+  });
+});
+
+
