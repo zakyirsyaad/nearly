@@ -47,4 +47,14 @@ describe("aksesibilitas — penjaga baca-kode", () => {
       expect(baca(b), b).toContain("maxFontSizeMultiplier={MAKS_SKALA_HURUF_KECIL}");
     }
   });
+
+  it("label tab bar dan lencana tab membatasi pembesaran huruf 1,3×", () => {
+    expect(baca("app/(tabs)/_layout.tsx")).toContain("maxFontSizeMultiplier={MAKS_SKALA_HURUF_KECIL}");
+    expect(baca("components/tab/ikon-tab.tsx")).toContain("maxFontSizeMultiplier={MAKS_SKALA_HURUF_KECIL}");
+  });
+
+  it("tinggi tab bar menyertakan inset bawah; tombol Salaman berlabel aksesibilitas", () => {
+    expect(baca("app/(tabs)/_layout.tsx")).toContain("UKURAN.tinggiIsiTabBar + insets.bottom");
+    expect(baca("components/tab/tombol-salaman.tsx")).toContain("accessibilityLabel={label}");
+  });
 });

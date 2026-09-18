@@ -1,17 +1,21 @@
-import { readdirSync, readFileSync } from "node:fs";
-import { join, relative } from "node:path";
+import { existsSync, readdirSync, readFileSync } from "node:fs";
+import { join, relative, sep } from "node:path";
 import { describe, expect, it } from "vitest";
-import { JUDUL_LAYAR, LAYAR_TERMIGRASI, layarMenurutDompet } from "../src/judul-layar";
+import {
+  JUDUL_LAYAR, LAYAR_AKAR, LAYAR_TERMIGRASI, layarDalam, layarMenurutDompet, TAB_BAWAH,
+} from "../src/judul-layar";
+import { opsiTampilan } from "../theme/navigasi";
 
-const APP = join(__dirname, "..", "app");
+const MOBILE = join(__dirname, "..");
+const APP = join(MOBILE, "app");
 
-/** Nama rute expo-router untuk setiap berkas layar: `app/events/[id].tsx` → `events/[id]`. */
+/** Kunci setiap berkas layar: `app/(tabs)/(acara)/events/[id].tsx` → `(tabs)/(acara)/events/[id]`. */
 function semuaRute(dir = APP): string[] {
   return readdirSync(dir, { withFileTypes: true }).flatMap((e) => {
     const jalur = join(dir, e.name);
     if (e.isDirectory()) return semuaRute(jalur);
     if (!e.name.endsWith(".tsx") || e.name.startsWith("_")) return [];
-    return [relative(APP, jalur).replace(/\.tsx$/, "")];
+    return [relative(APP, jalur).split(sep).join("/").replace(/\.tsx$/, "")];
   });
 }
 
@@ -36,31 +40,105 @@ describe("judul layar", () => {
     }
   });
 
+  it("judul persis spec desain UI §4.7", () => {
+    expect(JUDUL_LAYAR).toEqual({
+      mulai: "Get started",
+      "profile/[address]": "Profile",
+      "(tabs)/(beranda)/index": "Home",
+      "(tabs)/(beranda)/feed/index": "Feed",
+      "(tabs)/(beranda)/feed/new": "New post",
+      "(tabs)/(acara)/events/index": "Events",
+      "(tabs)/(acara)/events/new": "Create event",
+      "(tabs)/(acara)/events/[id]": "Event details",
+      "(tabs)/(acara)/events/[id]/host-qr": "Check-in QR",
+      "(tabs)/(acara)/radar/[eventId]": "Radar",
+      "(tabs)/(salaman)/salaman": "Handshake",
+      "(tabs)/(pesan)/pesan/index": "Messages",
+      "(tabs)/(pesan)/pesan/[address]": "Conversation",
+      "(tabs)/(pesan)/pesan/lapor/[address]": "Report",
+      "(tabs)/(profil)/profil-saya": "Profile",
+      "(tabs)/(profil)/connections": "Connections",
+      "(tabs)/(profil)/kecocokan": "Matches",
+      "(tabs)/(profil)/dompet": "Wallet",
+      "(tabs)/(profil)/blokir": "Blocked",
+    });
+  });
+
+  it("setiap kunci dimiliki tepat satu layout: Stack akar atau satu Stack tab", () => {
+    const akar = LAYAR_AKAR.filter((n) => n !== "(tabs)");
+    const perTab = TAB_BAWAH.flatMap((t) =>
+      layarDalam(`(tabs)/${t.grup}`).map(([nama]) => `(tabs)/${t.grup}/${nama}`));
+    const semua = [...akar, ...perTab];
+    expect([...semua].sort()).toEqual(Object.keys(JUDUL_LAYAR).sort());
+    expect(new Set(semua).size).toBe(semua.length);
+  });
+
+  // Tanpa dompet hanya layar Mulai; dengan dompet, (tabs) adalah layar pertama
+  // yang dituju saat penjaga berubah (spec §4.2).
+  it("layarMenurutDompet: tanpa dompet hanya mulai; dengan dompet (tabs) lebih dulu", () => {
+    expect(layarMenurutDompet(false)).toEqual([["mulai", { title: "Get started" }]]);
+    expect(layarMenurutDompet(true)).toEqual([
+      ["(tabs)", { headerShown: false }],
+      ["profile/[address]", { title: "Profile" }],
+    ]);
+  });
+
   // Memeriksa pemakaian, bukan sekadar nama: impor saja tanpa pendaftaran
   // meloloskan tes versi awal, dan judul yang ditulis tangan di layout akan
   // lolos dari tes "setiap layar punya judul" di atas.
-  it("_layout.tsx mendaftarkan judul dari kedua sisi gerbang dompet, tanpa judul tulisan tangan", () => {
+  it("_layout.tsx akar mendaftarkan kedua sisi gerbang dompet, tanpa judul tulisan tangan", () => {
     const layout = readFileSync(join(APP, "_layout.tsx"), "utf8");
     expect(layout).toMatch(/layarMenurutDompet\(true\)\.map\(/);
     expect(layout).toMatch(/layarMenurutDompet\(false\)\.map\(/);
     expect(layout).not.toMatch(/title:\s*"/);
   });
 
-  it("layarMenurutDompet membagi SEMUA judul tanpa irisan", () => {
-    const dengan = layarMenurutDompet(true).map(([r]) => r);
-    const tanpa = layarMenurutDompet(false).map(([r]) => r);
-    expect([...dengan, ...tanpa].sort()).toEqual(Object.keys(JUDUL_LAYAR).sort());
-    expect(dengan.filter((r) => tanpa.includes(r))).toEqual([]);
+  it("TAB_BAWAH: lima grup dalam urutan spec §4.3, masing-masing punya _layout.tsx", () => {
+    expect(TAB_BAWAH.map((t) => [t.grup, t.label])).toEqual([
+      ["(beranda)", "Home"],
+      ["(acara)", "Events"],
+      ["(salaman)", "Handshake"],
+      ["(pesan)", "Messages"],
+      ["(profil)", "Profile"],
+    ]);
+    for (const t of TAB_BAWAH) expect(existsSync(join(APP, "(tabs)", t.grup, "_layout.tsx")), t.grup).toBe(true);
   });
 
-  // Tanpa dompet hanya layar Mulai; dengan dompet, beranda adalah layar pertama
-  // yang dituju saat penjaga berubah.
-  it("mulai hanya tanpa dompet; index layar pertama dengan dompet", () => {
-    expect(layarMenurutDompet(false).map(([r]) => r)).toEqual(["mulai"]);
-    expect(layarMenurutDompet(true)[0]?.[0]).toBe("index");
+  it("setiap _layout.tsx tab merender StackTab grupnya dengan initialRouteName layar akar tab", () => {
+    for (const t of TAB_BAWAH) {
+      const isi = readFileSync(join(APP, "(tabs)", t.grup, "_layout.tsx"), "utf8");
+      expect(isi, t.grup).toContain(`<StackTab grup="${t.grup}" />`);
+      expect(isi, t.grup).toContain(`initialRouteName: "${t.layarAwal}"`);
+      expect(isi, t.grup).not.toMatch(/title:\s*"/);
+      expect(`(tabs)/${t.grup}/${t.layarAwal}` in JUDUL_LAYAR, t.grup).toBe(true);
+    }
+  });
+
+  it("StackTab mendaftarkan judul dari layarDalam, tanpa judul tulisan tangan", () => {
+    const isi = readFileSync(join(MOBILE, "components", "stack-tab.tsx"), "utf8");
+    expect(isi).toMatch(/layarDalam\(induk\)\.map\(/);
+    expect(isi).not.toMatch(/title:\s*"/);
+  });
+
+  it("(tabs)/_layout.tsx memetakan TAB_BAWAH, tanpa judul tulisan tangan", () => {
+    const isi = readFileSync(join(APP, "(tabs)", "_layout.tsx"), "utf8");
+    expect(isi).toMatch(/TAB_BAWAH\.map\(/);
+    expect(isi).toContain("name={tab.grup}");
+    expect(isi).not.toMatch(/title:\s*"/);
   });
 
   it("LAYAR_TERMIGRASI hanya berisi kunci JUDUL_LAYAR", () => {
     expect([...LAYAR_TERMIGRASI].filter((k) => !(k in JUDUL_LAYAR))).toEqual([]);
+  });
+
+  it("Beranda tanpa header; layar akar tab lain berjudul besar (spec §4.7)", () => {
+    expect(opsiTampilan("(tabs)/(beranda)/index")).toMatchObject({ headerShown: false });
+    for (const k of [
+      "(tabs)/(acara)/events/index", "(tabs)/(salaman)/salaman", "(tabs)/(pesan)/pesan/index",
+      "(tabs)/(profil)/profil-saya",
+    ]) {
+      expect(opsiTampilan(k), k).toMatchObject({ headerLargeTitle: true });
+    }
+    expect(opsiTampilan("(tabs)/(acara)/events/[id]")).toEqual({});
   });
 });

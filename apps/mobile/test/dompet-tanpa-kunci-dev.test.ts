@@ -67,23 +67,22 @@ describe("tanpa kunci dev terbundel", () => {
   it("setiap layar memakai kontrak EIP-712 yang benar untuk signernya", () => {
     const V = "verifyingContract";
     const HARAPAN: Record<string, string[]> = {
-      "app/blokir.tsx": [`signer:${V}`],
-      "app/connections.tsx": [`signer:${V}`],
-      "app/events/[id].tsx": ["signer:attendanceRegistry"],
-      "app/events/[id]/host-qr.tsx": ["signer:attendanceRegistry"],
-      "app/events/new.tsx": ["signer:attendanceRegistry"],
-      "app/feed/index.tsx": [`signer:${V}`],
-      "app/feed/new.tsx": [`signer:${V}`],
-      "app/index.tsx": [`signer:${V}`],
-      "app/kecocokan.tsx": [`signer:${V}`],
-      "app/pesan/[address].tsx": [`signer:${V}`],
-      "app/pesan/index.tsx": [`signer:${V}`],
-      "app/pesan/lapor/[address].tsx": [`signer:${V}`],
-      "app/profil-saya.tsx": [`signer:${V}`],
+      "app/(tabs)/(acara)/events/[id].tsx": ["signer:attendanceRegistry"],
+      "app/(tabs)/(acara)/events/[id]/host-qr.tsx": ["signer:attendanceRegistry"],
+      "app/(tabs)/(acara)/events/new.tsx": ["signer:attendanceRegistry"],
+      "app/(tabs)/(acara)/radar/[eventId].tsx": [`signer:${V}`],
+      "app/(tabs)/(beranda)/feed/index.tsx": [`signer:${V}`],
+      "app/(tabs)/(beranda)/feed/new.tsx": [`signer:${V}`],
+      "app/(tabs)/(beranda)/index.tsx": [`signer:${V}`],
+      "app/(tabs)/(pesan)/pesan/[address].tsx": [`signer:${V}`],
+      "app/(tabs)/(pesan)/pesan/index.tsx": [`signer:${V}`],
+      "app/(tabs)/(pesan)/pesan/lapor/[address].tsx": [`signer:${V}`],
+      "app/(tabs)/(profil)/blokir.tsx": [`signer:${V}`],
+      "app/(tabs)/(profil)/connections.tsx": [`signer:${V}`],
+      "app/(tabs)/(profil)/kecocokan.tsx": [`signer:${V}`],
+      "app/(tabs)/(profil)/profil-saya.tsx": [`signer:${V}`],
+      "app/(tabs)/(salaman)/salaman.tsx": ["signerHadir:attendanceRegistry", `signerSalaman:${V}`],
       "app/profile/[address].tsx": [`signer:${V}`],
-      "app/qr.tsx": [`signer:${V}`],
-      "app/radar/[eventId].tsx": [`signer:${V}`],
-      "app/scan.tsx": ["signerHadir:attendanceRegistry", `signerSalaman:${V}`],
     };
     const nyata = Object.fromEntries(
       kode.filter((k) => k.isi.includes("useNearlySigner(") && k.berkas.startsWith("app/")).map((k) => [
@@ -94,9 +93,10 @@ describe("tanpa kunci dev terbundel", () => {
     expect(nyata).toEqual(HARAPAN);
   });
 
-  it("layar pindai meneruskan signer hadir dan salaman ke prop yang sesuai", () => {
-    const scan = kode.find((k) => k.berkas === "app/scan.tsx")!.isi;
-    expect(scan).toMatch(/<ScanIsi\b[^>]*signerHadir=\{signerHadir\}[^>]*signerSalaman=\{signerSalaman\}/);
+  it("layar Salaman meneruskan signer hadir dan salaman ke prop yang sesuai", () => {
+    const salaman = kode.find((k) => k.berkas === "app/(tabs)/(salaman)/salaman.tsx")!.isi;
+    expect(salaman).toMatch(/<SalamanIsi\b[^>]*signerHadir=\{signerHadir\}[^>]*signerSalaman=\{signerSalaman\}/);
+    expect(salaman).toContain("<ModePindai signerHadir={signerHadir} signerSalaman={signerSalaman} />");
   });
 
   // key={signer.address}: saat dompet berganti, isi layar dipasang ulang

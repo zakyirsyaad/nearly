@@ -30,7 +30,11 @@ export function tanpaKomentar(isi: string): string {
  * Komponen yang dipindah apa adanya dari app/ dan belum dimigrasi ke tampilan
  * baru (Ruling A4). Rencana B mengosongkan himpunan ini.
  */
-export const KOMPONEN_BELUM_DIMIGRASI: ReadonlySet<string> = new Set<string>([]);
+export const KOMPONEN_BELUM_DIMIGRASI: ReadonlySet<string> = new Set<string>([
+  // app/qr.tsx dan app/scan.tsx dipindah apa adanya (Ruling A10) — Rencana B 5(a).
+  "components/salaman/mode-qr.tsx",
+  "components/salaman/mode-pindai.tsx",
+]);
 
 /**
  * Kode bertampilan baru selain salinan BNA: wajib token, skala jarak, dan

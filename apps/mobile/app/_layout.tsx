@@ -75,7 +75,9 @@ function Navigasi() {
     if (keadaan !== "siap") return;
     const langganan = Notifications.addNotificationResponseReceivedListener((r) => {
       const rute = ruteDariNotifikasi(r.notification.request.content.data);
-      if (rute) router.push(rute);
+      // navigate, bukan push: dengan (tabs) sebagai layar Stack akar, push bisa
+      // menumpuk navigator tab kedua (Ruling A9). ruteDariNotifikasi tidak berubah.
+      if (rute) router.navigate(rute);
     });
     return () => langganan.remove();
   }, [keadaan]);
@@ -103,13 +105,13 @@ function Navigasi() {
       <StatusBar style="light" />
       <Stack screenOptions={OPSI_STACK}>
         <Stack.Protected guard={punyaDompet}>
-          {layarMenurutDompet(true).map(([name, title]) => (
-            <Stack.Screen key={name} name={name} options={{ title, ...opsiTampilan(name) }} />
+          {layarMenurutDompet(true).map(([name, opsi]) => (
+            <Stack.Screen key={name} name={name} options={{ ...opsi, ...opsiTampilan(name) }} />
           ))}
         </Stack.Protected>
         <Stack.Protected guard={!punyaDompet}>
-          {layarMenurutDompet(false).map(([name, title]) => (
-            <Stack.Screen key={name} name={name} options={{ title, ...opsiTampilan(name) }} />
+          {layarMenurutDompet(false).map(([name, opsi]) => (
+            <Stack.Screen key={name} name={name} options={{ ...opsi, ...opsiTampilan(name) }} />
           ))}
         </Stack.Protected>
       </Stack>

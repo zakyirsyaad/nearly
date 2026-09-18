@@ -36,3 +36,20 @@ describe("ruteDariNotifikasi — radar (spec 4b+5 §8.3)", () => {
     expect(ruteDariNotifikasi({ jenis: "radar" })).toBeNull();
   });
 });
+
+import { cocokRute, semuaPolaRute } from "./support/rute";
+
+// Spec desain UI §4.5, §10.1: rute keluaran ruteDariNotifikasi harus tetap
+// menunjuk berkas yang ada setelah layar dipindah ke grup tab.
+describe("rute notifikasi ada di pohon app/", () => {
+  it("/pesan dan /radar/<id> cocok dengan berkas di app/ setelah segmen grup dibuang", () => {
+    const pola = semuaPolaRute();
+    const pesan = ruteDariNotifikasi({ jenis: "pesan" });
+    const radar = ruteDariNotifikasi({ jenis: "radar", eventId: `0x${"e1".repeat(32)}` });
+    expect(pesan).not.toBeNull();
+    expect(radar).not.toBeNull();
+    expect(cocokRute(pesan ?? "", pola)).toBe(true);
+    expect(cocokRute(radar ?? "", pola)).toBe(true);
+  });
+});
+
