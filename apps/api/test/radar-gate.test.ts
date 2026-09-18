@@ -336,12 +336,22 @@ describe("lihatRadar — koneksi bersama (spec desain UI §8.3, §10.2)", () => 
     expect(kartuUntuk(await lihatRadar(AKU, EVENT_RADAR, d.deps), C)?.koneksiBersama).toBe(3);
   });
 
-  it("koneksi bersama yang terblokir ke arah mana pun tidak dihitung", async () => {
-    for (const blokir of [[{ blocker: AKU, blocked: M1 }], [{ blocker: M1, blocked: AKU }]]) {
-      const d = duniaRadar({ checkIn: [AKU, C], koneksi: [[AKU, M1], [M1, C], [AKU, M2], [M2, C]], blokir });
-      d.hadirkan(AKU); d.hadirkan(C);
-      expect(kartuUntuk(await lihatRadar(AKU, EVENT_RADAR, d.deps), C)?.koneksiBersama).toBe(1);
-    }
+  it("koneksi bersama yang diblokir pemanggil tidak dihitung", async () => {
+    const d = duniaRadar({
+      checkIn: [AKU, C], koneksi: [[AKU, M1], [M1, C], [AKU, M2], [M2, C]], blokir: [{ blocker: AKU, blocked: M1 }],
+    });
+    d.hadirkan(AKU); d.hadirkan(C);
+    expect(kartuUntuk(await lihatRadar(AKU, EVENT_RADAR, d.deps), C)?.koneksiBersama).toBe(1);
+  });
+
+  it("koneksi bersama yang MEMBLOKIR pemanggil tetap dihitung (bukan oracle blokir)", async () => {
+    // Keputusan pemilik 2026-09-18 (review Rencana A #5): graf koneksi publik,
+    // jadi angka yang turun satu akan membocorkan siapa yang memblokir pemanggil.
+    const d = duniaRadar({
+      checkIn: [AKU, C], koneksi: [[AKU, M1], [M1, C], [AKU, M2], [M2, C]], blokir: [{ blocker: M1, blocked: AKU }],
+    });
+    d.hadirkan(AKU); d.hadirkan(C);
+    expect(kartuUntuk(await lihatRadar(AKU, EVENT_RADAR, d.deps), C)?.koneksiBersama).toBe(2);
   });
 
   it("kandidat Tersembunyi tidak punya kartu dan tidak pernah dikirim ke hitungKoneksiBersama", async () => {

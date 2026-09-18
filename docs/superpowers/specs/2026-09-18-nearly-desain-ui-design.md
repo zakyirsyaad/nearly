@@ -41,7 +41,7 @@ Diputuskan pemilik project (2026-09-18). Ditulis sesuai kata-kata pemilik; tidak
 | 7 | **Token B2:** background `#07090f`, card `#0f1420`, border `#1d2638`, text `#e6edf7`, textMuted `#8a96ad`, primary `#f3ba2f`, primaryForeground `#07090f`, verified `#37d6a8`, destructive `#f06a6a`. Radius 8 kartu/tombol, 14 tombol Salaman; kartu bergaris tanpa bayangan; haptic saat salaman berhasil & tombol utama. |
 | 8 | **Peta layar:** Beranda (sapaan, spanduk cadangan, acara LIVE, baru kamu temui, cuplikan feed → `feed/index`, `feed/new`); Acara (`events/index` → `events/[id]`, `radar/[eventId]`, `events/new`, `events/[id]/host-qr`); Salaman = SATU layar dua mode "Tampilkan QR ⟷ Pindai" menggabungkan `app/qr.tsx` + `app/scan.tsx` → setelah berhasil ke `profile/[address]`; Pesan (`pesan/index` → `pesan/[address]`, `pesan/lapor/[address]`); Profil (`profil-saya`: nama, alamat, trust, Terlihat/Tersembunyi → `connections`, `kecocokan`, `dompet`, `blokir`). Di luar tab: `mulai` (tanpa tab bar), `profile/[address]` dari mana saja. Ketuk notifikasi pesan → Pesan › Percakapan; radar → Acara › Radar. Tidak ada fitur hilang. *Diubah oleh #16D:* setelah salaman berhasil, pemindai melihat sheet "You met …" di atas tab Salaman; `profile/[address]` dibuka lewat tombol "View profile" di sheet, bukan otomatis. |
 | 9 | **Layar kunci** sesuai mockup layar kunci yang disetujui (Beranda, Salaman, Profil orang, Radar, Percakapan), dengan koreksi privasi #10. |
-| 10 | **Data baru di fase ini (API ditambah):** (a) riwayat pertemuan di Profil orang (acara/tempat, kapan, jumlah kali) — hanya pertemuan antara penonton dan orang itu; (b) "Dijamin N orang yang juga kamu kenal" — jumlah penjamin (vouch) orang itu yang merupakan koneksimu; (c) "N koneksi bersama" di Radar untuk orang yang belum kamu temui — HANYA ANGKA tanpa nama, dan HANYA bila kedua pihak Terlihat; blokir dua arah tetap berlaku; (d) "hadir sejak <jam>" DIBUANG — cukup "hadir sekarang"; (e) "Kamu terlihat oleh N orang" DIGANTI "N orang terlihat di sini", dihitung dari kartu yang dikirim (`jumlah` yang ada); (f) batang trust BERTINGKAT per tier (4 ruas), bukan persentase — radar/profil tidak mengirim skor mentah. |
+| 10 | **Data baru di fase ini (API ditambah):** (a) riwayat pertemuan di Profil orang (acara/tempat, kapan, jumlah kali) — hanya pertemuan antara penonton dan orang itu; (b) "Dijamin N orang yang juga kamu kenal" — jumlah penjamin (vouch) orang itu yang merupakan koneksimu; (c) "N koneksi bersama" di Radar untuk orang yang belum kamu temui — HANYA ANGKA tanpa nama, dan HANYA bila kedua pihak Terlihat; blokir dua arah tetap berlaku untuk kartu (hitungan hanya mengecualikan orang yang diblokir penonton — diamandemen 2026-09-18, §8.3); (d) "hadir sejak <jam>" DIBUANG — cukup "hadir sekarang"; (e) "Kamu terlihat oleh N orang" DIGANTI "N orang terlihat di sini", dihitung dari kartu yang dikirim (`jumlah` yang ada); (f) batang trust BERTINGKAT per tier (4 ruas), bukan persentase — radar/profil tidak mengirim skor mentah. |
 | 11 | **Pola layar lain:** daftar / formulir / detail; layar Mulai: logo "n" besar, kalimat "Kenali orang yang benar-benar kamu temui", tombol Buat dompet baru & Pakai dompet yang sudah ada. Empat keadaan seragam: memuat = skeleton; kosong = ikon + kalimat + aksi; galat = kalimat galat yang ada + Coba lagi; berhasil = toast hijau + haptic untuk aksi penting. |
 | 12 | **Teks/kalimat, logika, dan perilaku layar yang ada TIDAK berubah** kecuali yang disebut di atas (fase ini tampilan + navigasi + 3 data baru). *Diubah oleh #15:* kalimat yang ada **diterjemahkan 1:1 maknanya** ke bahasa Inggris — logika dan perilaku tetap, tidak ada penulisan ulang kalimat di luar terjemahan dan teks baru yang didaftar (§7.3). |
 | 13 | **Urutan:** (1) spike BNA di monorepo SDK 57 — satu tombol BNA tampil di Expo Go; bila gagal, jatuh ke token + komponen sendiri; (2) fondasi tema/font/alias/ikon/splash; (3) navigasi tab + rute notifikasi; (4) API 3 data baru + tes privasi; (5) migrasi layar per kelompok: Salaman, Beranda, Profil, Acara+Radar, Pesan, sisanya; (6) dokumen & verifikasi. Eksekutor: sesi `fcc`. |
@@ -967,7 +967,10 @@ Juga **hanya di cabang terbukti**: `dijaminKenalan: number`.
 
 - = jumlah alamat `P` dengan vouch **aktif** `P → addr` (`vouches.revoked_at is null`, indeks parsial `vouches_to`)
   yang **terkoneksi dengan pemanggil**, dikurangi pemanggil sendiri, `addr` sendiri, dan setiap alamat di
-  `blokir.himpunanUntuk(pemanggil)` (dua arah).
+  `blokir.diblokirOleh(pemanggil)` — **satu arah**: hanya orang yang diblokir pemanggil. *Diamandemen 2026-09-18
+  (keputusan pemilik, review Rencana A #5):* dulu dua arah (`himpunanUntuk`), tetapi graf vouch dan koneksi publik,
+  sehingga angka yang turun satu membocorkan siapa yang memblokir pemanggil — alasan yang sama dengan
+  `inginBertemuCount` (spec §5.2 yang diamandemen).
 - Irisan memakai `RadarStore.terhubungDengan(pemanggil, penjamin)` yang sudah ada — satu kueri per kelompok.
 - Port: `PertemuanStore.penjaminAktif(to): Promise<Address[]>`.
 - Hanya angka. Siapa penjaminnya tidak dikirim (vouch memang publik on-chain di `VouchRegistry`, tetapi layar tidak
@@ -984,9 +987,10 @@ Juga **hanya di cabang terbukti**: `dijaminKenalan: number`.
   kartu dibangun, dan kandidat hanya lolos bila `visibilitas === "terlihat"`. Penghitungan berjalan **setelah**
   saringan visibilitas dan blokir, atas daftar `lolos` saja, sehingga orang Tersembunyi tidak pernah menjadi subjek
   hitungan.
-- **Blokir dua arah:** pasangan terblokir tidak punya kartu (sudah ada). Selain itu, alamat di
-  `himpunanUntuk(pemanggil)` **tidak dihitung sebagai koneksi bersama**, supaya orang yang kamu blokir (atau yang
-  memblokirmu) tidak muncul sebagai angka di kartu orang lain.
+- **Blokir:** pasangan terblokir (dua arah) tidak punya kartu (sudah ada). Hitungan koneksi bersama hanya
+  mengecualikan orang yang **diblokir pemanggil** (`diblokirOleh`, satu arah). *Diamandemen 2026-09-18 (keputusan
+  pemilik, review Rencana A #5):* orang yang memblokir pemanggil tetap dihitung, karena graf koneksi publik dan
+  angka yang turun satu akan menjadi oracle "siapa yang memblokirku".
 - Yang dihitung: |koneksi(pemanggil) ∩ koneksi(K)| tanpa pemanggil, K, dan himpunan blokir di atas. Koneksi bersama
   yang sedang Tersembunyi **tetap dihitung**: visibilitas mengatur radar, bukan graf, dan graf koneksi publik
   on-chain serta lewat `GET /connections/:address`.
@@ -1137,10 +1141,10 @@ Tes baru / diganti:
   `jumlahAcaraBersama` total; tidak terkoneksi → `null`; profil sendiri → `null`; himpunan kunci `pertemuan` persis
   (tidak ada `cell`, `txHash`, `host`); store gagal → kunci absen, profil tetap 200.
 - **Profil — `dijaminKenalan`:** hanya vouch aktif (vouch dicabut tidak dihitung); hanya penjamin yang terkoneksi
-  dengan pemanggil; pemanggil yang juga menjamin tidak menghitung dirinya; penjamin yang diblokir pemanggil **dan**
-  yang memblokir pemanggil tidak dihitung; nilai 0 dikirim sebagai `0` (kunci ada); store gagal → kunci absen.
+  dengan pemanggil; pemanggil yang juga menjamin tidak menghitung dirinya; penjamin yang diblokir pemanggil tidak dihitung,
+  penjamin yang memblokir pemanggil **tetap** dihitung; nilai 0 dikirim sebagai `0` (kunci ada); store gagal → kunci absen.
 - **Radar — `koneksiBersama`:** hanya pada kartu `pernahBertemu === false`; absen bila 0; hitungan benar untuk graf
-  kecil yang ditulis tangan; koneksi bersama yang diblokir pemanggil (dua arah) tidak dihitung; kandidat Tersembunyi
+  kecil yang ditulis tangan; koneksi bersama yang diblokir pemanggil tidak dihitung, yang memblokir pemanggil tetap dihitung; kandidat Tersembunyi
   tidak punya kartu **dan** fake store membuktikan ia tidak pernah dikirim ke `hitungKoneksiBersama`; pemanggil
   Tersembunyi → 403 sebelum store dipanggil; **himpunan kunci setiap kartu persis** `address, displayName, tierLabel,
   pernahBertemu, salingInginBertemu` (+ `koneksiBersama` bila ada) — tidak ada nama/alamat koneksi bersama, tidak ada

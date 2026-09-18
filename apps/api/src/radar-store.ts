@@ -92,8 +92,8 @@ export function createRadarStore(db: SupabaseClient): RadarStore {
       const w = kecil(who);
       const unik = [...new Set(kandidat.map(kecil))].filter((k) => k !== w);
       if (unik.length === 0) return new Map();
-      // Pemanggil, dan himpunan blokir dua arahnya, tidak pernah dihitung
-      // sebagai koneksi bersama (spec desain UI §8.3).
+      // Pemanggil, dan `kecuali` (orang yang DIBLOKIR pemanggil — satu arah,
+      // lihat radar-gate), tidak pernah dihitung sebagai koneksi bersama.
       const buang = new Set([w, ...kecuali.map(kecil)]);
 
       // Koneksi pemanggil, berhalaman penuh di kedua sisi urutan kanonik.

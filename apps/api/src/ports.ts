@@ -654,7 +654,7 @@ export type RadarDeps = {
   radar: RadarStore;
   profilSaya: Pick<ProfilSayaStore, "visibilitasBanyak">;
   events: Pick<EventStore, "getEvent" | "hasCheckIn">;
-  blokir: Pick<BlokirStore, "himpunanUntuk">;
+  blokir: Pick<BlokirStore, "himpunanUntuk" | "diblokirOleh">;
   meet: Pick<MeetStore, "tandaOleh" | "tandaKe" | "profilRingkas">;
   /** `ambilKunci` untuk autentikasi sesi (R1); token push dipakai ulang tanpa diubah (spec 4b+5 §6.5). */
   pesan: Pick<PesanStore, "ambilKunci" | "tokenPush" | "hapusTokenPush">;

@@ -180,9 +180,12 @@ export async function lihatRadar(
 
   // Visibilitas dari `profiles`, BUKAN dari baris kehadiran — pindah ke
   // Tersembunyi berlaku seketika walau barisnya masih ada. Blokir DUA arah.
-  const [visibilitas, terblokir] = await Promise.all([
+  // `blokirKu` (SATU arah: yang diblokir pemanggil) hanya untuk hitungan
+  // koneksi bersama di bawah — lihat komentarnya.
+  const [visibilitas, terblokir, blokirKu] = await Promise.all([
     deps.profilSaya.visibilitasBanyak(hadir),
     deps.blokir.himpunanUntuk(aku),
+    deps.blokir.diblokirOleh(aku),
   ]);
   const lolos = hadir.filter((a) => visibilitas.get(a) === "terlihat" && !terblokir.has(a));
   if (lolos.length === 0) return ok({ kartu: [], jumlah: 0 });
@@ -206,13 +209,16 @@ export async function lihatRadar(
 
   // Koneksi bersama (desain UI §8.3): HANYA untuk kartu yang belum ditemui,
   // dihitung SETELAH saringan visibilitas dan blokir di atas — orang
-  // Tersembunyi tidak pernah menjadi subjek hitungan. Blokir dua arah
-  // pemanggil (`kecuali`) tidak dihitung sebagai koneksi bersama. Gagal =
+  // Tersembunyi tidak pernah menjadi subjek hitungan. Yang dikecualikan dari
+  // hitungan hanya orang yang DIBLOKIR pemanggil (satu arah, keputusan pemilik
+  // 2026-09-18): graf koneksi publik, jadi mengecualikan orang yang memblokir
+  // pemanggil membuat angka yang turun satu menjadi oracle "siapa yang
+  // memblokirku" — alasan yang sama dengan `inginBertemuCount`. Gagal =
   // kunci hilang di semua kartu, bukan angka karangan; radar tetap jalan.
   const belumBertemu = baris.filter((b) => !b.pernahBertemu).map((b) => b.address);
   const bersama = belumBertemu.length === 0
     ? new Map<string, number>()
-    : await hitungBersama(aku, belumBertemu, kecuali).catch(() => null);
+    : await hitungBersama(aku, belumBertemu, blokirKu.map((b) => kecil(b.address))).catch(() => null);
 
   // Dibangun kunci demi kunci, BUKAN spread — medan tambahan di `baris`
   // (mis. `tier` mentah) tidak boleh ikut terkirim.

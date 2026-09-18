@@ -73,8 +73,10 @@ export async function bacaPertemuan(
 
 /**
  * Jumlah penjamin AKTIF `addr` yang terkoneksi dengan pemanggil, tanpa
- * pemanggil sendiri, `addr` sendiri, dan setiap alamat di himpunan blokir dua
- * arah pemanggil (§8.2). Hanya angka — siapa penjaminnya tidak pernah keluar.
+ * pemanggil sendiri, `addr` sendiri, dan setiap alamat yang DIBLOKIR pemanggil
+ * (`kecuali`, satu arah — keputusan pemilik 2026-09-18: menyaring orang yang
+ * memblokir pemanggil membuat angka ini oracle blokir, karena graf vouch dan
+ * koneksi publik). Hanya angka — siapa penjaminnya tidak pernah keluar.
  */
 export async function hitungDijaminKenalan(
   pemanggil: Address,

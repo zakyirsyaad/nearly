@@ -157,7 +157,13 @@ export function profileRoutes(deps: GateDeps & ProfileMeetDeps) {
       bacaPertemuan(pemanggil, addr, deps.pertemuan).catch(() => undefined),
       pemanggil === addr
         ? Promise.resolve(undefined)
-        : hitungDijaminKenalan(pemanggil, addr, new Set(kecuali), deps).catch(() => undefined),
+        // Satu arah: hanya orang yang DIBLOKIR pemanggil yang dikecualikan
+        // (keputusan pemilik 2026-09-18 — lihat hitungDijaminKenalan).
+        : deps.blokir.diblokirOleh(pemanggil)
+          .then((baris) => hitungDijaminKenalan(
+            pemanggil, addr, new Set(baris.map((b) => b.address.toLowerCase())), deps,
+          ))
+          .catch(() => undefined),
     ]);
     return c.json({
       ...dasar,

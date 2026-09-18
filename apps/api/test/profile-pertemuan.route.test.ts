@@ -184,14 +184,17 @@ describe("GET /profile/:address — dijaminKenalan (spec desain UI §8.2, §10.2
     expect(json.dijaminKenalan).toBe(1);
   });
 
-  it("penjamin yang diblokir pemanggil DAN yang memblokir pemanggil tidak dihitung", async () => {
+  it("penjamin yang diblokir pemanggil tidak dihitung, tetapi yang memblokir pemanggil TETAP dihitung", async () => {
+    // Blokir SATU arah (keputusan pemilik 2026-09-18, review Rencana A #5):
+    // graf vouch dan koneksi publik, jadi menyaring pemblokir pemanggil
+    // membuat angka ini oracle "siapa yang memblokirku".
     const d = duniaPertemuan({
       koneksi: [{ a: AKU, b: P1, atMs: 1 }, { a: AKU, b: P2, atMs: 1 }, { a: AKU, b: P3, atMs: 1 }],
       vouch: [{ from: P1, to: DIA }, { from: P2, to: DIA }, { from: P3, to: DIA }],
     });
     const blokir = [{ blocker: AKU, blocked: P1 }, { blocker: P2, blocked: AKU }];
     const { json } = await profil(app(d, blokir), await jalurTerbukti(DIA));
-    expect(json.dijaminKenalan).toBe(1);
+    expect(json.dijaminKenalan).toBe(2);
   });
 
   it("nilai 0 dikirim sebagai 0 (kuncinya ada)", async () => {
