@@ -1,5 +1,5 @@
 import { english, mnemonicToAccount, privateKeyToAccount } from "viem/accounts";
-import { hexToBytes, sha256, toHex, type Address, type Hex } from "viem";
+import { sha256, toHex, type Address, type Hex } from "viem";
 
 /**
  * Inti dompet per pengguna — fungsi murni, TANPA impor react-native atau expo,
@@ -24,7 +24,7 @@ function bitDari(bait: Uint8Array): string {
 /** BIP-39: 128 bit entropi + 4 bit checksum (sha256) → 12 kata daftar English. */
 export function mnemonikDariEntropi(entropi: Uint8Array): string {
   if (entropi.length !== BAIT_ENTROPI) throw new Error("entropi harus 16 bait");
-  const checksum = hexToBytes(sha256(entropi))[0]! >> 4;
+  const checksum = sha256(entropi, "bytes")[0]! >> 4;
   const bit = bitDari(entropi) + checksum.toString(2).padStart(4, "0");
   const kata: string[] = [];
   for (let i = 0; i < JUMLAH_KATA; i++) {

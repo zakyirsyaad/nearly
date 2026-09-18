@@ -39,4 +39,11 @@ describe("gerbang dompet", () => {
       expect(baca(berkas), berkas).not.toMatch(/from "(react-native|expo[^"]*|react)"/);
     }
   });
+
+  it("layar Mulai mematikan perekaman QuickType/autocomplete pada isian mnemonik & kunci dev", () => {
+    const mulai = baca("app/mulai.tsx");
+    // Kedua TextInput harus memiliki textContentType="none"
+    const kecocokan = mulai.match(/textContentType="none"/g);
+    expect(kecocokan?.length).toBe(2);
+  });
 });

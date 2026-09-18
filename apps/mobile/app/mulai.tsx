@@ -87,6 +87,7 @@ export default function MulaiScreen() {
             autoCapitalize="none"
             autoCorrect={false}
             autoComplete="off"
+            textContentType="none"
             spellCheck={false}
             editable={!sibuk}
             style={[s.isian, s.isianBesar, { color: WARNA.teks }]}
@@ -113,6 +114,7 @@ export default function MulaiScreen() {
             autoCapitalize="none"
             autoCorrect={false}
             autoComplete="off"
+            textContentType="none"
             editable={!sibuk}
             style={[s.isian, { color: WARNA.teks }]}
             placeholderTextColor={WARNA.placeholder}
