@@ -7,8 +7,9 @@ import React, {
   useEffect,
   useState,
 } from 'react';
+import { useColor } from '@/hooks/useColor';
+import { useGerakDikurangi } from '@/hooks/useGerakDikurangi';
 import {
-  AccessibilityInfo,
   Dimensions,
   Platform,
   TouchableOpacity,
@@ -71,16 +72,14 @@ export function Toast({
   action,
 }: ToastProps) {
   const [isExpanded, setIsExpanded] = useState(false);
-  const [reduceMotion, setReduceMotion] = useState(false);
-
-  useEffect(() => {
-    AccessibilityInfo.isReduceMotionEnabled().then(setReduceMotion);
-    const subscription = AccessibilityInfo.addEventListener(
-      'reduceMotionChanged',
-      setReduceMotion
-    );
-    return () => subscription.remove();
-  }, []);
+  // Reduce Motion lewat hook bersama (spec desain UI §3.7).
+  const reduceMotion = useGerakDikurangi();
+  const warnaBerhasil = useColor('verified');
+  const warnaGalat = useColor('destructive');
+  const warnaPeringatan = useColor('primary');
+  const warnaTeks = useColor('text');
+  const warnaGaris = useColor('border');
+  const warnaTeksAksi = useColor('primaryForeground');
 
   // Reanimated shared values
   const translateY = useSharedValue(-100);
@@ -92,9 +91,9 @@ export function Toast({
   const borderRadius = useSharedValue(18.5);
   const contentOpacity = useSharedValue(0);
 
-  // Dynamic Island colors (dark theme optimized)
-  const backgroundColor = '#1C1C1E'; // iOS Dynamic Island background
-  const mutedTextColor = '#8E8E93'; // iOS secondary text color
+  // Warna dari token B2 (spec desain UI §3.1), bukan warna iOS bawaan salinan.
+  const backgroundColor = useColor('card');
+  const mutedTextColor = useColor('textMuted');
 
   useEffect(() => {
     const hasContentToShow = Boolean(title || description || action);
@@ -140,15 +139,15 @@ export function Toast({
   const getVariantColor = () => {
     switch (variant) {
       case 'success':
-        return '#30D158'; // iOS green
+        return warnaBerhasil;
       case 'error':
-        return '#FF453A'; // iOS red
+        return warnaGalat;
       case 'warning':
-        return '#FF9F0A'; // iOS orange
+        return warnaPeringatan;
       case 'info':
-        return '#007AFF'; // iOS blue
+        return warnaTeks;
       default:
-        return '#8E8E93'; // iOS gray
+        return mutedTextColor;
     }
   };
 
@@ -251,6 +250,8 @@ export function Toast({
     height: height.value,
     borderRadius: borderRadius.value,
     backgroundColor,
+    borderWidth: 1,
+    borderColor: variant === 'success' ? warnaBerhasil : warnaGaris,
     justifyContent: 'center',
     alignItems: 'center',
     overflow: 'hidden',
@@ -264,11 +265,6 @@ export function Toast({
     position: 'absolute',
     top: getTopPosition(),
     alignSelf: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.25,
-    shadowRadius: 20,
-    elevation: 10,
     zIndex: 1000 + index,
   };
 
@@ -316,7 +312,7 @@ export function Toast({
                   <Text
                     variant='subtitle'
                     style={{
-                      color: '#FFFFFF',
+                      color: warnaTeks,
                       fontSize: 15,
                       fontWeight: '600',
                       marginBottom: description ? 2 : 0,
@@ -357,7 +353,7 @@ export function Toast({
                   <Text
                     variant='caption'
                     style={{
-                      color: '#FFFFFF',
+                      color: warnaTeksAksi,
                       fontSize: 12,
                       fontWeight: '600',
                     }}

@@ -61,3 +61,42 @@ describe("token warna B2", () => {
     expect(asing).toEqual([]);
   });
 });
+
+import { baca, berkasTanpaWarna, kodeTampilanBaru, tanpaKomentar } from "./support/berkas";
+
+const POLA_WARNA = /#[0-9a-fA-F]{3,8}\b|\brgba?\(/;
+
+/** Nama yang diimpor dari "react-native" di satu berkas. */
+function imporReactNative(isi: string): string[] {
+  return [...isi.matchAll(/import\s*(?:type\s*)?\{([^}]*)\}\s*from\s*["']react-native["']/g)].flatMap((m) =>
+    (m[1] ?? "").split(",").map((s) => s.trim().replace(/^type\s+/, "").split(/\s+as\s+/)[0] ?? "").filter(Boolean),
+  );
+}
+
+describe("warna hanya dari theme/colors.ts (spec §10.1)", () => {
+  it("ada berkas yang diperiksa", () => {
+    expect(berkasTanpaWarna().length).toBeGreaterThan(0);
+  });
+
+  it("tidak ada literal warna di luar theme/colors.ts", () => {
+    const salah = berkasTanpaWarna().filter((b) => POLA_WARNA.test(tanpaKomentar(baca(b))));
+    expect(salah).toEqual([]);
+  });
+});
+
+describe("teks dan isian lewat salinan BNA (spec §10.1)", () => {
+  it("Text, TextInput, dan Button tidak diimpor dari react-native di kode bertampilan baru", () => {
+    const salah = kodeTampilanBaru().filter((b) =>
+      imporReactNative(baca(b)).some((n) => ["Text", "TextInput", "Button"].includes(n)));
+    expect(salah).toEqual([]);
+  });
+
+  it("setiap <Input di kode bertampilan baru berasal dari @/components/ui/input", () => {
+    const salah = kodeTampilanBaru().filter((b) => {
+      const isi = baca(b);
+      return /<Input\b/.test(isi) && !isi.includes('from "@/components/ui/input"');
+    });
+    expect(salah).toEqual([]);
+  });
+});
+

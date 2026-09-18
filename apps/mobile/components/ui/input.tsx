@@ -1,7 +1,7 @@
 import { Icon } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
 import { useColor } from '@/hooks/useColor';
-import { BORDER_RADIUS, CORNERS, FONT_SIZE, HEIGHT } from '@/theme/globals';
+import { BORDER_RADIUS, CORNERS, FONT, FONT_SIZE, HEIGHT } from '@/theme/globals';
 import { LucideProps } from 'lucide-react-native';
 import React, { forwardRef, ReactElement, useState } from 'react';
 import {
@@ -40,7 +40,7 @@ export const Input = forwardRef<TextInput, InputProps>(
       inputStyle,
       labelStyle,
       errorStyle,
-      variant = 'filled',
+      variant = 'outline',
       disabled = false,
       type = 'input',
       rows = 4,
@@ -60,6 +60,9 @@ export const Input = forwardRef<TextInput, InputProps>(
     const borderColor = useColor('border');
     const primary = useColor('primary');
     const danger = useColor('red');
+    // Isian B2: latar `input`, placeholder `placeholder` (spec desain UI §3.4).
+    const latarIsian = useColor('input');
+    const warnaPlaceholder = useColor('placeholder');
 
     const isTextarea = type === 'textarea';
 
@@ -88,7 +91,7 @@ export const Input = forwardRef<TextInput, InputProps>(
             ...baseStyle,
             borderWidth: 1,
             borderColor: error ? danger : isFocused ? primary : borderColor,
-            backgroundColor: 'transparent',
+            backgroundColor: latarIsian,
           };
         case 'filled':
         default:
@@ -104,6 +107,7 @@ export const Input = forwardRef<TextInput, InputProps>(
     const getInputStyle = (): TextStyle => ({
       flex: 1,
       fontSize: FONT_SIZE,
+      fontFamily: FONT.regular,
       lineHeight: isTextarea ? 20 : undefined,
       color: disabled ? muted : error ? danger : textColor,
       paddingVertical: 0, // Remove default padding
@@ -201,7 +205,7 @@ export const Input = forwardRef<TextInput, InputProps>(
                 multiline
                 numberOfLines={rows}
                 style={[getInputStyle(), inputStyle]}
-                placeholderTextColor={error ? danger + '99' : muted}
+                placeholderTextColor={error ? danger : warnaPlaceholder}
                 placeholder={placeholder || 'Type your message...'}
                 onFocus={handleFocus}
                 onBlur={handleBlur}
@@ -256,7 +260,7 @@ export const Input = forwardRef<TextInput, InputProps>(
                 <TextInput
                   ref={ref}
                   style={[getInputStyle(), inputStyle]}
-                  placeholderTextColor={error ? danger + 99 : muted}
+                  placeholderTextColor={error ? danger : warnaPlaceholder}
                   onFocus={handleFocus}
                   onBlur={handleBlur}
                   editable={!disabled}

@@ -1,91 +1,65 @@
 import { useColor } from '@/hooks/useColor';
-import { FONT_SIZE } from '@/theme/globals';
+import { HURUF, type VarianHuruf } from '@/theme/globals';
+import { keluargaUntuk } from '@/theme/huruf';
 import React, { forwardRef } from 'react';
 import {
   Text as RNText,
   TextProps as RNTextProps,
+  StyleSheet,
   TextStyle,
 } from 'react-native';
 
-type TextVariant =
-  'body' | 'title' | 'subtitle' | 'caption' | 'heading' | 'link';
+/**
+ * Salinan BNA yang disunting (spec desain UI §3.3, Ruling A8): varian
+ * memetakan ke ukuran dan KELUARGA font dari theme/globals.ts. `fontWeight`
+ * dari `style` diterjemahkan ke `fontFamily` lalu TIDAK diteruskan — di
+ * Android keduanya bisa bertabrakan. `subtitle` dan `link` dipertahankan
+ * karena dipakai salinan BNA lain (toast, card).
+ */
+export type TextVariant = VarianHuruf | 'subtitle' | 'link';
 
 interface TextProps extends RNTextProps {
   variant?: TextVariant;
   lightColor?: string;
   darkColor?: string;
-  children: React.ReactNode;
+  children?: React.ReactNode;
 }
 
-const headingVariants: TextVariant[] = ['heading', 'title', 'subtitle'];
+const VARIAN_JUDUL: TextVariant[] = ['heading', 'title', 'subtitle'];
+
+function dasarVarian(variant: TextVariant): VarianHuruf {
+  if (variant === 'subtitle') return 'title';
+  if (variant === 'link') return 'body';
+  return variant;
+}
 
 export const Text = React.memo(
   forwardRef<RNText, TextProps>(
-    (
-      { variant = 'body', lightColor, darkColor, style, children, ...props },
-      ref
-    ) => {
-      const textColor = useColor('text', {
-        light: lightColor,
-        dark: darkColor,
-      });
-      const mutedColor = useColor('textMuted');
-      const defaultAccessibilityRole = headingVariants.includes(variant)
-        ? 'header'
-        : undefined;
+    ({ variant = 'body', lightColor, darkColor, style, children, ...props }, ref) => {
+      const warnaTeks = useColor('text', { light: lightColor, dark: darkColor });
+      const warnaRedup = useColor('textMuted');
+      const warnaTautan = useColor('primary');
+      const dasar = HURUF[dasarVarian(variant)];
 
-      const getTextStyle = (): TextStyle => {
-        const baseStyle: TextStyle = {
-          color: textColor,
-        };
+      const rata: TextStyle = StyleSheet.flatten(style) ?? {};
+      const { fontWeight, fontFamily, ...sisa } = rata;
 
-        switch (variant) {
-          case 'heading':
-            return {
-              ...baseStyle,
-              fontSize: 28,
-              fontWeight: '700',
-            };
-          case 'title':
-            return {
-              ...baseStyle,
-              fontSize: 24,
-              fontWeight: '700',
-            };
-          case 'subtitle':
-            return {
-              ...baseStyle,
-              fontSize: 19,
-              fontWeight: '600',
-            };
-          case 'caption':
-            return {
-              ...baseStyle,
-              fontSize: FONT_SIZE,
-              fontWeight: '400',
-              color: mutedColor,
-            };
-          case 'link':
-            return {
-              ...baseStyle,
-              fontSize: FONT_SIZE,
-              fontWeight: '500',
-              textDecorationLine: 'underline',
-            };
-          default: // 'body'
-            return {
-              ...baseStyle,
-              fontSize: FONT_SIZE,
-              fontWeight: '400',
-            };
-        }
+      const gaya: TextStyle = {
+        fontSize: dasar.fontSize,
+        // lineHeight varian hanya berlaku bila pemanggil tidak mengganti
+        // fontSize — lineHeight kecil di huruf besar memotong teks.
+        ...(sisa.fontSize === undefined ? { lineHeight: dasar.lineHeight } : {}),
+        color: variant === 'link' ? warnaTautan : dasar.redup ? warnaRedup : warnaTeks,
+        ...(variant === 'link' ? { textDecorationLine: 'underline' as const } : {}),
+        ...sisa,
+        fontFamily: fontFamily ?? keluargaUntuk(dasar.fontFamily, fontWeight),
       };
 
       return (
         <RNText
           ref={ref}
-          style={[getTextStyle(), style]}
-          accessibilityRole={defaultAccessibilityRole}
+          style={gaya}
+          accessibilityRole={VARIAN_JUDUL.includes(variant) ? 'header' : undefined}
           {...props}
         >
           {children}

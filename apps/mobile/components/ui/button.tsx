@@ -58,7 +58,7 @@ export const Button = forwardRef<View, ButtonProps>(
       disabled = false,
       loading = false,
       animation = true,
-      haptic = true,
+      haptic,
       loadingVariant = 'default',
       style,
       textStyle,
@@ -67,12 +67,14 @@ export const Button = forwardRef<View, ButtonProps>(
     },
     ref
   ) => {
-    const feedback = useHaptics(haptic);
+    // Getar ringan bawaan hanya untuk varian utama (spec desain UI §3.4).
+    const feedback = useHaptics(haptic ?? variant === 'default');
     const primaryColor = useColor('primary');
     const primaryForegroundColor = useColor('primaryForeground');
     const secondaryColor = useColor('secondary');
     const secondaryForegroundColor = useColor('secondaryForeground');
-    const destructiveColor = useColor('red');
+    const destruktifLatar = useColor('destruktifLatar');
+    const destruktifGaris = useColor('destruktifGaris');
     const destructiveForegroundColor = useColor('destructiveForeground');
     const greenColor = useColor('green');
     const borderColor = useColor('border');
@@ -92,7 +94,7 @@ export const Button = forwardRef<View, ButtonProps>(
       // Size variants
       switch (size) {
         case 'sm':
-          Object.assign(baseStyle, { height: 44, paddingHorizontal: 24 });
+          Object.assign(baseStyle, { height: HEIGHT, paddingHorizontal: 16 });
           break;
         case 'lg':
           Object.assign(baseStyle, { height: 54, paddingHorizontal: 36 });
@@ -111,7 +113,12 @@ export const Button = forwardRef<View, ButtonProps>(
       // Variant styles
       switch (variant) {
         case 'destructive':
-          return { ...baseStyle, backgroundColor: destructiveColor };
+          return {
+            ...baseStyle,
+            backgroundColor: destruktifLatar,
+            borderWidth: 1,
+            borderColor: destruktifGaris,
+          };
         case 'success':
           return { ...baseStyle, backgroundColor: greenColor };
         case 'outline':
@@ -140,7 +147,7 @@ export const Button = forwardRef<View, ButtonProps>(
     const getButtonTextStyle = (): TextStyle => {
       const baseTextStyle: TextStyle = {
         fontSize: FONT_SIZE,
-        fontWeight: '500',
+        fontWeight: '600',
       };
 
       switch (variant) {
@@ -299,7 +306,7 @@ export const Button = forwardRef<View, ButtonProps>(
         : flexValue !== null
           ? {
               flex: flexValue,
-              maxHeight: size === 'sm' ? 44 : size === 'lg' ? 54 : HEIGHT,
+              maxHeight: size === 'lg' ? 54 : HEIGHT,
             }
           : {};
     };
