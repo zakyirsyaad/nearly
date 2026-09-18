@@ -61,6 +61,21 @@ describe("gerbang dompet", () => {
     expect(konteks).toMatch(/const muatUlang = useCallback\(\(\) => \{\s*setStatus\(\{ keadaan: "memuat" \}\);\s*void keadaanPenyimpan\(\)\.then\(setStatus\);/);
   });
 
+  it("isian 12 kata & kunci dev: Android tanpa autofill dan tanpa keyboard yang belajar", () => {
+    const mulai = baca("app/mulai.tsx");
+    const blokMnemonik = mulai.slice(mulai.indexOf('{mode === "mnemonik" && ('), mulai.indexOf("{PERINGATAN_MNEMONIK_UTAMA}"));
+    const blokKunci = mulai.slice(mulai.indexOf('{__DEV__ && mode === "kunci-dev" && ('), mulai.indexOf("Hanya untuk dompet uji"));
+    for (const blok of [blokMnemonik, blokKunci]) {
+      expect(blok).toContain("<TextInput");
+      expect(blok).toContain('importantForAutofill="no"');
+      expect(blok).toContain("autoCorrect={false}");
+      expect(blok).toContain('autoComplete="off"');
+    }
+    // Gboard tetap belajar dari ketikan walau autoCorrect mati; tipe
+    // visible-password mematikan saran dan pembelajaran kata.
+    expect(blokMnemonik).toContain('keyboardType={Platform.OS === "android" ? "visible-password" : "default"}');
+  });
+
   it("konteks meneruskan __DEV__ ke imporDompetKunciDev", () => {
     expect(baca("src/dompet/konteks-dompet.tsx")).toContain("imporDompetKunciDev(teks, __DEV__)");
   });

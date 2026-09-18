@@ -1,5 +1,5 @@
 import { useRef, useState } from "react";
-import { Button, ScrollView, StyleSheet, Text, TextInput } from "react-native";
+import { Button, Platform, ScrollView, StyleSheet, Text, TextInput } from "react-native";
 import { useDompet } from "../src/dompet/konteks-dompet";
 import { PERINGATAN_MNEMONIK_UTAMA, pesanGalatDompet } from "../src/dompet/teks-dompet";
 import { WARNA } from "../src/warna";
@@ -94,6 +94,10 @@ export default function MulaiScreen() {
             autoComplete="off"
             textContentType="none"
             spellCheck={false}
+            // Android: autoCorrect={false} tidak menghentikan Gboard belajar
+            // dari ketikan; tipe visible-password mematikan saran & kamus.
+            keyboardType={Platform.OS === "android" ? "visible-password" : "default"}
+            importantForAutofill="no"
             editable={!sibuk}
             style={[s.isian, s.isianBesar, { color: WARNA.teks }]}
             placeholderTextColor={WARNA.placeholder}
@@ -120,6 +124,7 @@ export default function MulaiScreen() {
             autoCorrect={false}
             autoComplete="off"
             textContentType="none"
+            importantForAutofill="no"
             editable={!sibuk}
             style={[s.isian, { color: WARNA.teks }]}
             placeholderTextColor={WARNA.placeholder}
