@@ -245,8 +245,9 @@ jumlah yang sama; komponen isi dilepas utuh saat signer hilang, dan dipasang ula
 3. **Kunci tersimpan di Keychain HP**, dilindungi kunci layar — bukan dompet perangkat keras. HP yang
    dibobol dalam keadaan tidak terkunci membuka dompetnya.
 4. **Di Expo Go, SecureStore berada di wadah Expo Go.** Perilaku setelah Expo Go ditutup paksa, dihapus,
-   atau diinstal ulang belum diketahui dan wajib dicek di iPhone (uji §10 butir 8). *Hasil uji: belum
-   dicatat — diisi pemilik project setelah uji iPhone.*
+   atau diinstal ulang belum diketahui dan wajib dicek di iPhone (uji §10 butir 8). *Hasil uji
+   2026-09-18: dompet tetap ada setelah Expo Go ditutup paksa. Perilaku setelah Expo Go dihapus dan
+   dipasang ulang belum diuji.*
 5. **Alamat gratis dibuat**, sehingga spam hitungan "ingin bertemu", RSVP, dan feed menjadi murah (sudah
    diterima di spec 3b/3c). Trust tidak terpengaruh.
 6. **Notifikasi dompet lama bisa tetap sampai setelah Ganti dompet**, sampai dompet baru membuka layar
@@ -255,7 +256,8 @@ jumlah yang sama; komponen isi dilepas utuh saat signer hilang, dan dipasang ula
 7. **12 kata tampil sebagai teks biasa di layar.** Expo Go tidak bisa mencegah tangkapan layar atau
    rekaman layar; hanya dialog peringatan yang melindungi.
 8. **Menurunkan kunci dari 12 kata memblokir thread JS** (PBKDF2 2048 putaran dalam JS murni di Hermes).
-   Lamanya di iPhone belum diukur; layar Mulai menampilkan "Menyiapkan dompet…" selama itu.
+   Layar Mulai menampilkan "Menyiapkan dompet…" selama itu. *Hasil uji 2026-09-18 di iPhone (Expo Go):
+   sekitar 0–1 detik.*
 9. **Keadaan `galat` hanya punya tombol Coba lagi.** Bila isi Keychain benar-benar rusak (bukan gagal
    terbaca sesaat), tidak ada jalan keluar di dalam aplikasi selain memasang ulang Expo Go — lihat batas #4.
 10. **Ketukan notifikasi saat aplikasi mati** baru ditangani setelah dompet selesai dimuat; ketukan yang
@@ -322,6 +324,20 @@ jumlah yang sama; komponen isi dilepas utuh saat signer hilang, dan dipasang ula
    sama dengan langkah 2. (Bila ada HP kedua: impor 12 kata yang sama di sana → alamat sama.)
 8. Cek SecureStore: tutup paksa Expo Go → buka lagi (dompet harus tetap ada); lalu hapus dan pasang ulang
    Expo Go → catat apakah dompet masih ada. Tulis hasilnya di §8 batas #4.
+
+### Hasil uji iPhone (2026-09-18, Expo Go)
+
+| Uji | Hasil |
+|---|---|
+| Buat dompet baru → beranda, alamat baru, spanduk cadangan | Lolos; "Menyiapkan dompet…" sekitar 0–1 detik |
+| Lihat 12 kata → Sudah saya catat → spanduk hilang | Lolos |
+| Tutup paksa → buka lagi → alamat sama, tanpa Mulai; Pesan terbuka | Lolos |
+| Ganti dompet → impor kunci privat dev → identitas lama dan pesan lama terbaca | Lolos |
+| Ganti dompet → impor 12 kata → alamat sama dengan dompet pertama, tanpa spanduk | Lolos |
+| Ketuk ganda Buat dompet baru → tetap satu dompet, 12 kata sah | Lolos |
+| Salaman dengan dompet lain | Tidak diuji terpisah: jalur tanda tangan identik dengan kunci dev (`createSignerDariKunci`) yang sudah lolos uji lapangan |
+| Ketuk notifikasi saat aplikasi mati | Belum diuji (batas #10) |
+| Hapus lalu pasang ulang Expo Go | Belum diuji (batas #4) |
 
 ## 11. Batas Jalur
 
