@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Button, ScrollView, StyleSheet, Text, TextInput } from "react-native";
 import { useDompet } from "../src/dompet/konteks-dompet";
 import { PERINGATAN_MNEMONIK_UTAMA, pesanGalatDompet } from "../src/dompet/teks-dompet";
@@ -16,6 +16,9 @@ export default function MulaiScreen() {
   const [mode, setMode] = useState<Mode>("pilih");
   const [teks, setTeks] = useState("");
   const [sibuk, setSibuk] = useState(false);
+  // Penjaga SINKRON: dua ketukan dalam satu frame sama-sama melihat `sibuk`
+  // bernilai false dari closure render yang sama. Ref berubah seketika.
+  const sibukRef = useRef(false);
   const [galat, setGalat] = useState<string | null>(null);
 
   const pindah = (m: Mode) => {
@@ -25,7 +28,8 @@ export default function MulaiScreen() {
   };
 
   async function jalankan(aksi: () => Promise<void>) {
-    if (sibuk) return;
+    if (sibukRef.current) return;
+    sibukRef.current = true;
     setSibuk(true);
     setGalat(null);
     await jedaUi();
@@ -35,6 +39,7 @@ export default function MulaiScreen() {
     } catch (e) {
       setGalat(pesanGalatDompet(e));
     } finally {
+      sibukRef.current = false;
       setSibuk(false);
     }
   }

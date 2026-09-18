@@ -42,6 +42,7 @@ const PESAN_GALAT: Record<string, string> = {
   kunci_tidak_sah: "Kunci privat tidak sah.",
   hanya_pengembangan: "Impor kunci privat hanya tersedia di mode pengembangan.",
   dompet_sudah_ada: "HP ini sudah punya dompet. Hapus dulu lewat Ganti dompet.",
+  dompet_tidak_konsisten: "Dompet gagal tersimpan dengan benar dan sudah dibatalkan. Coba lagi.",
   dompet_rusak:
     "Data dompet di HP ini tidak terbaca. Jangan hapus aplikasi dulu — coba lagi, dan siapkan 12 kata pemulihanmu.",
 };

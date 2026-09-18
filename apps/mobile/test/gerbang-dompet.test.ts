@@ -30,6 +30,16 @@ describe("gerbang dompet", () => {
     expect(mulai).toContain('{__DEV__ && mode === "kunci-dev" && (');
   });
 
+  it("layar Mulai menolak ketukan ganda dengan penjaga sinkron (ref) sebelum await pertama", () => {
+    const mulai = baca("app/mulai.tsx");
+    const jalankan = mulai.slice(mulai.indexOf("async function jalankan("));
+    const awaitPertama = jalankan.indexOf("await ");
+    expect(awaitPertama).toBeGreaterThan(-1);
+    const sebelumAwait = jalankan.slice(0, awaitPertama);
+    expect(sebelumAwait).toMatch(/if \(sibukRef\.current\) return;\s*sibukRef\.current = true;/);
+    expect(jalankan).toMatch(/finally \{[\s\S]*?sibukRef\.current = false;/);
+  });
+
   it("konteks meneruskan __DEV__ ke imporDompetKunciDev", () => {
     expect(baca("src/dompet/konteks-dompet.tsx")).toContain("imporDompetKunciDev(teks, __DEV__)");
   });
