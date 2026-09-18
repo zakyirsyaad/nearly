@@ -1,7 +1,7 @@
 import { useCallback, useState } from "react";
 import { Link, useFocusEffect } from "expo-router";
 import { ActivityIndicator, FlatList, StyleSheet, Text, View } from "react-native";
-import { TIER_LABELS } from "@nearly/trust";
+import { labelTier } from "../src/tier";
 import { CONFIG } from "../src/config";
 import type { NearlySigner } from "../src/signer";
 import { useNearlySigner } from "../src/dompet/konteks-dompet";
@@ -77,7 +77,7 @@ function KecocokanScreenIsi({ signer }: { signer: NearlySigner }) {
         renderItem={({ item: k }) => (
           <View style={s.kartu}>
             <Text style={s.nama}>{k.displayName.trim() || k.address}</Text>
-            <Text style={s.meta}>{TIER_LABELS[k.tier] ?? TIER_LABELS[0]}</Text>
+            <Text style={s.meta}>{labelTier(k.tier)}</Text>
             <Text style={s.saling}>Kalian saling ingin bertemu.</Text>
             {/*
               TIDAK ADA tombol pesan, dan itu disengaja (spec §4.2). Pesan baru
