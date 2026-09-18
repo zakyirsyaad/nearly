@@ -170,6 +170,12 @@ function deps(over: { saveSnapshots?: ReturnType<typeof vi.fn> } = {}): TrustDep
       aturProfil: async () => {},
       visibilitasBanyak: async () => new Map(),
     },
+    // Stub desain UI: createApp mendaftarkan profileRoutes dengan store ini.
+    pertemuan: {
+      koneksiPasangan: async () => null,
+      acaraCheckInBersama: async () => [],
+      penjaminAktif: async () => [],
+    },
   };
 }
 

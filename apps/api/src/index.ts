@@ -19,6 +19,7 @@ import { createGrafStore } from "./graf-store";
 import { bacaPort, bacaWebOrigins } from "./server-env";
 import { createRadarStore } from "./radar-store";
 import { createProfilSayaStore } from "./profil-store";
+import { createPertemuanStore } from "./pertemuan-store";
 import { sapuLokasiAman } from "./penyapu-lokasi";
 
 function required(name: string): string {
@@ -101,6 +102,7 @@ const app = createApp({
   webOrigins: bacaWebOrigins(process.env.WEB_ORIGINS),
   radar: createRadarStore(supabase),
   profilSaya: createProfilSayaStore(supabase),
+  pertemuan: createPertemuanStore(supabase),
 });
 
 const port = bacaPort(process.env.PORT);

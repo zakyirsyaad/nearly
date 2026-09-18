@@ -19,7 +19,7 @@ import type {
   EventStore, AttendanceChainPort, FeedStore, GreenfieldPort, MeetStore, BlokirStore,
   PesanStore, PushPort,
 } from "./ports";
-import type { RadarStore, ProfilSayaStore } from "./ports";
+import type { PertemuanStore, RadarStore, ProfilSayaStore } from "./ports";
 import type { Address } from "viem";
 import type { GrafStore } from "./ports";
 
@@ -44,6 +44,8 @@ export type TrustDeps = GateDeps & {
   webOrigins: readonly string[];
   radar: RadarStore;
   profilSaya: ProfilSayaStore;
+  /** Desain UI: riwayat pertemuan dan penjamin di GET /profile/:address. */
+  pertemuan: PertemuanStore;
 };
 
 // Modul-level, dengan sengaja (Task 8): relayer yang sama menandatangani

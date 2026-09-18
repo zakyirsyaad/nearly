@@ -664,3 +664,44 @@ export type ProfilDeps = {
   verifyingContract: Address;
   nowMs: () => number;
 };
+
+// ── Desain UI (spec 2026-09-18 §8): riwayat pertemuan dan penjamin ──────────
+//
+// Blok baru; blok yang ada tidak diubah (preseden radar-store.ts). Store ini
+// hanya MEMBACA `connections`, `checkins`, `events`, dan `vouches` — tabel
+// milik store lain — seperti `RadarStore.terhubungDengan` dan
+// `MeetStore.profilRingkas`. Tidak ada migrasi (R3).
+
+/**
+ * Satu acara ringkas untuk riwayat pertemuan. `startsAt`/`endsAt` unix DETIK.
+ * `centerCell` hanya untuk geofence di server — TIDAK PERNAH dikirim ke HP.
+ */
+export type AcaraRingkas = {
+  eventId: Hex;
+  title: string;
+  venueLabel: string;
+  centerCell: string;
+  startsAt: number;
+  endsAt: number;
+};
+
+/** Baris `connections` satu pasangan. `cell` null untuk koneksi lama tanpa sel. */
+export type KoneksiPasangan = { atMs: number; cell: string | null };
+
+export type PertemuanStore = {
+  /** Satu baris lewat `connections_unique_pair`; urutan argumen bebas. */
+  koneksiPasangan(a: Address, b: Address): Promise<KoneksiPasangan | null>;
+  /** Acara yang KEDUANYA check-in. Urutan tidak dijamin. Berhalaman penuh. */
+  acaraCheckInBersama(a: Address, b: Address): Promise<AcaraRingkas[]>;
+  /** Penjamin dengan vouch AKTIF (`revoked_at is null`) ke `to`, huruf kecil. */
+  penjaminAktif(to: Address): Promise<Address[]>;
+};
+
+export const METODE_PERTEMUAN_STORE = [
+  "koneksiPasangan", "acaraCheckInBersama", "penjaminAktif",
+] as const satisfies readonly (keyof PertemuanStore)[];
+
+type SisaMetodePertemuanStore = Exclude<keyof PertemuanStore, (typeof METODE_PERTEMUAN_STORE)[number]>;
+type AssertNeverPertemuan<T extends never> = T;
+type _PastikanMetodePertemuanStoreLengkap = AssertNeverPertemuan<SisaMetodePertemuanStore>;
+

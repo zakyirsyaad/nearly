@@ -203,5 +203,12 @@ export function depsFor(overrides: {
       aturProfil: vi.fn(async () => {}),
       visibilitasBanyak: vi.fn(async () => new Map()),
     },
+    // Desain UI: diuji di profile-pertemuan.route.test.ts dengan dunia
+    // sendiri; TrustDeps butuh medan ini supaya createApp bisa dibangun.
+    pertemuan: {
+      koneksiPasangan: vi.fn(async () => null),
+      acaraCheckInBersama: vi.fn(async () => []),
+      penjaminAktif: vi.fn(async () => []),
+    },
   };
 }
