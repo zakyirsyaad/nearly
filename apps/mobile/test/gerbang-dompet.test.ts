@@ -43,7 +43,11 @@ describe("gerbang dompet", () => {
   it("Ganti dompet: push dilupakan setelah dompet dihapus, lalu keadaan belum-ada", () => {
     const konteks = baca("src/dompet/konteks-dompet.tsx");
     const ganti = konteks.slice(konteks.indexOf("const gantiDompet = useCallback("));
-    expect(ganti).toMatch(/^[\s\S]*?await lupakanDompet\(\);[\s\S]*?lupakanPendaftaranPush\(\);[\s\S]*?setStatus\(\{ keadaan: "belum-ada" \}\)/);
+    // Jalur berhasil = sesudah blok catch; lupakanPendaftaranPush di dalam
+    // catch tidak dihitung.
+    const berhasil = ganti.slice(ganti.indexOf("throw galat;"));
+    expect(ganti).toMatch(/^[\s\S]*?await lupakanDompet\(\);/);
+    expect(berhasil).toMatch(/^throw galat;\s*\}[^}]*?lupakanPendaftaranPush\(\);\s*setStatus\(\{ keadaan: "belum-ada" \}\);/);
   });
 
   it("Ganti dompet yang gagal di tengah jalan menyamakan keadaan dengan isi penyimpan", () => {
