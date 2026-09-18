@@ -379,7 +379,7 @@ export default function ProfileScreen() {
         // Hanya untuk koneksi (spec 4c §4). Server tetap menegakkan gerbangnya
         // sendiri — tombol ini kenyamanan, bukan pengaman.
         <View style={s.section}>
-          <Button title="Kirim pesan" onPress={() => router.push(`/pesan/${address}`)} />
+          <Button title="Kirim pesan" onPress={() => router.navigate(`/pesan/${address}`)} />
         </View>
       )}
 

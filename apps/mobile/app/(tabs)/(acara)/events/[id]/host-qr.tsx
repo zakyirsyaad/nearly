@@ -1,4 +1,4 @@
-import { useLocalSearchParams } from "expo-router";
+import { useIsFocused, useLocalSearchParams } from "expo-router";
 import QRCode from "react-native-qrcode-svg";
 import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
 import type { Hex } from "viem";
@@ -17,6 +17,15 @@ export default function HostQrScreen() {
 }
 
 function HostQrScreenIsi({ signer }: { signer: NearlySigner }) {
+  // Layar di dalam tab tetap terpasang saat host pindah tab. Tanpa gerbang
+  // fokus, useCheckInQr terus membaca GPS, menandatangani, dan mengirim
+  // tawaran check-in tiap 30 detik tanpa ada yang melihat (review Rencana A #2,
+  // spec §4.6). QR dilepas saat tidak fokus, jadi intervalnya ikut berhenti.
+  const fokus = useIsFocused();
+  return fokus ? <QrCheckInAktif signer={signer} /> : null;
+}
+
+function QrCheckInAktif({ signer }: { signer: NearlySigner }) {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { value, secondsLeft, error } = useCheckInQr(signer, id as Hex);
 

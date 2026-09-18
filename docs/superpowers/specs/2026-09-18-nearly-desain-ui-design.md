@@ -451,6 +451,7 @@ Layar tab **tidak dilepas** saat berpindah tab (berbeda dengan Stack lama, yang 
 |---|---|
 | Salaman | isi mode (QR berputar / kamera) dipasang **hanya saat tab fokus** (`useIsFocused` di komponen isi, bukan di pembungkus). Pindah tab = seperti keluar dari layar QR/Pindai hari ini: `useRotatingQr` berhenti, kamera dilepas. Sheet salaman berhasil (§6.2) hidup di dalam isi mode Pindai, jadi pindah tab saat sheet terbuka ikut menutupnya; koneksinya sudah tercatat dan tetap terlihat di Beranda/Koneksi. |
 | Radar | sudah memakai `useFocusEffect` (detak & radar berhenti saat tidak fokus) — tetap. |
+| QR check-in host (`events/[id]/host-qr`) | *Ditambahkan 2026-09-18 (review Rencana A #2):* QR check-in dipasang **hanya saat layar fokus** (`useIsFocused` di komponen isi, pola sama dengan Salaman). Tanpa ini `useCheckInQr` terus membaca GPS, menandatangani, dan mengirim tawaran check-in tiap 30 detik selagi host di tab lain. |
 | Beranda | data dimuat saat fokus (`useFocusEffect`), paling sering sekali per 30 detik; setara "satu tanda tangan per pembukaan beranda" hari ini. |
 | Pesan, Acara, Profil | memuat saat fokus dengan batas yang sama; layar yang sudah memuat saat dipasang tetap melakukannya. |
 

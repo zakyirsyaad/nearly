@@ -37,12 +37,17 @@ export function useLencanaTab(signer: NearlySigner): NilaiLencana {
   const [angka, setAngka] = useState<AngkaLencana>(LENCANA_KOSONG);
   const terakhirMs = useRef<number | null>(null);
   const terpasang = useRef(true);
+  // Nomor pemuatan: jawaban yang datang terlambat dari pemuatan LAMA tidak
+  // boleh menimpa angka dari pemuatan paksa sesudahnya (mis. setelah pesan
+  // dibaca) selama 30 detik (review Rencana A #4).
+  const nomorTerakhir = useRef(0);
   useEffect(() => () => { terpasang.current = false; }, []);
 
   const muat = useCallback((paksa: boolean) => {
     const sekarang = Date.now();
     if (!bolehMuatLencana(terakhirMs.current, sekarang, paksa)) return;
     terakhirMs.current = sekarang;
+    const nomor = ++nomorTerakhir.current;
     // Fungsi async DI DALAM callback, bukan callback yang async. Masing-masing
     // angka gagal sendiri menjadi 0: lencana tidak boleh menggagalkan apa pun.
     void (async () => {
@@ -50,7 +55,7 @@ export function useLencanaTab(signer: NearlySigner): NilaiLencana {
         (async () => (await getKecocokan(await kueriBuktiKecocokan(signer))).baru)().catch(() => 0),
         (async () => (await getBelumDibaca(await sesiPesan(signer))).total)().catch(() => 0),
       ]);
-      if (terpasang.current) setAngka({ belumDibaca, kecocokanBaru });
+      if (terpasang.current && nomor === nomorTerakhir.current) setAngka({ belumDibaca, kecocokanBaru });
     })();
   }, [signer]);
 

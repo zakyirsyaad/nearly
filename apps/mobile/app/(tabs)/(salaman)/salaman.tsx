@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { StyleSheet, View } from "react-native";
-import { useIsFocused, useLocalSearchParams } from "expo-router";
+import { router, useIsFocused, useLocalSearchParams } from "expo-router";
 import { ModePindai } from "@/components/salaman/mode-pindai";
 import { ModeQr } from "@/components/salaman/mode-qr";
 import { Segmen } from "@/components/segmen";
@@ -26,9 +26,14 @@ function SalamanIsi({ signerHadir, signerSalaman }: { signerHadir: NearlySigner;
   const { mode: modeParam } = useLocalSearchParams<{ mode?: string }>();
   const [mode, setMode] = useState<ModeSalaman>(() => modeSalamanDariParam(modeParam));
   // Tab tetap terpasang saat berpindah tab: tautan "/salaman?mode=pindai"
-  // berikutnya (Detail acara) mengganti mode lewat parameternya.
+  // berikutnya (Detail acara) mengganti mode lewat parameternya. Parameternya
+  // dikosongkan setelah dipakai — kalau tidak, tautan yang SAMA sesudah
+  // pengguna menggeser segmen tidak mengubah apa pun, karena nilainya tidak
+  // berubah dan efek ini tidak berjalan (review Rencana A #3).
   useEffect(() => {
-    if (modeParam !== undefined) setMode(modeSalamanDariParam(modeParam));
+    if (modeParam === undefined) return;
+    setMode(modeSalamanDariParam(modeParam));
+    router.setParams({ mode: undefined });
   }, [modeParam]);
   // R10: QR berputar dan kamera hanya berjalan saat tab ini fokus (spec §4.6).
   const fokus = useIsFocused();
