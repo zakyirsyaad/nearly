@@ -10,17 +10,26 @@ import { getKunciLawan, postPesan, type BarisPesanApi, type KunciLawan } from ".
 
 const cacheKunciLawan = new Map<string, KunciLawan>();
 
+/**
+ * Naik setiap kali cache dibuang (Ganti dompet). Operasi yang dimulai sebelum
+ * itu dan selesai sesudahnya tidak boleh mengisi cache lagi dengan data
+ * dompet lama.
+ */
+let generasi = 0;
+
 export async function kunciLawan(sesi: SesiPesan, lawan: string): Promise<KunciLawan> {
   const k = `${sesi.address.toLowerCase()}|${lawan.toLowerCase()}`;
   const ada = cacheKunciLawan.get(k);
   if (ada) return ada;
+  const g = generasi;
   const kunci = await getKunciLawan(sesi, lawan);
-  cacheKunciLawan.set(k, kunci);
+  if (g === generasi) cacheKunciLawan.set(k, kunci);
   return kunci;
 }
 
 /** Dipanggil saat dompet dihapus dari HP (Ganti dompet), dan oleh tes. */
 export function lupakanCacheKunciLawan(): void {
+  generasi++;
   cacheKunciLawan.clear();
 }
 
@@ -29,6 +38,7 @@ export function lupakanCacheKunciLawan(): void {
  * pesan yang sudah dibuka tidak boleh tinggal di memori setelah dompetnya pergi.
  */
 export function lupakanCacheBuka(): void {
+  generasi++;
   cacheBuka.clear();
 }
 
@@ -118,7 +128,8 @@ function bukaBarisSekarang(sesi: SesiPesan, lawan: KunciLawan, baris: BarisPesan
  * yang berubah hanya kapan, bukan apakah, ia diverifikasi.
  *
  * Mengembalikan `false` kalau dihentikan (`masihBerlaku` jadi false), mis.
- * layar sudah ditinggalkan.
+ * layar sudah ditinggalkan — atau kalau cache dibuang di tengah jalan (Ganti
+ * dompet), supaya pesan dompet lama tidak dibuka dan disimpan lagi.
  */
 export async function bukaBertahap<T, R>(
   daftar: readonly T[],
@@ -131,13 +142,14 @@ export async function bukaBertahap<T, R>(
     tampilkan: (hasil: R[]) => void;
   },
 ): Promise<boolean> {
+  const g = generasi;
   const hasil = daftar.slice(0, opsi.awal).map(buka);
   // Selalu salinan: array yang diserahkan jadi state React dan tidak boleh
   // diubah belakangan oleh push di bawah.
   opsi.tampilkan([...hasil]);
   for (let i = opsi.awal; i < daftar.length; i += opsi.potongan) {
     await opsi.jeda();
-    if (!opsi.masihBerlaku()) return false;
+    if (!opsi.masihBerlaku() || g !== generasi) return false;
     hasil.push(...daftar.slice(i, i + opsi.potongan).map(buka));
     opsi.tampilkan([...hasil]);
   }
