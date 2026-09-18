@@ -1,6 +1,12 @@
+import { fileURLToPath } from "node:url";
 import { defineConfig } from "vitest/config";
 
 export default defineConfig({
+  // Alias yang sama dengan tsconfig "paths" (@/* → akar apps/mobile), supaya
+  // tes yang mengimpor modul ber-alias tetap jalan (spec desain UI §3.6).
+  resolve: {
+    alias: [{ find: /^@\//, replacement: fileURLToPath(new URL("./", import.meta.url)) }],
+  },
   test: {
     include: ["test/**/*.test.ts"],
     env: {

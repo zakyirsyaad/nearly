@@ -85,6 +85,7 @@ function HomeIsi({ signer, pengingatCadangan }: { signer: NearlySigner; penginga
       <Link href="/blokir" style={s.link}>Daftar blokir</Link>
       <Link href="/profil-saya" style={s.link}>Profil saya</Link>
       <Link href="/dompet" style={s.link}>Dompet</Link>
+      <Link href="/spike-bna" style={s.link}>Spike BNA (sementara)</Link>
     </View>
   );
 }

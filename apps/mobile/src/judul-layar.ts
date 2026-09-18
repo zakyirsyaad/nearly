@@ -28,6 +28,8 @@ export const JUDUL_LAYAR: Record<string, string> = {
   "pesan/index": "Pesan",
   "pesan/[address]": "Percakapan",
   "pesan/lapor/[address]": "Lapor",
+  // SEMENTARA (Rencana A Task 1) — dihapus bersama app/spike-bna.tsx di Task 8.
+  "spike-bna": "Spike BNA",
 };
 
 /**
