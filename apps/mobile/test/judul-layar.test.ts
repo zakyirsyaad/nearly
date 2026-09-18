@@ -1,7 +1,7 @@
 import { readdirSync, readFileSync } from "node:fs";
 import { join, relative } from "node:path";
 import { describe, expect, it } from "vitest";
-import { JUDUL_LAYAR, layarMenurutDompet } from "../src/judul-layar";
+import { JUDUL_LAYAR, LAYAR_TERMIGRASI, layarMenurutDompet } from "../src/judul-layar";
 
 const APP = join(__dirname, "..", "app");
 
@@ -58,5 +58,9 @@ describe("judul layar", () => {
   it("mulai hanya tanpa dompet; index layar pertama dengan dompet", () => {
     expect(layarMenurutDompet(false).map(([r]) => r)).toEqual(["mulai"]);
     expect(layarMenurutDompet(true)[0]?.[0]).toBe("index");
+  });
+
+  it("LAYAR_TERMIGRASI hanya berisi kunci JUDUL_LAYAR", () => {
+    expect([...LAYAR_TERMIGRASI].filter((k) => !(k in JUDUL_LAYAR))).toEqual([]);
   });
 });

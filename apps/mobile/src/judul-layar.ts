@@ -44,3 +44,12 @@ export function layarMenurutDompet(punyaDompet: boolean): [string, string][] {
   return Object.entries(JUDUL_LAYAR)
     .filter(([rute]) => RUTE_TANPA_DOMPET.includes(rute) !== punyaDompet);
 }
+
+/**
+ * Kunci JUDUL_LAYAR yang layarnya sudah dimigrasi ke tampilan baru (Rencana B).
+ * Hanya layar ini yang mendapat latar isi gelap dari Stack (Ruling A2), dan
+ * hanya layar ini yang dijaga penjaga tampilan baru (test/support/berkas.ts).
+ * Rencana A: kosong.
+ */
+export const LAYAR_TERMIGRASI: ReadonlySet<string> = new Set<string>([]);
+

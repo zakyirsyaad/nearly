@@ -3,16 +3,17 @@
     "name": "Nearly",
     "slug": "nearly",
     "scheme": "nearly",
-    "version": "0.1.0",
+    "version": "0.2.0",
     "orientation": "portrait",
-    "userInterfaceStyle": "automatic",
+    "userInterfaceStyle": "dark",
+    "backgroundColor": "#07090f",
     "icon": "./assets/icon.png",
     "ios": {
       "bundleIdentifier": "app.nearly.mobile",
       "supportsTablet": false,
       "infoPlist": {
-        "NSCameraUsageDescription": "Nearly memakai kamera hanya untuk memindai QR orang yang kamu temui.",
-        "NSLocationWhenInUseUsageDescription": "Nearly memakai lokasi kasar (~150 m) hanya saat aplikasi terbuka: saat handshake, untuk memastikan kalian benar-benar berada di tempat yang sama, dan saat layar Radar terbuka, untuk menandai kehadiranmu di area acara."
+        "NSCameraUsageDescription": "Nearly uses the camera only to scan the QR codes of people you meet.",
+        "NSLocationWhenInUseUsageDescription": "Nearly uses approximate location (~150 m) only while the app is open: during a handshake, to confirm you're really in the same place, and while the Radar screen is open, to mark that you're at the event."
       }
     },
     "android": {
@@ -34,7 +35,20 @@
       "expo-asset",
       "expo-font",
       "expo-image-picker",
-      "expo-secure-store"
+      "expo-secure-store",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/splash-icon.png",
+          "imageWidth": 120,
+          "backgroundColor": "#07090f",
+          "dark": {
+            "image": "./assets/splash-icon.png",
+            "backgroundColor": "#07090f"
+          }
+        }
+      ],
+      "expo-system-ui"
     ],
     "extra": {
       "eas": {

@@ -2,6 +2,7 @@
 // yang dikumpulkan vitest).
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { join, relative, sep } from "node:path";
+import { LAYAR_TERMIGRASI } from "../../src/judul-layar";
 
 export const MOBILE = join(__dirname, "..", "..");
 
@@ -42,7 +43,19 @@ export function kodeTampilanBaru(): string[] {
     ),
     ...semuaBerkas("hooks"),
     ...semuaBerkas("theme"),
+    ...layoutApp(),
+    ...layarTermigrasi(),
   ];
+}
+
+/** Semua _layout.tsx di app/ — ditulis dengan komponen BNA sejak Rencana A. */
+export function layoutApp(): string[] {
+  return semuaBerkas("app").filter((b) => b.endsWith("/_layout.tsx"));
+}
+
+/** Berkas layar yang sudah dimigrasi Rencana B (kunci LAYAR_TERMIGRASI → berkas). */
+export function layarTermigrasi(): string[] {
+  return [...LAYAR_TERMIGRASI].map((k) => `app/${k}.tsx`);
 }
 
 /** Berkas yang dilarang memuat literal warna (spec §10.1). */
@@ -53,5 +66,7 @@ export function berkasTanpaWarna(): string[] {
     ...semuaBerkas("theme").filter((b) => b !== "theme/colors.ts"),
     // src/warna.ts dihapus Rencana B bersama <TextInput> lama terakhir (Ruling A3).
     ...semuaBerkas("src").filter((b) => b !== "src/warna.ts"),
+    ...layoutApp(),
+    ...layarTermigrasi(),
   ];
 }

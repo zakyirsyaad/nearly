@@ -8,8 +8,21 @@ const baca = (jalur: string) => readFileSync(join(MOBILE, jalur), "utf8");
 // Tes baca-kode (pola warna-isian.test.ts): tidak ada harness render RN, jadi
 // gerbang dan pembatas __DEV__ dijaga dari teks sumbernya.
 describe("gerbang dompet", () => {
-  it("_layout.tsx membungkus navigasi dengan DompetProvider", () => {
-    expect(baca("app/_layout.tsx")).toMatch(/<DompetProvider>\s*<Navigasi \/>\s*<\/DompetProvider>/);
+  it("_layout.tsx membungkus navigasi dengan ToastProvider lalu DompetProvider", () => {
+    expect(baca("app/_layout.tsx")).toMatch(
+      /<ToastProvider>\s*<DompetProvider>\s*<Navigasi \/>\s*<\/DompetProvider>\s*<\/ToastProvider>/,
+    );
+  });
+
+  it("splash disembunyikan hanya setelah font dan keadaan dompet siap", () => {
+    const layout = baca("app/_layout.tsx");
+    const awalEkspor = layout.indexOf("export default function RootLayout");
+    expect(awalEkspor).toBeGreaterThan(-1);
+    expect(layout.slice(0, awalEkspor)).toContain("SplashScreen.preventAutoHideAsync()");
+    expect(layout).toContain("const splashBoleh = bolehSembunyikanSplash(fontSelesai, keadaan);");
+    expect(layout).toMatch(/if \(splashBoleh\) void SplashScreen\.hideAsync\(\)/);
+    expect(layout).toContain("if (!splashBoleh) return null;");
+    expect(layout.match(/SplashScreen\.hideAsync\(/g)?.length).toBe(1);
   });
 
   it("_layout.tsx menjaga kedua sisi dengan Stack.Protected", () => {
@@ -19,7 +32,7 @@ describe("gerbang dompet", () => {
   });
 
   it("keadaan galat tidak pernah jatuh ke layar Mulai", () => {
-    expect(baca("app/_layout.tsx")).toMatch(/keadaan === "galat"\) \{[\s\S]*?Coba lagi/);
+    expect(baca("app/_layout.tsx")).toMatch(/keadaan === "galat"\) \{[\s\S]*?\{TEKS_COBA_LAGI\}/);
   });
 
   it("impor kunci privat di layar Mulai hanya dirender saat __DEV__", () => {

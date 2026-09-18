@@ -100,3 +100,22 @@ describe("teks dan isian lewat salinan BNA (spec §10.1)", () => {
   });
 });
 
+import { OPSI_STACK, opsiTampilan } from "../theme/navigasi";
+
+describe("tema gelap navigasi (spec §3.2)", () => {
+  it("header Stack memakai token latar dan teks", () => {
+    expect(OPSI_STACK.headerStyle.backgroundColor).toBe(Colors.dark.background);
+    expect(OPSI_STACK.headerTintColor).toBe(Colors.dark.text);
+  });
+
+  // Ruling A2: layar yang belum dimigrasi tetap berlatar terang.
+  it("latar isi gelap tidak diberikan ke layar yang belum dimigrasi", () => {
+    expect(opsiTampilan("mulai")).toEqual({});
+  });
+
+  it("root layout tidak membaca skema warna OS; useColorScheme selalu gelap", () => {
+    expect(baca("app/_layout.tsx")).not.toMatch(/useColorScheme/);
+    expect(baca("hooks/useColorScheme.ts")).toMatch(/return "dark";/);
+  });
+});
+
