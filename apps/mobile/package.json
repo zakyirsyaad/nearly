@@ -8,7 +8,8 @@
     "ios": "expo run:ios",
     "android": "expo run:android",
     "test": "vitest run",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "ikon": "node scripts/buat-ikon.mjs"
   },
   "dependencies": {
     "@nearly/shared": "workspace:*",
@@ -41,6 +42,7 @@
     "viem": "^2.21.0"
   },
   "devDependencies": {
+    "@resvg/resvg-js": "2.6.2",
     "@types/node": "^26.4.1",
     "@types/react": "~19.2.18"
   }
