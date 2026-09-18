@@ -1,19 +1,25 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useState } from "react";
 import { useFocusEffect } from "expo-router";
 import { ActivityIndicator, Button, FlatList, StyleSheet, Text, View } from "react-native";
 import type { Address } from "viem";
 import { CONFIG } from "../src/config";
-import { createDevSigner } from "../src/signer";
+import type { NearlySigner } from "../src/signer";
+import { useNearlySigner } from "../src/dompet/konteks-dompet";
 import { ApiError } from "../src/http";
 import { getBlokir, kueriBuktiBlokir, type BarisBlokir } from "../src/blokir-api";
 import { aksiBlokir } from "../src/blokir-actions";
 import { blokirErrorMessage, blokirTombolLabel } from "../src/messages";
 
 export default function BlokirScreen() {
-  const signer = useMemo(
-    () => createDevSigner(CONFIG.devPrivateKey!, CONFIG.verifyingContract),
-    [],
-  );
+  const signer = useNearlySigner(CONFIG.verifyingContract);
+  // Dompet belum siap — mis. sesaat setelah Ganti dompet, selagi layar ini
+  // masih di tumpukan. Isi layar tidak dirender, supaya hook di dalamnya tidak
+  // pernah berjalan tanpa signer (Ruling D4).
+  if (!signer) return null;
+  return <BlokirScreenIsi key={signer.address} signer={signer} />;
+}
+
+function BlokirScreenIsi({ signer }: { signer: NearlySigner }) {
   const [baris, setBaris] = useState<BarisBlokir[] | null>(null);
   const [pesan, setPesan] = useState<string | null>(null);
   const [sibuk, setSibuk] = useState<string | null>(null);

@@ -1,9 +1,10 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useState } from "react";
 import { Link, useFocusEffect } from "expo-router";
 import { ActivityIndicator, FlatList, StyleSheet, Text, View } from "react-native";
 import { TIER_LABELS } from "@nearly/trust";
 import { CONFIG } from "../src/config";
-import { createDevSigner } from "../src/signer";
+import type { NearlySigner } from "../src/signer";
+import { useNearlySigner } from "../src/dompet/konteks-dompet";
 import { ApiError } from "../src/http";
 import {
   getKecocokan, kueriBuktiKecocokan, tandaiKecocokanDilihat, type BarisKecocokan,
@@ -11,11 +12,15 @@ import {
 import { meetErrorMessage } from "../src/messages";
 
 export default function KecocokanScreen() {
-  const signer = useMemo(
-    // Domain meet terikat ke ConnectionRegistry, sama seperti tipe feed.
-    () => createDevSigner(CONFIG.devPrivateKey!, CONFIG.verifyingContract),
-    [],
-  );
+  const signer = useNearlySigner(CONFIG.verifyingContract);
+  // Dompet belum siap — mis. sesaat setelah Ganti dompet, selagi layar ini
+  // masih di tumpukan. Isi layar tidak dirender, supaya hook di dalamnya tidak
+  // pernah berjalan tanpa signer (Ruling D4).
+  if (!signer) return null;
+  return <KecocokanScreenIsi key={signer.address} signer={signer} />;
+}
+
+function KecocokanScreenIsi({ signer }: { signer: NearlySigner }) {
   const [baris, setBaris] = useState<BarisKecocokan[] | null>(null);
   const [pesan, setPesan] = useState<string | null>(null);
 

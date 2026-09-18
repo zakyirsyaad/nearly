@@ -1,10 +1,11 @@
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { useRouter } from "expo-router";
 import { Button, Image, StyleSheet, Text, TextInput, View } from "react-native";
 import * as ImagePicker from "expo-image-picker";
 import { lampirGambarTypedData, makePostId, postTypedData } from "@nearly/shared";
 import { CONFIG } from "../../src/config";
-import { createDevSigner } from "../../src/signer";
+import type { NearlySigner } from "../../src/signer";
+import { useNearlySigner } from "../../src/dompet/konteks-dompet";
 import { ApiError } from "../../src/http";
 import { postImage, postPost } from "../../src/feed-api";
 import { feedErrorMessage } from "../../src/messages";
@@ -16,11 +17,16 @@ import { WARNA } from "../../src/warna";
 const MAKS = 500;
 
 export default function TulisScreen() {
+  const signer = useNearlySigner(CONFIG.verifyingContract);
+  // Dompet belum siap — mis. sesaat setelah Ganti dompet, selagi layar ini
+  // masih di tumpukan. Isi layar tidak dirender, supaya hook di dalamnya tidak
+  // pernah berjalan tanpa signer (Ruling D4).
+  if (!signer) return null;
+  return <TulisScreenIsi key={signer.address} signer={signer} />;
+}
+
+function TulisScreenIsi({ signer }: { signer: NearlySigner }) {
   const router = useRouter();
-  const signer = useMemo(
-    () => createDevSigner(CONFIG.devPrivateKey!, CONFIG.verifyingContract),
-    [],
-  );
   const [teks, setTeks] = useState("");
   const [gambar, setGambar] =
     useState<{ uri: string; base64: string; mime: MimeGambar } | null>(null);

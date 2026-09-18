@@ -28,7 +28,8 @@
       "expo-location",
       "expo-asset",
       "expo-font",
-      "expo-image-picker"
+      "expo-image-picker",
+      "expo-secure-store"
     ],
     "extra": {
       "eas": {

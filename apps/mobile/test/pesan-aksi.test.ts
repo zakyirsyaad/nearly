@@ -8,8 +8,8 @@ import {
 import { CONFIG } from "../src/config";
 import type { SesiPesan } from "../src/pesan/sesi";
 import {
-  _resetCacheBukaUntukTes, _resetKunciLawanUntukTes, bukaBaris, bukaBertahap, kirimPesan, laporanSiapDikirim,
-  laporkanPercakapan,
+  bukaBaris, bukaBertahap, kirimPesan, kunciLawan, laporanSiapDikirim, laporkanPercakapan, lupakanCacheBuka,
+  lupakanCacheKunciLawan,
 } from "../src/pesan/pesan-actions";
 
 const A = privateKeyToAccount(`0x${"a1".repeat(32)}` as Hex);
@@ -28,7 +28,7 @@ type Rekaman = { url: string; init: RequestInit };
 // sudah diawali "A", dan "perusakan" yang tidak mengubah apa pun meloloskan tes.
 const rusakkan = (ct: string) => (ct[0] === "A" ? "B" : "A") + ct.slice(1);
 const aslinya = globalThis.fetch;
-beforeEach(() => { _resetKunciLawanUntukTes(); _resetCacheBukaUntukTes(); });
+beforeEach(() => { lupakanCacheKunciLawan(); lupakanCacheBuka(); });
 afterEach(() => { globalThis.fetch = aslinya; });
 
 function pasangFetch(sb: SesiPesan) {
@@ -129,6 +129,26 @@ describe("bukaBaris", () => {
   });
 });
 
+describe("cache setelah dompet dilupakan", () => {
+  it("kunciLawan yang masih berjalan saat cache dibuang tidak mengisinya lagi", async () => {
+    const [sa, sb] = await Promise.all([sesiDari(A), sesiDari(B)]);
+    let lepas!: () => void;
+    const tahan = new Promise<void>((r) => { lepas = r; });
+    const ambil = vi.fn(async () => {
+      await tahan;
+      return new Response(JSON.stringify({ kunciEnkripsi: sb.kunci.pubEnkripsi, kunciTanda: sb.kunci.pubTanda }), { status: 200 });
+    });
+    globalThis.fetch = ambil as never;
+
+    const berjalan = kunciLawan(sa, B.address);
+    lupakanCacheKunciLawan();
+    lepas();
+    await berjalan;
+    await kunciLawan(sa, B.address);
+    expect(ambil).toHaveBeenCalledTimes(2);
+  });
+});
+
 // Membuka pertama percakapan 32 pesan makan ~1 detik JS di iPhone. Layar harus
 // tampil dengan pesan terbaru dulu, dan UI harus sempat bernapas di antaranya.
 describe("bukaBertahap", () => {
@@ -168,6 +188,19 @@ describe("bukaBertahap", () => {
     expect(await r.selesai).toBe(false);
     expect(r.dibuka).toEqual([0, 1, 2]);
     expect(r.tampil).toHaveLength(1);
+  });
+
+  it("berhenti bila cache pesan dibuang (Ganti dompet) di tengah jalan, tanpa mengisinya lagi", async () => {
+    const dibuka: number[] = [];
+    const selesai = await bukaBertahap(angka(7), (x) => { dibuka.push(x); return x; }, {
+      awal: 3,
+      potongan: 2,
+      jeda: async () => { lupakanCacheBuka(); },
+      masihBerlaku: () => true,
+      tampilkan: () => {},
+    });
+    expect(selesai).toBe(false);
+    expect(dibuka).toEqual([0, 1, 2]);
   });
 
   it("daftar yang muat di bagian awal tampil sekali tanpa jeda", async () => {

@@ -1,10 +1,11 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Link, useLocalSearchParams } from "expo-router";
 import { ActivityIndicator, Button, StyleSheet, Text, View } from "react-native";
 import type { Hex } from "viem";
 import { isEventLive, lihatEventTypedData, rsvpTypedData } from "@nearly/shared";
 import { CONFIG } from "../../src/config";
-import { createDevSigner } from "../../src/signer";
+import type { NearlySigner } from "../../src/signer";
+import { useNearlySigner } from "../../src/dompet/konteks-dompet";
 import { ApiError } from "../../src/api";
 import { getEvent, postRsvp, type EventSummary } from "../../src/events-api";
 import {
@@ -12,11 +13,16 @@ import {
 } from "../../src/messages";
 
 export default function EventDetailScreen() {
+  const signer = useNearlySigner(CONFIG.attendanceRegistry);
+  // Dompet belum siap — mis. sesaat setelah Ganti dompet, selagi layar ini
+  // masih di tumpukan. Isi layar tidak dirender, supaya hook di dalamnya tidak
+  // pernah berjalan tanpa signer (Ruling D4).
+  if (!signer) return null;
+  return <EventDetailScreenIsi key={signer.address} signer={signer} />;
+}
+
+function EventDetailScreenIsi({ signer }: { signer: NearlySigner }) {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const signer = useMemo(
-    () => createDevSigner(CONFIG.devPrivateKey!, CONFIG.attendanceRegistry),
-    [],
-  );
 
   const [ev, setEv] = useState<EventSummary | null>(null);
   // Diseed dari server (bukan diasumsikan false) — server sudah tahu

@@ -9,6 +9,8 @@
  */
 export const JUDUL_LAYAR: Record<string, string> = {
   index: "Nearly",
+  mulai: "Mulai",
+  dompet: "Dompet",
   qr: "QR salaman",
   scan: "Pindai",
   connections: "Koneksi",
@@ -27,3 +29,16 @@ export const JUDUL_LAYAR: Record<string, string> = {
   "pesan/[address]": "Percakapan",
   "pesan/lapor/[address]": "Lapor",
 };
+
+/**
+ * Rute yang HANYA bisa dibuka saat HP belum punya dompet. Semua rute lain
+ * hanya bisa dibuka saat dompet siap (gerbang Stack.Protected di
+ * app/_layout.tsx).
+ */
+export const RUTE_TANPA_DOMPET: readonly string[] = ["mulai"];
+
+/** Pasangan [rute, judul] untuk satu sisi gerbang dompet, urutan JUDUL_LAYAR dipertahankan. */
+export function layarMenurutDompet(punyaDompet: boolean): [string, string][] {
+  return Object.entries(JUDUL_LAYAR)
+    .filter(([rute]) => RUTE_TANPA_DOMPET.includes(rute) !== punyaDompet);
+}

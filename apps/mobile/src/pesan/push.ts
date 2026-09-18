@@ -32,3 +32,11 @@ export async function daftarkanPush(sesi: SesiPesan): Promise<void> {
     if (__DEV__) console.warn("push tidak tersedia:", e instanceof Error ? e.message : e);
   }
 }
+
+/**
+ * Dipanggil saat dompet dihapus dari HP (Ganti dompet): dompet berikutnya
+ * mencoba mendaftarkan token push lagi pada layar Pesan atau Radar berikutnya.
+ */
+export function lupakanPendaftaranPush(): void {
+  sudahDicoba = false;
+}

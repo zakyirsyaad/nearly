@@ -1,17 +1,20 @@
-import { useMemo } from "react";
 import QRCode from "react-native-qrcode-svg";
 import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
 import { CONFIG } from "../src/config";
-import { createDevSigner } from "../src/signer";
+import type { NearlySigner } from "../src/signer";
+import { useNearlySigner } from "../src/dompet/konteks-dompet";
 import { useRotatingQr } from "../src/handshake/useRotatingQr";
 
 export default function QrScreen() {
-  // WAJIB useMemo: tanpa ini signer lahir baru tiap render, refresh ikut berubah,
-  // dan efek rotasi jalan ulang tiap detik — QR berganti tiap detik, bukan 30 detik.
-  const signer = useMemo(
-    () => createDevSigner(CONFIG.devPrivateKey!, CONFIG.verifyingContract),
-    [],
-  );
+  const signer = useNearlySigner(CONFIG.verifyingContract);
+  // Dompet belum siap — mis. sesaat setelah Ganti dompet, selagi layar ini
+  // masih di tumpukan. Isi layar tidak dirender, supaya hook di dalamnya tidak
+  // pernah berjalan tanpa signer (Ruling D4).
+  if (!signer) return null;
+  return <QrScreenIsi key={signer.address} signer={signer} />;
+}
+
+function QrScreenIsi({ signer }: { signer: NearlySigner }) {
   const { value, secondsLeft, error } = useRotatingQr(signer);
 
   if (error) return <View style={s.root}><Text style={s.err}>{error}</Text></View>;
