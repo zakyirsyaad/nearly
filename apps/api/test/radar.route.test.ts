@@ -200,6 +200,15 @@ describe("GET /radar/:eventId", () => {
     expect(await (await radar(B)).json()).toEqual({ kartu: [], jumlah: 0 });
     expect(d.db.kehadiran.size).toBe(2);
   });
+
+  it("rute memakai cache koneksi bersama: dua GET dalam 60 detik → satu hitungan", async () => {
+    const { d, detak, radar } = dunia();
+    d.hadirkan(B.address);
+    await detak(A);
+    await radar(A);
+    await radar(A);
+    expect(d.deps.radar.hitungKoneksiBersama).toHaveBeenCalledTimes(1);
+  });
 });
 
 describe("perakitan createApp", () => {

@@ -197,6 +197,7 @@ export function depsFor(overrides: {
       hitungNotifKedekatan: vi.fn(async () => 0),
       sisipNotifKedekatan: vi.fn(async () => true),
       sapuLokasi: vi.fn(async () => ({ kehadiran: 0, notifKedekatan: 0, offerSalaman: 0, offerCheckIn: 0 })),
+      hitungKoneksiBersama: vi.fn(async () => new Map<string, number>()),
     },
     profilSaya: {
       profilSaya: vi.fn(async () => ({ displayName: "", visibilitas: "terlihat" as const })),

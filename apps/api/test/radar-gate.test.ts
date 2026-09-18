@@ -1,7 +1,8 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import type { Address } from "viem";
 import {
-  detak, JEDA_DETAK_MIN_MS, JENDELA_HADIR_MS, lihatRadar, MAKS_KARTU_RADAR, urutkanKartuRadar,
+  buatPenghitungKoneksiBersama, detak, JEDA_DETAK_MIN_MS, JENDELA_HADIR_MS, lihatRadar, MAKS_KARTU_RADAR,
+  UMUR_CACHE_KONEKSI_BERSAMA_MS, urutkanKartuRadar,
 } from "../src/radar-gate";
 import {
   alamat, duniaRadar, EVENT_RADAR, MENIT, SEL_JAUH, SEL_PUSAT, SEL_TETANGGA,
@@ -307,5 +308,99 @@ describe("lihatRadar — isi daftar", () => {
     expect(r.ok && Object.keys(r.value.kartu[0]!).sort()).toEqual(
       ["address", "displayName", "pernahBertemu", "salingInginBertemu", "tierLabel"],
     );
+  });
+});
+
+describe("lihatRadar — koneksi bersama (spec desain UI §8.3, §10.2)", () => {
+  const M1 = alamat(0x31);
+  const M2 = alamat(0x32);
+  const H = alamat(0x4e);
+  type Hasil = Awaited<ReturnType<typeof lihatRadar>>;
+  const kartuDari = (r: Hasil) => (r.ok ? r.value.kartu : []);
+  const kartuUntuk = (r: Hasil, a: Address) => kartuDari(r).find((k) => k.address === a);
+
+  it("hanya kartu yang belum ditemui; absen bila 0", async () => {
+    const d = duniaRadar({ checkIn: [AKU, B, C, D], koneksi: [[AKU, B], [AKU, M1], [M1, B], [M1, C]] });
+    for (const o of [AKU, B, C, D]) d.hadirkan(o);
+    const r = await lihatRadar(AKU, EVENT_RADAR, d.deps);
+    expect(kartuUntuk(r, B)).not.toHaveProperty("koneksiBersama");
+    expect(kartuUntuk(r, C)?.koneksiBersama).toBe(1);
+    expect(kartuUntuk(r, D)).not.toHaveProperty("koneksiBersama");
+  });
+
+  it("hitungan benar untuk graf kecil yang ditulis tangan", async () => {
+    const d = duniaRadar({
+      checkIn: [AKU, C], koneksi: [[AKU, M1], [AKU, M2], [AKU, B], [M1, C], [M2, C], [B, C]],
+    });
+    d.hadirkan(AKU); d.hadirkan(C);
+    expect(kartuUntuk(await lihatRadar(AKU, EVENT_RADAR, d.deps), C)?.koneksiBersama).toBe(3);
+  });
+
+  it("koneksi bersama yang terblokir ke arah mana pun tidak dihitung", async () => {
+    for (const blokir of [[{ blocker: AKU, blocked: M1 }], [{ blocker: M1, blocked: AKU }]]) {
+      const d = duniaRadar({ checkIn: [AKU, C], koneksi: [[AKU, M1], [M1, C], [AKU, M2], [M2, C]], blokir });
+      d.hadirkan(AKU); d.hadirkan(C);
+      expect(kartuUntuk(await lihatRadar(AKU, EVENT_RADAR, d.deps), C)?.koneksiBersama).toBe(1);
+    }
+  });
+
+  it("kandidat Tersembunyi tidak punya kartu dan tidak pernah dikirim ke hitungKoneksiBersama", async () => {
+    const d = duniaRadar({ checkIn: [AKU, C, H], koneksi: [[AKU, M1], [M1, C], [M1, H]], tersembunyi: [H] });
+    for (const o of [AKU, C, H]) d.hadirkan(o);
+    const r = await lihatRadar(AKU, EVENT_RADAR, d.deps);
+    expect(kartuDari(r).map((k) => k.address)).toEqual([C]);
+    const dikirim = vi.mocked(d.deps.radar.hitungKoneksiBersama).mock.calls.flatMap(([, kandidat]) => kandidat);
+    expect(dikirim).not.toContain(H);
+  });
+
+  it("pemanggil Tersembunyi → 403 sebelum store dipanggil", async () => {
+    const d = duniaRadar({ checkIn: [AKU, C], koneksi: [[AKU, M1], [M1, C]], tersembunyi: [AKU] });
+    d.hadirkan(AKU); d.hadirkan(C);
+    expect(await lihatRadar(AKU, EVENT_RADAR, d.deps)).toEqual({ ok: false, failure: { code: "tersembunyi", httpStatus: 403 } });
+    expect(d.deps.radar.hitungKoneksiBersama).not.toHaveBeenCalled();
+  });
+
+  it("himpunan kunci setiap kartu persis; tanpa nama atau alamat koneksi bersama", async () => {
+    const d = duniaRadar({ checkIn: [AKU, B, C], koneksi: [[AKU, B], [AKU, M1], [M1, C]], nama: { [M1]: "Mawar" } });
+    for (const o of [AKU, B, C]) d.hadirkan(o);
+    const r = await lihatRadar(AKU, EVENT_RADAR, d.deps);
+    expect(Object.keys(kartuUntuk(r, B)!).sort())
+      .toEqual(["address", "displayName", "pernahBertemu", "salingInginBertemu", "tierLabel"]);
+    expect(Object.keys(kartuUntuk(r, C)!).sort())
+      .toEqual(["address", "displayName", "koneksiBersama", "pernahBertemu", "salingInginBertemu", "tierLabel"]);
+    const teks = JSON.stringify(r);
+    expect(teks).not.toContain(M1);
+    expect(teks).not.toContain("Mawar");
+  });
+
+  it("jumlah tetap = jumlah kartu yang dikirim", async () => {
+    const d = duniaRadar({ checkIn: [AKU, B, C], koneksi: [[AKU, M1], [M1, C]] });
+    for (const o of [AKU, B, C]) d.hadirkan(o);
+    const r = await lihatRadar(AKU, EVENT_RADAR, d.deps);
+    expect(r.ok && r.value.jumlah).toBe(kartuDari(r).length);
+  });
+
+  it("store gagal → kunci absen di semua kartu, radar tetap ok", async () => {
+    const d = duniaRadar({ checkIn: [AKU, C], koneksi: [[AKU, M1], [M1, C]] });
+    d.hadirkan(AKU); d.hadirkan(C);
+    d.deps.radar.hitungKoneksiBersama = vi.fn(async () => { throw new Error("mati"); });
+    const r = await lihatRadar(AKU, EVENT_RADAR, d.deps);
+    expect(r.ok).toBe(true);
+    expect(kartuUntuk(r, C)).not.toHaveProperty("koneksiBersama");
+  });
+
+  it("cache 60 detik: hasil yang sama di dalam jendela, dihitung ulang sesudahnya", async () => {
+    const d = duniaRadar({ checkIn: [AKU, C], koneksi: [[AKU, M1], [M1, C]] });
+    d.hadirkan(AKU); d.hadirkan(C);
+    const hitung = buatPenghitungKoneksiBersama(d.deps);
+    await lihatRadar(AKU, EVENT_RADAR, d.deps, hitung);
+    await lihatRadar(AKU, EVENT_RADAR, d.deps, hitung);
+    expect(d.deps.radar.hitungKoneksiBersama).toHaveBeenCalledTimes(1);
+    d.jam.sekarang += UMUR_CACHE_KONEKSI_BERSAMA_MS - 1;
+    await lihatRadar(AKU, EVENT_RADAR, d.deps, hitung);
+    expect(d.deps.radar.hitungKoneksiBersama).toHaveBeenCalledTimes(1);
+    d.jam.sekarang += 1;
+    await lihatRadar(AKU, EVENT_RADAR, d.deps, hitung);
+    expect(d.deps.radar.hitungKoneksiBersama).toHaveBeenCalledTimes(2);
   });
 });

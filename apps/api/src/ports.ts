@@ -608,12 +608,19 @@ export type RadarStore = {
   sisipNotifKedekatan(eventId: Hex, penerima: Address, subjek: Address): Promise<boolean>;
   /** Empat pernyataan spec 4b+5 §4.5. `nowMs` dari pemanggil, supaya tes bisa memakai jam palsu. */
   sapuLokasi(nowMs: number): Promise<HasilSapuLokasi>;
+  /**
+   * Desain UI §8.3: untuk setiap kandidat (huruf kecil), jumlah alamat yang
+   * terkoneksi dengan `who` DAN dengan kandidat itu — tanpa `who`, kandidat
+   * itu sendiri, dan `kecuali` (himpunan blokir dua arah pemanggil).
+   * Kandidat tanpa koneksi bersama bernilai 0. HANYA angka, tidak pernah daftar.
+   */
+  hitungKoneksiBersama(who: Address, kandidat: Address[], kecuali: readonly string[]): Promise<Map<string, number>>;
 };
 
 export const METODE_RADAR_STORE = [
   "ambilKehadiran", "simpanKehadiran", "hapusKehadiran", "hapusSemuaKehadiran",
   "hadirSejak", "terhubungDengan", "hitungNotifKedekatan", "sisipNotifKedekatan",
-  "sapuLokasi",
+  "sapuLokasi", "hitungKoneksiBersama",
 ] as const satisfies readonly (keyof RadarStore)[];
 
 // Arah kedua dari pengait, sama seperti METODE_PESAN_STORE.

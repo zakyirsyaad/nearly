@@ -116,3 +116,40 @@ describe("createRadarStore", () => {
     await expect(createRadarStore(db).sapuLokasi(1_700_000_000_000)).rejects.toThrow(/sapu notifikasi kedekatan gagal/);
   });
 });
+
+import { supabaseMemori } from "./support/supabase-memori";
+
+// Spec desain UI §8.3, §10.2: pemetaan dengan kandidat di KEDUA sisi urutan
+// kanonik (addr_a < addr_b), blokir dua arah pemanggil tidak dihitung.
+describe("createRadarStore — hitungKoneksiBersama", () => {
+  const x = (n: number) => `0x${n.toString(16).padStart(40, "0")}` as Address;
+  const WHO = x(0x50);
+  const K1 = x(0x90); // > WHO
+  const K2 = x(0x10); // < WHO
+  const M1 = x(0x30);
+  const M2 = x(0x70);
+  const BLOK = x(0x60);
+  const baris = (id: number, a: Address, b: Address) => ({ id, addr_a: a < b ? a : b, addr_b: a < b ? b : a });
+
+  it("menghitung irisan koneksi untuk kandidat di kedua sisi, tanpa himpunan blokir", async () => {
+    const { db } = supabaseMemori({
+      connections: [
+        baris(1, WHO, M1), baris(2, M1, K1), baris(3, WHO, M2), baris(4, K2, M2),
+        baris(5, WHO, BLOK), baris(6, BLOK, K1), baris(7, M2, K1),
+      ],
+    });
+    const hasil = await createRadarStore(db).hitungKoneksiBersama(WHO, [K1, K2], [BLOK]);
+    expect(hasil).toEqual(new Map([[K1, 2], [K2, 1]]));
+  });
+
+  it("kandidat tanpa koneksi bersama bernilai 0; pemanggil bukan kandidat", async () => {
+    const { db } = supabaseMemori({ connections: [baris(1, WHO, M1)] });
+    expect(await createRadarStore(db).hitungKoneksiBersama(WHO, [K1, WHO], [])).toEqual(new Map([[K1, 0]]));
+  });
+
+  it("tanpa kandidat tidak mengirim kueri", async () => {
+    const { db, tabelDisentuh } = supabaseMemori({ connections: [] });
+    expect(await createRadarStore(db).hitungKoneksiBersama(WHO, [], [])).toEqual(new Map());
+    expect(tabelDisentuh).toEqual([]);
+  });
+});

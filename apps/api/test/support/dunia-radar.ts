@@ -85,6 +85,23 @@ export function duniaRadar(awal: {
       .map((b) => b.address as Address).sort()),
     terhubungDengan: vi.fn(async (who: Address, kandidat: Address[]) =>
       new Set(kandidat.map(kecil).filter((k) => db.koneksi.has(pasangan(who, k))))),
+    hitungKoneksiBersama: vi.fn(async (who: Address, kandidat: Address[], kecuali: readonly string[]) => {
+      const tetangga = (x: string) => {
+        const s = new Set<string>();
+        for (const p of db.koneksi) {
+          const [a, b] = p.split("|") as [string, string];
+          if (a === x) s.add(b);
+          if (b === x) s.add(a);
+        }
+        return s;
+      };
+      const w = kecil(who);
+      const buang = new Set([w, ...kecuali.map(kecil)]);
+      const milikku = tetangga(w);
+      return new Map(kandidat.map(kecil).filter((k) => k !== w).map((k) => [
+        k, [...tetangga(k)].filter((m) => m !== k && !buang.has(m) && milikku.has(m)).length,
+      ]));
+    }),
     hitungNotifKedekatan: vi.fn(async (e: Hex, p: Address) =>
       db.notif.filter((n) => n.eventId === kecil(e) && n.penerima === kecil(p)).length),
     sisipNotifKedekatan: vi.fn(async (e: Hex, p: Address, s: Address) => {

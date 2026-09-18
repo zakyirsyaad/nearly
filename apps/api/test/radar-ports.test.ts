@@ -10,7 +10,7 @@ describe("bentuk RadarStore dan ProfilSayaStore", () => {
     expect(METODE_RADAR_STORE).toEqual([
       "ambilKehadiran", "simpanKehadiran", "hapusKehadiran", "hapusSemuaKehadiran",
       "hadirSejak", "terhubungDengan", "hitungNotifKedekatan", "sisipNotifKedekatan",
-      "sapuLokasi",
+      "sapuLokasi", "hitungKoneksiBersama",
     ]);
   });
 
