@@ -2,7 +2,7 @@
 
 **Tanggal:** 2026-09-18
 **Status:** keputusan disetujui pemilik project (2026-09-18, sesi brainstorming dengan mockup HTML), spec ini
-menuliskannya; menunggu review tertulis
+menuliskannya; menunggu review tertulis. Diperbarui 2026-09-18: keputusan #15 — aplikasi berbahasa Inggris (§7.4)
 **Spec induk:** `docs/superpowers/specs/2026-09-03-nearly-design.md`
 **Berkaitan:** spec dompet (`2026-09-17-nearly-dompet-per-pengguna-design.md`) §5–§6 — gerbang dompet dan pola
 pembungkus signer; spec 4b+5 (`2026-09-14-nearly-fase-4b5-radar-design.md`) §5.2 — kunci kartu radar; spec 4c
@@ -20,8 +20,9 @@ terang (alasan `src/warna.ts` dan `test/warna-isian.test.ts` ada). Peserta demo 
 layar ini lebih dulu daripada dari graf trust-nya.
 
 Fase ini mengganti **tampilan dan navigasi** seluruh aplikasi mobile, dan menambah **tiga data baru** di API yang
-dibutuhkan layar kunci (riwayat pertemuan, penjamin yang kamu kenal, koneksi bersama di radar). Logika, kalimat, dan
-perilaku layar yang ada tidak berubah kecuali yang disebut di spec ini (§2 keputusan #12).
+dibutuhkan layar kunci (riwayat pertemuan, penjamin yang kamu kenal, koneksi bersama di radar). Karena setiap layar
+disentuh, bahasa aplikasi sekaligus berpindah dari Indonesia ke **Inggris** (keputusan #15, §7.4). Logika dan perilaku
+layar yang ada tidak berubah, dan kalimat yang ada hanya diterjemahkan, kecuali yang disebut di spec ini (keputusan #12).
 
 ## 2. Keputusan yang Terkunci
 
@@ -40,9 +41,15 @@ Diputuskan pemilik project (2026-09-18). Ditulis sesuai kata-kata pemilik; tidak
 | 9 | **Layar kunci** sesuai mockup layar kunci yang disetujui (Beranda, Salaman, Profil orang, Radar, Percakapan), dengan koreksi privasi #10. |
 | 10 | **Data baru di fase ini (API ditambah):** (a) riwayat pertemuan di Profil orang (acara/tempat, kapan, jumlah kali) — hanya pertemuan antara penonton dan orang itu; (b) "Dijamin N orang yang juga kamu kenal" — jumlah penjamin (vouch) orang itu yang merupakan koneksimu; (c) "N koneksi bersama" di Radar untuk orang yang belum kamu temui — HANYA ANGKA tanpa nama, dan HANYA bila kedua pihak Terlihat; blokir dua arah tetap berlaku; (d) "hadir sejak <jam>" DIBUANG — cukup "hadir sekarang"; (e) "Kamu terlihat oleh N orang" DIGANTI "N orang terlihat di sini", dihitung dari kartu yang dikirim (`jumlah` yang ada); (f) batang trust BERTINGKAT per tier (4 ruas), bukan persentase — radar/profil tidak mengirim skor mentah. |
 | 11 | **Pola layar lain:** daftar / formulir / detail; layar Mulai: logo "n" besar, kalimat "Kenali orang yang benar-benar kamu temui", tombol Buat dompet baru & Pakai dompet yang sudah ada. Empat keadaan seragam: memuat = skeleton; kosong = ikon + kalimat + aksi; galat = kalimat galat yang ada + Coba lagi; berhasil = toast hijau + haptic untuk aksi penting. |
-| 12 | **Teks/kalimat, logika, dan perilaku layar yang ada TIDAK berubah** kecuali yang disebut di atas (fase ini tampilan + navigasi + 3 data baru). |
+| 12 | **Teks/kalimat, logika, dan perilaku layar yang ada TIDAK berubah** kecuali yang disebut di atas (fase ini tampilan + navigasi + 3 data baru). *Diubah oleh #15:* kalimat yang ada **diterjemahkan 1:1 maknanya** ke bahasa Inggris — logika dan perilaku tetap, tidak ada penulisan ulang kalimat di luar terjemahan dan teks baru yang didaftar (§7.3). |
 | 13 | **Urutan:** (1) spike BNA di monorepo SDK 57 — satu tombol BNA tampil di Expo Go; bila gagal, jatuh ke token + komponen sendiri; (2) fondasi tema/font/alias/ikon/splash; (3) navigasi tab + rute notifikasi; (4) API 3 data baru + tes privasi; (5) migrasi layar per kelompok: Salaman, Beranda, Profil, Acara+Radar, Pesan, sisanya; (6) dokumen & verifikasi. Eksekutor: sesi `fcc`. |
 | 14 | **Pengujian:** tes baca-kode (tak ada warna hex di `app/` selain file tema; semua teks lewat komponen Text BNA; setiap TextInput lewat Input BNA — menggantikan `WARNA`/tes warna-isian; judul setiap layar tetap dijaga seperti `test/judul-layar.test.ts`), tes API dengan fake untuk 3 data baru termasuk kasus privasi (Tersembunyi, blokir dua arah, tidak ada nama di koneksi bersama), uji iPhone (Expo Go) oleh pemilik. |
+| 15 | **Bahasa aplikasi mobile: Inggris** (diputuskan 2026-09-18, di fase yang sama karena setiap layar disentuh). Satu bahasa saja — tanpa kerangka i18n, tanpa pengalih bahasa. Istilah terkunci: tab Home · Events · Handshake · Messages · Profile; Salaman (aksi/layar) → Handshake; Terlihat / Tersembunyi → Visible / Hidden; tier Baru · Dikenal · Terpercaya · Inti → New · Known · Trusted · Core; Vouch · Lapor · Blokir / Cabut blokir → Vouch · Report · Block / Unblock; Ingin bertemu / Saling ingin bertemu → Want to meet / You both want to meet; Koneksi · koneksi bersama → Connections · mutual connections; Dompet · 12 kata pemulihan → Wallet · 12-word recovery phrase; lencana "✓ terverifikasi" → "✓ met in person"; "✓ bertemu langsung · N acara bersama" → "✓ met in person · N events together" (tunggal "1 event together"); "Bertemu langsung" → "Met in person"; "Dijamin N orang yang juga kamu kenal" → "Vouched for by N people you know" (tunggal "1 person"); "N koneksi bersama" → "N mutual connections" (tunggal); "N orang terlihat di sini" → "N people visible here"; "hadir sekarang" → "here now"; kalimat Mulai → "Know the people you've actually met"; tombol Mulai → "Create a new wallet" / "Use an existing wallet"; waktu relatif kemarin / N hari lalu → yesterday / N days ago; tanggal "Aug 12"; jam 24 jam "19:42". `apps/web` tidak disentuh (landing dan `/live` sudah berbahasa Inggris). Rincian di §7.4. |
+
+Teks UI yang dikutip di #1, #3, #8, #10, dan #11 adalah kata-kata pemilik dalam bahasa Indonesia; yang tampil di
+aplikasi adalah padanan Inggrisnya menurut #15 dan §7.4. Di seluruh spec ini, nama Indonesia untuk layar dan tab
+(Beranda, Salaman, Profil orang, …) adalah **nama internal** (sama dengan nama grup/berkas); label yang tampil ada di
+§4.3 dan §4.7.
 
 Keputusan teknis yang diambil spec ini (bisa ditinjau di review spec):
 
@@ -58,24 +65,27 @@ Keputusan teknis yang diambil spec ini (bisa ditinjau di review spec):
   keputusan #1 "alamat mono hanya untuk alamat sendiri di beranda" dibaca sebagai: **alamat utuh** hanya untuk alamat
   sendiri di kepala Beranda dan di detail (Profil orang, Dompet); di kartu ringkas alamat orang lain tampil **singkat**
   di sebelah namanya, tidak pernah dihilangkan. Mockup kartu tanpa alamat dianggap ilustrasi.
-- **R5. Kalimat yang sudah ada menang atas teks contoh di mockup.** Mockup menulis "Tunjukkan ke orang di depanmu",
-  "berlaku 0:42", "Jamin (vouch)", "Trust tinggi"; layar tetap memakai kalimat yang ada ("Minta dia memindai ini.
-  Berganti dalam N detik.", "Vouch", label tier `TIER_LABELS`). Teks **baru** hanya yang didaftar di §7.3.
+- **R5. Terjemahan Inggris kalimat yang sudah ada menang atas teks contoh di mockup.** Mockup menulis "Tunjukkan ke
+  orang di depanmu", "berlaku 0:42", "Jamin (vouch)", "Trust tinggi"; layar memakai terjemahan kalimat yang ada
+  ("Ask them to scan this. Changes in N seconds.", "Vouch", label tier dari `LABEL_TIER_EN` — §7.4). Teks **baru**
+  hanya yang didaftar di §7.3.
 - **R6. "Dibaca 19.42" di mockup Percakapan DIBUANG.** Tanda "sudah dibaca" untuk pengirim ada di daftar *di luar
   lingkup* spec 4c (baris "tanda sudah dibaca untuk pengirim, indikator mengetik, reaksi, grup"). Walau
   `dibacaAtMs` ikut terkirim di riwayat, menampilkannya ke pengirim adalah fitur privasi baru yang tidak diputuskan.
 - **R7. "Tempat" pada riwayat pertemuan hanya nama acara + `venue_label` yang ditulis host.** Salaman di luar acara
-  tampil sebagai "Bertemu langsung" tanpa tempat. Sel lokasi (`connections.cell`) tidak pernah dikirim ke HP — "tidak
+  tampil sebagai "Met in person" tanpa tempat. Sel lokasi (`connections.cell`) tidak pernah dikirim ke HP — "tidak
   ada peta dengan pin orang" (spec induk §6 prinsip #2). Mockup "Kopi Kenangan Sudirman · 2 minggu lalu" tidak bisa
   diwujudkan dan dianggap ilustrasi.
 - **R8. "Jumlah kali" diwujudkan sebagai jumlah acara yang kalian berdua hadiri (check-in), bukan jumlah salaman.**
   Salaman hanya bisa terjadi **sekali per pasangan, selamanya**: `connections_unique_pair` di
   `supabase/migrations/0001_init.sql` dan penolakan `already_connected` (409) di `apps/api/src/handshake-gate.ts`.
-  Tidak ada data "bertemu 3 kali". Lencana menjadi "✓ bertemu langsung" ditambah " · N acara bersama" bila N ≥ 1
-  (§8.1). Mencatat salaman ulang butuh perubahan perilaku handshake dan kontrak, dan tidak diambil (§11 batas #6).
-- **R9. Lencana "✓ terverifikasi" berarti "kamu dan orang ini sudah salaman"** — koneksi yang tercatat setelah
+  Tidak ada data "bertemu 3 kali". Lencana menjadi "✓ met in person" ditambah " · N events together" (N = 1:
+  " · 1 event together") bila N ≥ 1 (§8.1). Mencatat salaman ulang butuh perubahan perilaku handshake dan kontrak, dan tidak diambil (§11 batas #6).
+- **R9. Lencana "✓ met in person" (keputusan #1 "✓ terverifikasi") berarti "kamu dan orang ini sudah salaman"** — koneksi yang tercatat setelah
   verifikasi ko-lokasi (spec induk §7.1). Bukan verifikasi identitas. Sumbernya `pernahBertemu` (radar), keanggotaan
-  di `GET /connections/:address` (Beranda, Koneksi), dan `pertemuan !== null` (Profil orang).
+  di `GET /connections/:address` (Beranda, Koneksi), dan `pertemuan !== null` (Profil orang). Karena #15 memetakan
+  "✓ terverifikasi" dan "✓ bertemu langsung" ke teks yang sama, keduanya satu lencana: di Profil orang ia diberi ekor
+  " · N events together" (R8), di kartu ringkas tidak.
 - **R10. Isi tab dipasang hanya saat tab fokus bila isinya berjalan terus** (Salaman: QR berputar + kamera). Tab
   tetap terpasang saat berpindah tab; tanpa ini QR terus membuat offer tiap 30 detik dan kamera tetap menyala di
   latar (§4.6).
@@ -203,7 +213,7 @@ digantikan splash. Font yang gagal dimuat tidak memblokir aplikasi: teks jatuh k
 - Perintah: `pnpm dlx bna-ui add <komponen>` dari `apps/mobile`. Komponen yang dipakai: `button`, `text`, `input`,
   `card`, `badge`, `progress` (atau batang trust sendiri — §6), `skeleton`, `toast`, `avatar`, `separator`,
   `spinner`, `switch` (bila cocok untuk Terlihat/Tersembunyi), `alert-dialog` (bila menggantikan `Alert.alert`
-  tanpa mengubah kalimat), `avoid-keyboard` (bila setara `src/hindari-keyboard.tsx`). BNA **tidak** punya komponen
+  tanpa mengubah makna kalimat), `avoid-keyboard` (bila setara `src/hindari-keyboard.tsx`). BNA **tidak** punya komponen
   segmented control; pemilih mode Salaman dibuat sendiri di `components/segmen.tsx` dari `Pressable` + token.
 - Setelah disalin, komponen BNA adalah **kode kita**: boleh disunting (font, haptic default, warna), dan disunting
   hanya lewat token.
@@ -269,8 +279,9 @@ Perilaku `unstable_settings` di grup bersarang expo-router 57 **diverifikasi di 
 layar akar tab didorong lebih dulu secara eksplisit sebelum layar tujuan.
 
 URL tidak berubah karena nama grup tidak masuk URL (R2). Satu-satunya URL baru: `/salaman` (dengan parameter opsional
-`?mode=pindai`); `/qr` dan `/scan` hilang. Pemakai lama: tautan Beranda (ditulis ulang) dan `app/events/[id].tsx`
-"Pindai QR host untuk check-in" → `/salaman?mode=pindai`.
+`?mode=pindai`); `/qr` dan `/scan` hilang. Pemakai lama: tautan Beranda (ditulis ulang) dan tombol `app/events/[id].tsx`
+"Pindai QR host untuk check-in" (kini "Scan the host's QR to check in") → `/salaman?mode=pindai`. Nama rute dan
+parameter tetap bahasa Indonesia (§7.4).
 
 ### 4.2 Gerbang dompet
 
@@ -279,7 +290,7 @@ Pola `Stack.Protected` dua sisi dari spec dompet §5.1 **tetap**, hanya daftar l
 | Keadaan | Tampilan |
 |---|---|
 | `memuat` | splash tetap tampil (§3.5) |
-| `galat` | kalimat galat yang ada + **Coba lagi**, tanpa navigator, dengan komponen BNA |
+| `galat` | terjemahan kalimat galat yang ada + **Try again**, tanpa navigator, dengan komponen BNA |
 | `belum-ada` | Stack akar — hanya `mulai` |
 | `siap` | Stack akar — `(tabs)` dan `profile/[address]`; `mulai` tidak |
 
@@ -295,30 +306,30 @@ Pola `Stack.Protected` dua sisi dari spec dompet §5.1 **tetap**, hanya daftar l
 
 ### 4.3 Tab bar
 
-`TAB_BAWAH` di `src/judul-layar.ts` — satu sumber untuk urutan, label, dan grup:
+`TAB_BAWAH` di `src/judul-layar.ts` — satu sumber untuk urutan, label (bahasa Inggris, #15), dan grup:
 
 | Urutan | Grup | Label | Ikon (lucide) | Catatan |
 |---|---|---|---|---|
-| 1 | `(beranda)` | Beranda | `House` | |
-| 2 | `(acara)` | Acara | `CalendarDays` | |
-| 3 | `(salaman)` | Salaman | `ArrowLeftRight` | `tabBarButton` kustom: kotak `primary` 52×52 radius 14, ikon `primaryForeground` |
-| 4 | `(pesan)` | Pesan | `MessageCircle` | `tabBarBadge` = jumlah belum dibaca, disembunyikan bila 0 |
-| 5 | `(profil)` | Profil | `CircleUser` | titik lencana bila ada kecocokan baru (§4.4) |
+| 1 | `(beranda)` | Home | `House` | |
+| 2 | `(acara)` | Events | `CalendarDays` | |
+| 3 | `(salaman)` | Handshake | `ArrowLeftRight` | `tabBarButton` kustom: kotak `primary` 52×52 radius 14, ikon `primaryForeground` |
+| 4 | `(pesan)` | Messages | `MessageCircle` | `tabBarBadge` = jumlah belum dibaca, disembunyikan bila 0 |
+| 5 | `(profil)` | Profile | `CircleUser` | titik lencana bila ada kecocokan baru (§4.4) |
 
 Nama ikon lucide diperiksa saat implementasi; yang mengikat adalah maknanya (⌂ ◷ ⇄ ✉ ◉ di mockup).
 
 ### 4.4 Lencana tab (pengganti lencana di daftar tautan beranda)
 
-Beranda sekarang menandatangani dua bukti setiap kali dipasang: `kueriBuktiKecocokan` untuk angka "Saling ingin
-bertemu" dan sesi pesan untuk `getBelumDibaca`. Keduanya pindah ke hook `useLencanaTab(signer)` di
+Beranda sekarang menandatangani dua bukti setiap kali dipasang: `kueriBuktiKecocokan` untuk angka kecocokan ("You
+both want to meet") dan sesi pesan untuk `getBelumDibaca`. Keduanya pindah ke hook `useLencanaTab(signer)` di
 `(tabs)/_layout.tsx` (dengan pola pembungkus):
 
 - dimuat saat `(tabs)` terpasang, saat tab aktif berganti, dan saat aplikasi kembali ke depan (`AppState` `active`);
   paling sering **sekali per 30 detik**;
-- kegagalan masing-masing menghasilkan 0 tanpa galat — perilaku yang sama dengan beranda sekarang ("Beranda tidak
-  boleh gagal hanya karena lencana");
+- kegagalan masing-masing menghasilkan 0 tanpa galat — perilaku yang sama dengan beranda sekarang (komentar kode
+  "Beranda tidak boleh gagal hanya karena lencana");
 - angka Pesan → `tabBarBadge` Pesan; angka kecocokan baru → titik lencana tab Profil **dan** lencana di baris
-  "Saling ingin bertemu" di layar Profil (kalimat `teksLencana` yang ada).
+  "You both want to meet" di layar Profil (terjemahan kalimat `teksLencana` yang ada).
 - Layar Pesan dan Kecocokan meminta hook memuat ulang setelah menandai dibaca/dilihat, supaya lencana tidak basi.
 
 ### 4.5 Notifikasi
@@ -348,34 +359,37 @@ Layar tab **tidak dilepas** saat berpindah tab (berbeda dengan Stack lama, yang 
 
 ### 4.7 Judul layar
 
-`JUDUL_LAYAR` sekarang berkunci **jalur berkas relatif `app/` tanpa `.tsx`, termasuk nama grup**:
+`JUDUL_LAYAR` sekarang berkunci **jalur berkas relatif `app/` tanpa `.tsx`, termasuk nama grup**; nilainya bahasa
+Inggris (#15):
 
 ```ts
 export const JUDUL_LAYAR: Record<string, string> = {
-  mulai: "Mulai",
-  "profile/[address]": "Profil",
-  "(tabs)/(beranda)/index": "Beranda",
+  mulai: "Get started",
+  "profile/[address]": "Profile",
+  "(tabs)/(beranda)/index": "Home",
   "(tabs)/(beranda)/feed/index": "Feed",
-  "(tabs)/(beranda)/feed/new": "Unggahan baru",
-  "(tabs)/(acara)/events/index": "Acara",
-  "(tabs)/(acara)/events/new": "Buat acara",
-  "(tabs)/(acara)/events/[id]": "Detail acara",
-  "(tabs)/(acara)/events/[id]/host-qr": "QR check-in",
+  "(tabs)/(beranda)/feed/new": "New post",
+  "(tabs)/(acara)/events/index": "Events",
+  "(tabs)/(acara)/events/new": "Create event",
+  "(tabs)/(acara)/events/[id]": "Event details",
+  "(tabs)/(acara)/events/[id]/host-qr": "Check-in QR",
   "(tabs)/(acara)/radar/[eventId]": "Radar",
-  "(tabs)/(salaman)/salaman": "Salaman",
-  "(tabs)/(pesan)/pesan/index": "Pesan",
-  "(tabs)/(pesan)/pesan/[address]": "Percakapan",
-  "(tabs)/(pesan)/pesan/lapor/[address]": "Lapor",
-  "(tabs)/(profil)/profil-saya": "Profil",
-  "(tabs)/(profil)/connections": "Koneksi",
-  "(tabs)/(profil)/kecocokan": "Kecocokan",
-  "(tabs)/(profil)/dompet": "Dompet",
-  "(tabs)/(profil)/blokir": "Diblokir",
+  "(tabs)/(salaman)/salaman": "Handshake",
+  "(tabs)/(pesan)/pesan/index": "Messages",
+  "(tabs)/(pesan)/pesan/[address]": "Conversation",
+  "(tabs)/(pesan)/pesan/lapor/[address]": "Report",
+  "(tabs)/(profil)/profil-saya": "Profile",
+  "(tabs)/(profil)/connections": "Connections",
+  "(tabs)/(profil)/kecocokan": "Matches",
+  "(tabs)/(profil)/dompet": "Wallet",
+  "(tabs)/(profil)/blokir": "Blocked",
 };
 ```
 
-- Judul lama dipertahankan kecuali tiga: `index` "Nearly" → "Beranda", `profil-saya` "Profil saya" → "Profil"
-  (sama dengan label tab), dan `qr` "QR salaman" + `scan` "Pindai" → satu `salaman` "Salaman".
+- Judul lama diterjemahkan 1:1 ("Detail acara" → "Event details", "Kecocokan" → "Matches", "Diblokir" → "Blocked",
+  …), kecuali tiga yang juga berubah makna: `index` "Nearly" → "Home", `profil-saya` "Profil saya" → "Profile" (sama
+  dengan label tab), dan `qr` "QR salaman" + `scan` "Pindai" → satu `salaman` "Handshake". `mulai` "Mulai" →
+  "Get started".
 - `layarDalam(grup)` mengembalikan pasangan `[nama relatif terhadap layout, judul]` untuk satu `_layout.tsx` —
   layout pemilik sebuah kunci adalah folder `_layout.tsx` terdalam yang menjadi awalan kuncinya. Setiap
   `_layout.tsx` Stack tab mendaftarkan judul dari `layarDalam("(tabs)/(acara)")` dst.; root layout tetap memakai
@@ -392,19 +406,19 @@ Setiap layar yang ada punya tempat; tidak ada yang dihapus kecuali `qr` + `scan`
 | Berkas lama | Berkas baru | Tab | Dibuka dari |
 |---|---|---|---|
 | `app/index.tsx` | `(tabs)/(beranda)/index.tsx` | Beranda | tab |
-| `app/feed/index.tsx` | `(tabs)/(beranda)/feed/index.tsx` | Beranda | "Semua ›" cuplikan feed |
-| `app/feed/new.tsx` | `(tabs)/(beranda)/feed/new.tsx` | Beranda | Feed "Tulis sesuatu" |
+| `app/feed/index.tsx` | `(tabs)/(beranda)/feed/index.tsx` | Beranda | "See all ›" cuplikan feed |
+| `app/feed/new.tsx` | `(tabs)/(beranda)/feed/new.tsx` | Beranda | Feed "Write something" |
 | `app/events/index.tsx` | `(tabs)/(acara)/events/index.tsx` | Acara | tab |
 | `app/events/[id].tsx` | `(tabs)/(acara)/events/[id].tsx` | Acara | daftar acara, kartu LIVE Beranda |
 | `app/radar/[eventId].tsx` | `(tabs)/(acara)/radar/[eventId].tsx` | Acara | Detail acara, kartu LIVE Beranda, notifikasi radar |
-| `app/events/new.tsx` | `(tabs)/(acara)/events/new.tsx` | Acara | tombol "+ Buat acara" |
+| `app/events/new.tsx` | `(tabs)/(acara)/events/new.tsx` | Acara | tombol "+ Create event" |
 | `app/events/[id]/host-qr.tsx` | `(tabs)/(acara)/events/[id]/host-qr.tsx` | Acara | Detail acara (host) |
-| `app/qr.tsx` + `app/scan.tsx` | `(tabs)/(salaman)/salaman.tsx` | Salaman | tab tengah, Detail acara (`?mode=pindai`), kartu radar "Salaman ›", keadaan kosong Beranda/Koneksi |
+| `app/qr.tsx` + `app/scan.tsx` | `(tabs)/(salaman)/salaman.tsx` | Salaman | tab tengah, Detail acara (`?mode=pindai`), kartu radar "Handshake ›", keadaan kosong Beranda/Koneksi |
 | `app/pesan/index.tsx` | `(tabs)/(pesan)/pesan/index.tsx` | Pesan | tab, notifikasi pesan |
-| `app/pesan/[address].tsx` | `(tabs)/(pesan)/pesan/[address].tsx` | Pesan | daftar Pesan, Profil orang "Kirim pesan" |
-| `app/pesan/lapor/[address].tsx` | `(tabs)/(pesan)/pesan/lapor/[address].tsx` | Pesan | Percakapan "Lapor" |
-| `app/profil-saya.tsx` | `(tabs)/(profil)/profil-saya.tsx` | Profil | tab, Radar "Buka Profil saya" |
-| `app/connections.tsx` | `(tabs)/(profil)/connections.tsx` | Profil | Profil, Beranda "Baru kamu temui · Semua ›" |
+| `app/pesan/[address].tsx` | `(tabs)/(pesan)/pesan/[address].tsx` | Pesan | daftar Pesan, Profil orang "Send message" |
+| `app/pesan/lapor/[address].tsx` | `(tabs)/(pesan)/pesan/lapor/[address].tsx` | Pesan | Percakapan "Report" |
+| `app/profil-saya.tsx` | `(tabs)/(profil)/profil-saya.tsx` | Profil | tab, Radar "Open your profile" (dulu "Buka Profil saya") |
+| `app/connections.tsx` | `(tabs)/(profil)/connections.tsx` | Profil | Profil, Beranda "Recently met · See all ›" |
 | `app/kecocokan.tsx` | `(tabs)/(profil)/kecocokan.tsx` | Profil | Profil |
 | `app/dompet.tsx` | `(tabs)/(profil)/dompet.tsx` | Profil | Profil, spanduk cadangan Beranda |
 | `app/blokir.tsx` | `(tabs)/(profil)/blokir.tsx` | Profil | Profil |
@@ -421,15 +435,17 @@ Kelima layar dari mockup layar kunci. Semua kartu mengikuti §3.4; semua nama or
 **Komponen bersama** (di `components/`, bukan `app/`):
 
 - `KartuOrang` — avatar huruf awal (lingkaran 42, gradasi `#2a3550`→`border`, cincin `verified` bila terverifikasi,
-  `#2a3550` bila belum), nama (`namaKartuRadar` — "Tanpa nama" untuk nama kosong), alamat singkat mono (`alamatSingkat`),
+  `#2a3550` bila belum), nama (`namaKartuRadar` — "Unnamed" untuk nama kosong, dulu "Tanpa nama"), alamat singkat mono (`alamatSingkat`),
   lencana, baris keterangan redup, dan `BatangTrust` opsional.
-- `BatangTrust({ tier })` — 4 ruas; ruas terisi = `tier + 1` (Baru = 1, Dikenal = 2, Terpercaya = 3, Inti = 4),
-  **selalu** disertai label tier (`TIER_LABELS`) sebagai teks di sebelahnya atau sebagai `accessibilityLabel`.
+- `BatangTrust({ tier })` — 4 ruas; ruas terisi = `tier + 1` (New = 1, Known = 2, Trusted = 3, Core = 4),
+  **selalu** disertai label tier Inggris (`labelTier(tier)` dari `LABEL_TIER_EN`, §7.4) sebagai teks di sebelahnya
+  atau sebagai `accessibilityLabel`.
   Tier tidak pernah tampil sebagai persentase atau angka skor.
-- `tierDariLabel(label)` di `src/tier.ts` — `TIER_LABELS.indexOf(label)`, label tak dikenal → 0. Radar dan Pesan
-  hanya mengirim label/tier, bukan skor (keputusan #10f), jadi batang dibangun dari itu.
-- `Lencana` — varian `terverifikasi` ("✓ terverifikasi"), `ringkas` ("✓" saja, di radar), dan teks bebas (mis.
-  "Saling ingin bertemu", kalimat `lencanaKartuRadar` yang ada).
+- `tierDariLabel(label)` di `src/tier.ts` — `TIER_LABELS.indexOf(label)` atas label **kawat** bahasa Indonesia, label
+  tak dikenal → 0. Radar dan Pesan hanya mengirim label/tier, bukan skor (keputusan #10f), jadi batang dibangun dari
+  itu; label kawat tidak pernah ditampilkan langsung (§7.4).
+- `Lencana` — varian `terverifikasi` ("✓ met in person"), `ringkas` ("✓" saja, di radar), dan teks bebas (mis.
+  "You both want to meet", terjemahan kalimat `lencanaKartuRadar` yang ada).
 
 ### 6.1 Beranda — `(tabs)/(beranda)/index.tsx`
 
@@ -437,22 +453,23 @@ Urutan dari atas; setiap bagian memuat sendiri dan gagal sendiri (satu bagian ga
 
 | Bagian | Isi | Sumber data (semua sudah ada) |
 |---|---|---|
-| Sapaan | "Selamat pagi/siang/sore/malam" (jam lokal: 04–10.59 pagi, 11–14.59 siang, 15–17.59 sore, selainnya malam), nama tampilan (varian `heading`), alamat sendiri **utuh** mono | nama: `GET /profile/:alamat-sendiri` `displayName`; kosong → baris nama tidak tampil, alamat tetap |
-| Spanduk cadangan | `TEKS_PENGINGAT_CADANGAN` + " Buka Dompet ›", ke `/dompet` | `perluPengingatCadangan` (tidak berubah) |
-| Acara LIVE | maks. 2 kartu acara yang sedang berlangsung: "● LIVE", `{checkins} hadir`, judul, lalu "Kamu sudah check-in · Buka radar ›" (ke `/radar/<id>`) bila `sudahCheckIn`, selainnya "Buka acara ›" (ke `/events/<id>`). Tidak ada acara live → bagian tidak tampil | `getDiscovery()` disaring `isEventLive`, lalu `getEvent(id, who, bukti)` dengan bukti yang sama seperti `events/[id]` |
-| Baru kamu temui | judul bagian + "Semua ›" (ke `/connections`); maks. 3 `KartuOrang` terbaru: nama + alamat singkat, "✓ terverifikasi", waktu relatif (`kemarin`, `2 hari lalu`, tanggal), `BatangTrust` | `GET /connections/:alamat` (urut terbaru, sudah ada); per orang `GET /profile/:alamat` (nama) + `fetchTrust` (tier) — 3 × 2 permintaan publik |
-| Feed | judul bagian + "Semua ›" (ke `/feed`); maks. 2 unggahan: nama penulis · waktu, teks terpotong 2 baris | `getFeed(kueriBuktiFeed(signer))` — bukti yang sama dengan layar Feed |
+| Sapaan | "Good morning/afternoon/evening" (jam lokal: 04:00–11:59 morning, 12:00–17:59 afternoon, selainnya evening), nama tampilan (varian `heading`), alamat sendiri **utuh** mono | nama: `GET /profile/:alamat-sendiri` `displayName`; kosong → baris nama tidak tampil, alamat tetap |
+| Spanduk cadangan | terjemahan `TEKS_PENGINGAT_CADANGAN` + " Open Wallet ›", ke `/dompet` | `perluPengingatCadangan` (tidak berubah) |
+| Acara LIVE | maks. 2 kartu acara yang sedang berlangsung: "● LIVE", `{checkins} checked in`, judul, lalu "You're checked in · Open radar ›" (ke `/radar/<id>`) bila `sudahCheckIn`, selainnya "Open event ›" (ke `/events/<id>`). Tidak ada acara live → bagian tidak tampil | `getDiscovery()` disaring `isEventLive`, lalu `getEvent(id, who, bukti)` dengan bukti yang sama seperti `events/[id]` |
+| Baru kamu temui | judul bagian "Recently met" + "See all ›" (ke `/connections`); maks. 3 `KartuOrang` terbaru: nama + alamat singkat, "✓ met in person", waktu relatif ("yesterday", "2 days ago", "Aug 12"), `BatangTrust` | `GET /connections/:alamat` (urut terbaru, sudah ada); per orang `GET /profile/:alamat` (nama) + `fetchTrust` (tier) — 3 × 2 permintaan publik |
+| Feed | judul bagian "Feed" + "See all ›" (ke `/feed`); maks. 2 unggahan: nama penulis · waktu, teks terpotong 2 baris | `getFeed(kueriBuktiFeed(signer))` — bukti yang sama dengan layar Feed |
 
-- Keadaan kosong "Baru kamu temui": kalimat yang ada "Belum ada koneksi. Koneksi hanya bisa dibuat dengan bertemu
-  langsung." + aksi **Salaman** (ke tab Salaman).
+- Keadaan kosong "Recently met": terjemahan kalimat yang ada — "No connections yet. Connections can only be made by
+  meeting in person." — + aksi **Handshake** (ke tab Salaman).
 - Daftar sepuluh tautan lama hilang; setiap tujuannya pindah ke tab (§5). Lencana Pesan dan kecocokan pindah ke tab
   (§4.4).
-- Nama acara pada kartu "Baru kamu temui" (mockup "BNB Hack · kemarin") **tidak** ditampilkan di Beranda: ia hanya
+- Nama acara pada kartu "Recently met" (mockup "BNB Hack · kemarin") **tidak** ditampilkan di Beranda: ia hanya
   ada di riwayat pertemuan yang butuh bukti per orang (§8.1). Kartu cukup menampilkan waktu.
 
 ### 6.2 Salaman — `(tabs)/(salaman)/salaman.tsx`
 
-**Perilaku sekarang** (dibaca dari kode, wajib dipertahankan):
+**Perilaku sekarang** (dibaca dari kode, wajib dipertahankan; kalimat dikutip sebagaimana adanya hari ini dan
+diterjemahkan saat dipindah — §7.4):
 
 - `app/qr.tsx`: pembungkus `useNearlySigner(CONFIG.verifyingContract)` → `QrScreenIsi` dengan
   `useRotatingQr(signer)`. Setiap siklus `QR_TTL_MS` (30 detik): ambil sel lokasi sendiri → `signOffer` →
@@ -478,67 +495,74 @@ export default function SalamanScreen() {                    // pembungkus: HANY
 }
 ```
 
-- `SalamanIsi`: `Segmen` "Tampilkan QR" | "Pindai" (mode awal "Tampilkan QR"; `?mode=pindai` membuka Pindai), dan
+- `SalamanIsi`: `Segmen` "Show QR" | "Scan" (mode awal "Show QR"; `?mode=pindai` membuka Scan), dan
   `useIsFocused()`; isi mode dirender **hanya saat fokus**.
-- Mode **Tampilkan QR** = `QrScreenIsi` lama dipindah apa adanya ke `components/salaman/mode-qr.tsx` (menerima
+- Mode **Show QR** (Tampilkan QR) = `QrScreenIsi` lama dipindah apa adanya ke `components/salaman/mode-qr.tsx` (menerima
   `signerSalaman`). Berganti mode atau tab melepasnya — interval berhenti; kembali ke mode ini memanggil `refresh`
   segera (efek pasang ulang), sama dengan membuka layar QR lagi hari ini. QR tampil di atas pelat `text` (`#e6edf7`)
   radius 12 supaya kontras pemindai terjaga di tema gelap; ukuran 260 tetap.
-- Mode **Pindai** = `ScanIsi` lama dipindah apa adanya ke `components/salaman/mode-pindai.tsx` dengan kedua signer.
-  Urutan check-in-lebih-dulu, penjaga `busy`, dan semua kalimat tidak berubah.
+- Mode **Scan** (Pindai) = `ScanIsi` lama dipindah apa adanya ke `components/salaman/mode-pindai.tsx` dengan kedua signer.
+  Urutan check-in-lebih-dulu dan penjaga `busy` tidak berubah; kalimatnya diterjemahkan 1:1 ("Checked in. 0x1234…",
+  "This isn't a Nearly QR code.", "That's your own QR code.", "Connected. 0x1234…", "Scan again"). Kalimat mode QR
+  "Minta dia memindai ini. Berganti dalam N detik." menjadi "Ask them to scan this. Changes in N seconds." (R5).
 - **Perubahan perilaku yang diputuskan (keputusan #8):** saat `postAccept` berhasil —
   1. `Haptics.notificationAsync(Success)`;
-  2. toast hijau berjudul **"Salaman berhasil"** dengan baris kedua kalimat yang ada "Terkoneksi. 0x1234…";
+  2. toast hijau berjudul **"Handshake complete"** dengan baris kedua terjemahan kalimat yang ada "Connected. 0x1234…";
   3. `router.push("/profile/" + payload.initiator)` — Profil orang yang baru ditemui (di atas tab, R1); hasil
      dikosongkan sehingga kembali ke Salaman siap memindai lagi.
-- Check-in berhasil **tidak** berpindah layar: hasil "Check-in berhasil. 0x1234…" tetap tampil seperti sekarang,
+- Check-in berhasil **tidak** berpindah layar: hasil "Checked in. 0x1234…" tetap tampil seperti sekarang,
   ditambah toast hijau + haptic (§7.2).
 - Pemegang QR (A) tetap tidak diberi tahu saat B berhasil memindai — tidak ada polling di `useRotatingQr` hari ini, dan
   menambahkannya di luar lingkup (§11 batas #7).
-- Teks baru di layar ini: label segmen, dan catatan lokasi di mode QR "Lokasi kasar dipakai hanya untuk memastikan
-  kalian berada di tempat yang sama" (sejalan dengan `NSLocationWhenInUseUsageDescription`).
+- Teks baru di layar ini: label segmen, dan catatan lokasi di mode QR "Approximate location is used only to confirm
+  you're both in the same place." (sejalan dengan `NSLocationWhenInUseUsageDescription`, §7.4).
 
 ### 6.3 Profil orang — `app/profile/[address].tsx`
 
 Layar ini tetap satu-satunya pengecualian pola pembungkus (spec dompet §6: ia sudah menangani signer `null`).
-Seluruh logika vouch, lapor, blokir, ingin bertemu, `loadError`, dan guliran ke isian tidak berubah; hanya tampilan
-dan dua blok data baru.
+Seluruh logika vouch, lapor, blokir, ingin bertemu, `loadError`, dan guliran ke isian tidak berubah; hanya tampilan,
+terjemahan, dan dua blok data baru.
 
 Urutan:
 
 1. Avatar besar (64), nama (`heading`), alamat/ENS **utuh** mono (seperti sekarang: ENS lalu alamat), lencana
-   "✓ bertemu langsung" + " · N acara bersama" bila `pertemuan` ada (§8.1).
-2. Kartu **Trust**: "Trust" + label tier, `BatangTrust`, baris bukti `tierView(...).evidenceLine` (sudah ada), lalu
-   "Dijamin N orang yang juga kamu kenal" bila `dijaminKenalan ≥ 1` (§8.2). Nilai 0 atau absen → baris tidak tampil.
-3. Kartu **Pertemuan** (hanya bila `pertemuan` ada): baris salaman ("Salaman di <acara> · <venue>" atau
-   "Bertemu langsung", lalu tanggal), lalu baris "Hadir bersama · <acara> · <tanggal>" untuk `acaraBersama`.
-4. Kartu **Detail on-chain** (B2: "detail on-chain saat kartu dibuka"): `{connectionCount} koneksi`,
-   `{txCount} transaksi on-chain` — fakta yang sudah ada, dipindah ke kartunya sendiri.
-5. Angka "ingin bertemu" dan tombolnya, "Kalian saling ingin bertemu." (tidak berubah).
-6. Aksi: **Kirim pesan** (utama) dan tombol tanda ingin bertemu berdampingan; **Vouch** (sekunder) dengan pemilih
-   tag; **Lapor**; **Blokir / Cabut blokir** (destruktif, teks). Label dan syarat tampil tidak berubah.
+   "✓ met in person" + " · N events together" ("1 event together") bila `pertemuan` ada (§8.1).
+2. Kartu **Trust**: "Trust" + label tier Inggris, `BatangTrust`, baris bukti `tierView(...).evidenceLine` (sudah ada,
+   diterjemahkan — §7.4), lalu "Vouched for by N people you know" ("Vouched for by 1 person you know") bila
+   `dijaminKenalan ≥ 1` (§8.2). Nilai 0 atau absen → baris tidak tampil.
+3. Kartu **Pertemuan** berjudul "Meetings" (hanya bila `pertemuan` ada): baris salaman ("Handshake at <acara> ·
+   <venue>" atau "Met in person", lalu tanggal "Aug 12"), lalu baris "Both attended · <acara> · <tanggal>" untuk
+   `acaraBersama`.
+4. Kartu **Detail on-chain** berjudul "On-chain details" (B2: "detail on-chain saat kartu dibuka"):
+   `{connectionCount} connections`, `{txCount} on-chain transactions` (tunggal "1 connection", "1 on-chain
+   transaction") — fakta yang sudah ada, dipindah ke kartunya sendiri.
+5. Angka "want to meet" dan tombolnya, "You both want to meet." (terjemahan "Kalian saling ingin bertemu.").
+6. Aksi: **Send message** (utama) dan tombol **Want to meet** berdampingan; **Vouch** (sekunder) dengan pemilih
+   tag; **Report**; **Block / Unblock** (destruktif, teks). Syarat tampil tidak berubah; label diterjemahkan.
 
 ### 6.4 Radar — `(tabs)/(acara)/radar/[eventId].tsx`
 
 Siklus detak 60 detik / radar 10 detik selama fokus dan seluruh penanganan keadaan tidak berubah.
 
-- Kepala: judul "Radar" + pil "● Terlihat" (radar hanya tampil saat pemanggil Terlihat — gerbang spec 4b+5), lalu
-  **"N orang terlihat di sini"** dengan N = `jumlah` dari respons (keputusan #10e) dan "Diperbarui <waktu relatif>"
-  dari jam HP saat `getRadar` terakhir berhasil. "Kamu terlihat oleh N orang" **tidak** dipakai: angka itu
+- Kepala: judul "Radar" + pil "● Visible" (radar hanya tampil saat pemanggil Terlihat — gerbang spec 4b+5), lalu
+  **"N people visible here"** ("1 person visible here") dengan N = `jumlah` dari respons (keputusan #10e) dan
+  "Updated <waktu relatif>" dari jam HP saat `getRadar` terakhir berhasil. Teks mockup "Kamu terlihat oleh N orang"
+  **tidak** dipakai: angka itu
   mengklaim siapa yang melihatmu, padahal server hanya tahu siapa yang terlihat olehmu.
-- Dua bagian dari urutan server (tanpa mengurutkan ulang): **"Koneksimu di sini"** (`pernahBertemu`) dan
-  **"Belum kamu temui"** (sisanya), masing-masing dengan jumlah kartunya.
+- Dua bagian dari urutan server (tanpa mengurutkan ulang): **"Your connections here"** (`pernahBertemu`) dan
+  **"Not met yet"** (sisanya), masing-masing dengan jumlah kartunya.
 - Kartu: `KartuOrang` dengan nama + alamat singkat, lencana ✓ ringkas untuk koneksi, lencana `lencanaKartuRadar`
-  yang ada ("Saling ingin bertemu"; "Pernah bertemu" digantikan ✓ ringkas karena bagiannya sudah mengatakannya),
-  keterangan **"hadir sekarang"** (keputusan #10d — setiap kartu radar memang hadir dalam 15 menit terakhir; jam detak
-  tidak pernah dikirim), `BatangTrust` dari `tierLabel`. Kartu "Belum kamu temui" menambah **"N koneksi bersama"**
-  bila `koneksiBersama` ada (§8.3) dan tautan **"Salaman ›"** ke tab Salaman.
+  yang ada, diterjemahkan ("You both want to meet"; "Pernah bertemu" digantikan ✓ ringkas karena bagiannya sudah
+  mengatakannya), keterangan **"here now"** (keputusan #10d — setiap kartu radar memang hadir dalam 15 menit terakhir;
+  jam detak tidak pernah dikirim), `BatangTrust` dari `tierDariLabel(tierLabel)` dengan label Inggris. Kartu
+  "Not met yet" menambah **"N mutual connections"** ("1 mutual connection") bila `koneksiBersama` ada (§8.3) dan
+  tautan **"Handshake ›"** ke tab Salaman.
 - Mengetuk kartu → `/profile/<alamat>` (seperti sekarang). Tetap tidak ada tombol pesan dan tidak ada peta.
 
 ### 6.5 Percakapan — `(tabs)/(pesan)/pesan/[address].tsx`
 
-- Header: avatar + nama + alamat singkat, keterangan "🔒 terenkripsi ujung ke ujung" (fakta spec 4c), menu ⋯ berisi
-  aksi yang sudah ada di layar ini (Lapor, Blokir) dengan kalimat yang sama.
+- Header: avatar + nama + alamat singkat, keterangan "🔒 end-to-end encrypted" (fakta spec 4c), menu ⋯ berisi
+  aksi yang sudah ada di layar ini (Report, Block) dengan terjemahan kalimat yang sama.
 - Gelembung: pesan masuk `card` bergaris di kiri; pesan keluar `primary` dengan teks `primaryForeground` di kanan;
   pemisah hari redup di tengah.
 - Isian: `Input` BNA + tombol kirim `primary` 40×40 berikon panah; perilaku kirim, batas, dan galat tidak berubah.
@@ -550,49 +574,189 @@ Siklus detak 60 detik / radar 10 detik selama fokus dan seluruh penanganan keada
 
 | Pola | Layar | Bentuk |
 |---|---|---|
-| **Daftar** | Acara, Feed, Pesan, Koneksi, Kecocokan, Diblokir | judul besar; aksi utama di kanan atas atau baris pertama ("+ Buat acara", "Tulis sesuatu"); baris = kartu bergaris; Acara menaruh acara LIVE di atas daftar |
+| **Daftar** | Acara, Feed, Pesan, Koneksi, Kecocokan, Diblokir | judul besar; aksi utama di kanan atas atau baris pertama ("+ Create event", "Write something"); baris = kartu bergaris; Acara menaruh acara LIVE di atas daftar |
 | **Formulir** | Buat acara, Unggahan baru, Lapor, Profil (bagian nama & visibilitas), Mulai (isian 12 kata / kunci dev) | label kecil redup di atas `Input` BNA; peringatan dan penghitung karakter yang ada di bawah isian; tombol utama lebar penuh di bawah |
 | **Detail** | Detail acara, QR check-in, Dompet, Profil orang | kepala (judul/nama), kartu fakta, aksi di bawah; aksi destruktif paling bawah dan berwarna `destructive` |
 
-**Profil (tab)** = `profil-saya` diperluas: kepala (nama, alamat utuh mono, `{connectionCount} koneksi`, batang
-trust + label dari `fetchTrust` alamat sendiri), lalu bagian nama & visibilitas yang sudah ada (Terlihat/Tersembunyi
-dengan kalimat `kalimatVisibilitas` dan `KALIMAT_BATAS_TERSEMBUNYI`, tidak berubah), lalu daftar tautan: Koneksi,
-Saling ingin bertemu (+ lencana), Dompet ("Alamat, 12 kata pemulihan, dan ganti dompet"), Diblokir.
+**Profil (tab)** = `profil-saya` diperluas: kepala (nama, alamat utuh mono, `{connectionCount} connections`, batang
+trust + label Inggris dari `fetchTrust` alamat sendiri), lalu bagian nama & visibilitas yang sudah ada (Visible/Hidden
+dengan kalimat `kalimatVisibilitas` dan `KALIMAT_BATAS_TERSEMBUNYI`, logikanya tidak berubah, kalimatnya
+diterjemahkan), lalu daftar tautan: Connections, You both want to meet (+ lencana), Wallet ("Address, 12-word recovery
+phrase, and switch wallet"), Blocked.
 
-**Mulai** (keputusan #11): logo "n" besar (`components/logo-n.tsx`, kuning di latar gelap), kalimat **"Kenali orang
-yang benar-benar kamu temui"**, lalu tombol **Buat dompet baru** (utama) dan **Pakai dompet yang sudah ada (12 kata)**
-(sekunder), tombol dev tetap di belakang `{__DEV__ && (`. Kalimat pembuka lama yang ada di bawah judul "Nearly"
-digantikan kalimat ini; semua kalimat lain di layar Mulai (peringatan 12 kata, "Menyiapkan dompet…", galat)
-tidak berubah, dan penjaga ketukan ganda, atribut isian Android, dan `textContentType="none"` tetap (dijaga
+**Mulai** (keputusan #11): logo "n" besar (`components/logo-n.tsx`, kuning di latar gelap), kalimat **"Know the
+people you've actually met"**, lalu tombol **Create a new wallet** (utama) dan **Use an existing wallet** (sekunder,
+membuka isian 12 kata), tombol dev tetap di belakang `{__DEV__ && (`. Kalimat pembuka lama yang ada di bawah judul
+"Nearly" digantikan kalimat ini; semua kalimat lain di layar Mulai (peringatan 12 kata, "Menyiapkan dompet…" →
+"Setting up wallet…", galat) hanya diterjemahkan, dan penjaga ketukan ganda, atribut isian Android, dan `textContentType="none"` tetap (dijaga
 `gerbang-dompet.test.ts`).
 
 ### 7.2 Empat keadaan seragam
 
 | Keadaan | Bentuk | Aturan |
 |---|---|---|
-| **Memuat** | `Skeleton` BNA berbentuk kartu/baris yang akan datang | menggantikan `ActivityIndicator` dan teks "Memuat…" di layar. Pengecualian: tombol yang sedang bekerja tetap memakai label sibuk yang ada ("Mengirim…", "Menyimpan…", "Menyiapkan dompet…") |
-| **Kosong** | ikon lucide redup + kalimat kosong **yang ada** + satu aksi bila masuk akal | Koneksi & Beranda → Salaman; Acara → Buat acara; Feed → Tulis sesuatu; Kecocokan, Pesan, Diblokir → tanpa aksi. Aturan "daftar kosong di samping galat BUKAN keadaan kosong" (komentar di `kecocokan.tsx`, `blokir.tsx`, `pesan/index.tsx`) tetap |
-| **Galat** | kalimat galat **yang ada** + tombol **Coba lagi** yang memuat ulang | layar yang sekarang tidak punya Coba lagi mendapatkannya; kalimatnya tidak berubah |
-| **Berhasil** | `Toast` hijau (garis `verified`, ikon ✓) + `Haptics.notificationAsync(Success)` | hanya untuk aksi penting: salaman, check-in, vouch terkirim, acara dibuat, unggahan terkirim, profil disimpan, laporan terkirim. Kalimat toast = kalimat berhasil yang ada; pesan yang sekarang tampil sebagai teks di bawah tombol pindah ke toast — kecuali hasil pindai check-in, yang tetap tampil di layar bersama tombol "Pindai lagi" (§6.2). `Alert.alert` konfirmasi (Ganti dompet, Lihat 12 kata, Laporan terkirim → Blokir?) tetap dialog |
+| **Memuat** | `Skeleton` BNA berbentuk kartu/baris yang akan datang | menggantikan `ActivityIndicator` dan teks "Memuat…" di layar. Pengecualian: tombol yang sedang bekerja tetap memakai label sibuk yang ada, diterjemahkan ("Sending…", "Saving…", "Setting up wallet…") |
+| **Kosong** | ikon lucide redup + terjemahan kalimat kosong **yang ada** + satu aksi bila masuk akal | Koneksi & Beranda → Handshake; Acara → Create event; Feed → Write something; Kecocokan, Pesan, Diblokir → tanpa aksi. Aturan "daftar kosong di samping galat BUKAN keadaan kosong" (komentar di `kecocokan.tsx`, `blokir.tsx`, `pesan/index.tsx`) tetap |
+| **Galat** | terjemahan kalimat galat **yang ada** + tombol **Try again** yang memuat ulang | layar yang sekarang tidak punya Coba lagi mendapatkannya; maknanya tidak berubah |
+| **Berhasil** | `Toast` hijau (garis `verified`, ikon ✓) + `Haptics.notificationAsync(Success)` | hanya untuk aksi penting: salaman, check-in, vouch terkirim, acara dibuat, unggahan terkirim, profil disimpan, laporan terkirim. Kalimat toast = terjemahan kalimat berhasil yang ada; pesan yang sekarang tampil sebagai teks di bawah tombol pindah ke toast — kecuali hasil pindai check-in, yang tetap tampil di layar bersama tombol "Scan again" (§6.2). `Alert.alert` konfirmasi (ganti dompet, lihat 12 kata, laporan terkirim → blokir?) tetap dialog, kalimatnya diterjemahkan |
 
 ### 7.3 Teks baru yang diizinkan
 
-Selain teks di daftar ini dan kalimat data baru §8, setiap kalimat berasal dari kode yang ada (keputusan #12, R5):
+Selain teks di daftar ini dan kalimat data baru §8, setiap kalimat adalah terjemahan kalimat yang ada di kode
+(keputusan #12, #15, R5). Semua teks baru berbahasa Inggris:
 
-- Label tab: Beranda, Acara, Salaman, Pesan, Profil.
-- Sapaan "Selamat pagi/siang/sore/malam"; judul bagian "Baru kamu temui", "Feed", "Koneksimu di sini",
-  "Belum kamu temui", "Trust", "Pertemuan", "Detail on-chain"; tautan "Semua ›", "Buka radar ›", "Buka acara ›",
-  "Buka Dompet ›", "Salaman ›"; "● LIVE"; "Kamu sudah check-in".
-- Salaman: "Tampilkan QR", "Pindai", catatan lokasi (§6.2), toast "Salaman berhasil".
-- Radar: "N orang terlihat di sini", "Diperbarui …", "hadir sekarang", "N koneksi bersama", pil "Terlihat".
-- Lencana: "✓ terverifikasi", "✓ bertemu langsung", " · N acara bersama".
-- Profil orang: "Dijamin N orang yang juga kamu kenal", "Salaman di …", "Bertemu langsung", "Hadir bersama · …".
-- Percakapan: "🔒 terenkripsi ujung ke ujung".
-- Mulai: "Kenali orang yang benar-benar kamu temui".
-- Waktu relatif: "baru saja", "N menit lalu", "N jam lalu", "kemarin", "N hari lalu", lalu tanggal `id-ID`.
+- Label tab: Home, Events, Handshake, Messages, Profile.
+- Sapaan "Good morning" / "Good afternoon" / "Good evening"; judul bagian "Recently met", "Feed", "Your connections
+  here", "Not met yet", "Trust", "Meetings", "On-chain details"; tautan "See all ›", "Open radar ›", "Open event ›",
+  "Open Wallet ›", "Handshake ›"; "● LIVE"; "N checked in"; "You're checked in".
+- Handshake: "Show QR", "Scan", catatan lokasi "Approximate location is used only to confirm you're both in the same
+  place.", toast "Handshake complete".
+- Radar: "N people visible here", "Updated …", "here now", "N mutual connections", pil "Visible".
+- Lencana: "✓ met in person", " · N events together".
+- Profil orang: "Vouched for by N people you know", "Handshake at …", "Met in person", "Both attended · …".
+- Percakapan: "🔒 end-to-end encrypted".
+- Mulai: "Know the people you've actually met", "Create a new wallet", "Use an existing wallet".
+- Waktu relatif: "just now", "N minutes ago", "N hours ago", "yesterday", "N days ago", lalu tanggal "Aug 12"
+  (§7.4).
+- Tombol galat: "Try again".
 
-Semua kalimat baru ditaruh di fungsi/konstanta murni `src/` (pola `src/messages.ts`), diuji di vitest, bukan ditulis
-di JSX.
+Setiap teks berangka memakai bentuk tunggal untuk `n === 1` ("1 minute ago", "1 person visible here", "1 mutual
+connection", "1 event together", "Vouched for by 1 person you know"). Semua kalimat baru ditaruh di fungsi/konstanta
+murni `src/` (pola `src/messages.ts`), diuji di vitest, bukan ditulis di JSX.
+
+### 7.4 Bahasa Inggris (keputusan #15)
+
+**Cakupan.** Setiap teks yang dilihat pengguna aplikasi mobile menjadi bahasa Inggris: layar di `app/`, komponen di
+`components/`, modul kalimat di `src/`, judul layar dan label tab, teks izin di `app.json`, dan isi push yang dibuat
+`apps/api`. Satu bahasa, tanpa kerangka i18n (tidak ada `i18next`/`expo-localization`, tidak ada berkas terjemahan,
+tidak ada pengalih bahasa): kalimat Inggris ditulis langsung di tempat kalimat Indonesia hari ini.
+
+**Yang tetap bahasa Indonesia:** nama berkas, nama rute dan parameter (`/salaman?mode=pindai`, `/profil-saya`,
+`/dompet`), semua pengenal kode, kode galat (`dompet_tidak_konsisten`, `tersembunyi`, …), nilai kawat API
+(`visibilitas: "terlihat"`, `jenis: "pesan"`, `tierLabel` — di bawah), komentar kode, judul `describe`/`it` di tes,
+log `console.*`, dan semua dokumen. `apps/web` tidak disentuh.
+
+**Daftar istilah (terkunci, #15):**
+
+| Indonesia hari ini | Inggris |
+|---|---|
+| Beranda · Acara · Salaman · Pesan · Profil (tab) | Home · Events · Handshake · Messages · Profile |
+| Salaman (aksi/layar) | Handshake |
+| Terlihat / Tersembunyi | Visible / Hidden |
+| Tier Baru · Dikenal · Terpercaya · Inti | New · Known · Trusted · Core |
+| Vouch · Lapor · Blokir / Cabut blokir | Vouch · Report · Block / Unblock |
+| Ingin bertemu / Saling ingin bertemu | Want to meet / You both want to meet |
+| Koneksi · koneksi bersama | Connections · mutual connections |
+| Dompet · 12 kata pemulihan | Wallet · 12-word recovery phrase |
+| lencana "✓ terverifikasi" | "✓ met in person" |
+| "✓ bertemu langsung · N acara bersama" | "✓ met in person · N events together" (tunggal "1 event together") |
+| "Bertemu langsung" (salaman di luar acara) | "Met in person" |
+| "Dijamin N orang yang juga kamu kenal" | "Vouched for by N people you know" (tunggal "1 person") |
+| "N koneksi bersama" | "N mutual connections" (tunggal "1 mutual connection") |
+| "N orang terlihat di sini" | "N people visible here" (tunggal "1 person visible here") |
+| "hadir sekarang" | "here now" |
+| "Kenali orang yang benar-benar kamu temui" | "Know the people you've actually met" |
+| Buat dompet baru / Pakai dompet yang sudah ada | "Create a new wallet" / "Use an existing wallet" |
+| kemarin / N hari lalu | yesterday / N days ago |
+
+Kalimat lain diterjemahkan 1:1 maknanya oleh tugas yang memindahkan layarnya, memakai istilah di atas, dengan
+register yang sama (orang kedua "you", hangat, pendek). Terjemahan yang dikutip di spec ini (R5, §6, §7.1–§7.3)
+mengikat.
+
+**Bentuk jamak.** Aturan tunggal: `n === 1` → bentuk tunggal, selainnya jamak (termasuk 0). Satu fungsi murni
+`jamak(n, tunggal, banyak)` di `src/jamak.ts` mengembalikan `` `${n} ${n === 1 ? tunggal : banyak}` ``; semua teks
+berangka memakainya. Tidak ada aturan jamak lain (tidak ada `Intl.PluralRules`).
+
+**Tanggal dan jam.** Fungsi murni di `src/waktu.ts`, **tidak** memakai `toLocaleString` (hasil `Intl` di Hermes/Expo
+Go tidak dijamin sama antarperangkat, dan tes harus deterministik):
+
+- tanggal: nama bulan Inggris tiga huruf tetap (`Jan` … `Dec`) + hari tanpa nol di depan — "Aug 12"; tahun
+  ditambahkan bila bukan tahun berjalan — "Aug 12, 2025";
+- jam: 24 jam, dua digit — "19:42", "08:05";
+- tanggal + jam acara: "Aug 12, 19:42" — menggantikan `toLocaleString("id-ID", …)` di `events/index` dan
+  `events/[id]`;
+- waktu relatif (§7.3): < 1 menit "just now"; < 60 menit "N minutes ago"; < 24 jam "N hours ago"; hari kalender
+  sebelumnya "yesterday"; ≤ 6 hari "N days ago"; selebihnya tanggal.
+
+Semua memakai zona waktu lokal HP, seperti hari ini.
+
+**Label tier: kawat vs tampilan.** `TIER_LABELS = ["Baru","Dikenal","Terpercaya","Inti"]` tinggal di
+`packages/trust/src/tier.ts`, yang **tidak boleh diubah** (§13). API mengirim string itu sebagai `tierLabel`
+(`radar-gate.ts`, `graf.ts`, `routes/trust.ts`), dan `apps/web/src/label.ts` `radiusSimpul` memakainya sebagai kunci
+peta untuk graf `/live`. Karena itu:
+
+- `tierLabel` di kawat **tetap bahasa Indonesia** dan diperlakukan sebagai **kode internal**, bukan teks tampilan;
+- `apps/mobile/src/tier.ts` mendapat `LABEL_TIER_EN = ["New", "Known", "Trusted", "Core"] as const` (berindeks tier,
+  panjang sama dengan `TIER_LABELS`) dan `labelTier(tier)` (tier di luar jangkauan → `"New"`);
+- `tierDariLabel(label)` tetap mengurai label kawat Indonesia (`TIER_LABELS.indexOf`, tak dikenal → 0);
+- `tierView` memakai `labelTier`, dan baris buktinya diterjemahkan dengan `jamak`: "12 connections · 3 occasions ·
+  2 regions · 4 vouches"; tanpa bukti → "no connections yet";
+- `app/kecocokan.tsx` hari ini merender `TIER_LABELS[k.tier]` langsung — diganti `labelTier(k.tier)`;
+- **tidak ada layar yang merender `TIER_LABELS`**: hanya `src/tier.ts` yang boleh mengimpornya (tes §10.1).
+
+**Tag vouch.** `SUGGESTED_TAGS` di `src/tier.ts` adalah saran yang tampil sebagai tombol, jadi diterjemahkan:
+"real builder", "solid dev", "knows zk", "designer", "research". Tag adalah isi yang ditandatangani (`tagsHash`),
+bukan teks antarmuka: tag yang sudah tercatat tampil apa adanya, dan API tidak berubah.
+
+**Isi push (di `apps/api`).** Teks push dibuat API, bukan HP; judul tetap "Nearly":
+
+| Berkas | Sekarang | Menjadi |
+|---|---|---|
+| `apps/api/src/pesan-push.ts` `teksPush(nama)` | "Pesan baru dari <nama>" / "Pesan baru dari koneksimu" | "New message from <name>" / "New message from a connection" |
+| `apps/api/src/radar-notif.ts` `teksNotifKedekatan` — saling ingin bertemu | "<nama>, yang saling ingin bertemu denganmu, ada di acara ini." / "Seseorang yang saling ingin bertemu denganmu ada di acara ini." | "<name> is at this event. You both want to meet." / "Someone you both want to meet is at this event." |
+| idem — pernah bertemu | "<nama>, yang pernah kamu temui, ada di acara ini." / "Seseorang yang pernah kamu temui ada di acara ini." | "<name>, who you've met, is at this event." / "Someone you've met is at this event." |
+
+Aturan privasi isi push tidak berubah (spec 4c §7.2, spec 4b+5 §6.4): tanpa alamat, tanpa judul atau lokasi acara,
+tanpa sel; hanya nama tampilan bila ada. `data` push (`jenis`, `eventId`) tidak berubah. Tes
+`apps/api/test/pesan-push.test.ts` dan `radar-notif.test.ts` diperbarui ke kalimat Inggris; pemeriksaan "tanpa
+alamat/judul/lokasi" di tes itu tetap.
+
+**Teks izin (`app.json`).** `ios.infoPlist`:
+
+- `NSCameraUsageDescription`: "Nearly uses the camera only to scan the QR codes of people you meet."
+- `NSLocationWhenInUseUsageDescription`: "Nearly uses approximate location (~150 m) only while the app is open: during
+  a handshake, to confirm you're really in the same place, and while the Radar screen is open, to mark that you're at
+  the event."
+
+Android tidak memakai teks izin kustom (`android.permissions` hanya daftar izin), dan izin notifikasi memakai dialog
+sistem tanpa teks dari aplikasi (tidak ada plugin `expo-notifications` bertes izin di `app.json`); tidak ada teks
+lain yang diterjemahkan di sana.
+
+**Cara penerjemahan berjalan (§9):**
+
+1. Langkah 2 (fondasi) menerjemahkan `src/tier.ts` (`LABEL_TIER_EN`, `labelTier`, `tierView`, `SUGGESTED_TAGS`),
+   menambah `src/jamak.ts` + `src/waktu.ts`, dan teks izin `app.json` (berkas itu sudah disentuh di langkah ini).
+2. Langkah 3 (navigasi) menulis `JUDUL_LAYAR` dan `TAB_BAWAH` langsung dalam bahasa Inggris (§4.3, §4.7).
+3. Langkah 4 (API) menerjemahkan isi push dan tesnya.
+4. Langkah 5: setiap kelompok menerjemahkan **layar yang dimigrasinya** di tugas yang sama. Modul kalimat bersama di
+   `src/` (`messages.ts`, `errors.ts`, `dompet/teks-dompet.ts`, kalimat blokir/acara/feed/meet/pesan/radar/kecocokan
+   yang diuji `blokir-messages`, `event-messages`, `feed-messages`, `feed-alasan`, `meet-messages`,
+   `meet-gerbang-teks`, `pesan-messages`, `radar-messages`, `kecocokan-teks`, `teks-dompet`, `errors`,
+   `galat-jaringan`, `messages`) diterjemahkan **di tugas pertama yang menyentuhnya**, bersama tesnya: harapan
+   string di tes menjadi Inggris, judul `describe`/`it` tetap Indonesia.
+5. Tugas terakhir langkah 5 adalah **sapuan**: `grep` teks Indonesia yang tersisa di `app/`, `components/`, `src/`,
+   `app.json`, lalu tes penjaga bahasa §10.1 dinyalakan untuk seluruh pohon.
+
+**Tes penjaga bahasa (`bahasa.test.ts`, baca-kode).** Memakai TypeScript compiler API (`typescript`, sudah
+devDependency akar; bila tidak terjangkau dari `apps/mobile`, ditambahkan sebagai devDependency `@nearly/mobile` dengan
+versi yang sama) untuk mengurai setiap `.ts`/`.tsx` di `app/`, `components/`, `src/`:
+
+- yang diperiksa **hanya** simpul teks: `StringLiteral`, `NoSubstitutionTemplateLiteral`, bagian teks template
+  (`TemplateHead`/`Middle`/`Tail`), dan `JsxText`. Pengenal dan komentar tidak pernah menjadi simpul itu, jadi tidak
+  pernah terperiksa — komentar boleh tetap Indonesia;
+- dilewati: penentu modul `import`/`export … from`/`require(...)`, argumen `console.*`, dan kunci properti
+  (`{ "saling_ingin_bertemu": … }`);
+- pola: kata utuh, tanpa peka huruf besar, `\b(yang|dan|kamu|tidak|sudah|belum|dengan|untuk|ini|itu|gagal|berhasil|coba|sedang)\b`.
+  `\b` memperlakukan `_` sebagai bagian kata, sehingga kode seperti `dompet_tidak_konsisten` tidak cocok;
+- **allowlist eksplisit** berupa pasangan `[berkas, literal]` di tes itu untuk string kode yang sah (mis. nilai kawat,
+  kunci `JUDUL_LAYAR`), masing-masing dengan alasan satu baris; allowlist yang tidak lagi cocok dengan kode membuat tes
+  merah, supaya tidak menumpuk (kunci `JUDUL_LAYAR` tidak perlu masuk — kunci properti sudah dilewati);
+- `app.json`: setiap nilai `ios.infoPlist.*UsageDescription` lolos pola yang sama;
+- selama langkah 5 tes berlaku untuk daftar berkas yang sudah dimigrasi; di sapuan akhir untuk seluruh pohon (sama
+  dengan tes penjaga lain, §9).
+
+Tes ini jaring, bukan bukti: kalimat Indonesia tanpa kata di pola bisa lolos, dan sapuan manual di langkah 5 tetap
+wajib.
 
 ## 8. Data Baru di API
 
@@ -684,8 +848,8 @@ Juga **hanya di cabang terbukti**: `dijaminKenalan: number`.
 
 ### 8.4 (d)(e)(f) Tanpa perubahan API
 
-- (d) "hadir sekarang": teks tetap di HP. Jam detak (`seen_at`) tetap tidak pernah dikirim.
-- (e) "N orang terlihat di sini": `jumlah` sudah ada dan sudah = jumlah kartu yang dikirim (bukan sebelum penyaringan).
+- (d) "here now": teks tetap di HP. Jam detak (`seen_at`) tetap tidak pernah dikirim.
+- (e) "N people visible here": `jumlah` sudah ada dan sudah = jumlah kartu yang dikirim (bukan sebelum penyaringan).
   HP yang sekarang belum membacanya mulai membacanya.
 - (f) Batang bertingkat: radar mengirim `tierLabel`, `/trust/:address` mengirim `tier` + `tierLabel` + bukti, Pesan
   mengirim `tier`. Tidak ada yang mengirim skor/rasio — tetap. HP membangun batang dari tier (§6).
@@ -717,17 +881,22 @@ Eksekutor: sesi `fcc` dengan `superpowers:subagent-driven-development`, di branc
      berlaku dengan nama komponen yang sama, sehingga langkah 2–6 tidak berubah.
    - Hasil spike (jalur yang dipakai, lima hal belum pasti §3.6) ditulis ke §11 spec ini.
 2. **Fondasi:** `theme/colors.ts` + `globals.ts`, tema dikunci gelap, font + splash, `app.json` (tema, ikon, splash,
-   `version` 0.2.0), skrip ikon + PNG, `components/` bersama (KartuOrang, BatangTrust, Lencana, Segmen, LogoN), hapus
-   `src/warna.ts`. Layar belum dipindah.
+   `version` 0.2.0, teks izin Inggris), skrip ikon + PNG, `components/` bersama (KartuOrang, BatangTrust, Lencana,
+   Segmen, LogoN), `src/tier.ts` berlabel Inggris + `src/jamak.ts` + `src/waktu.ts` (§7.4), hapus `src/warna.ts`.
+   Layar belum dipindah.
 3. **Navigasi:** pohon §4.1 (`git mv` supaya riwayat berkas terjaga), `(tabs)/_layout.tsx` + tab bar, Stack per tab
-   dengan `unstable_settings`, `JUDUL_LAYAR`/`layarDalam`/`TAB_BAWAH`, gerbang dompet dengan daftar baru,
+   dengan `unstable_settings`, `JUDUL_LAYAR`/`layarDalam`/`TAB_BAWAH` (berbahasa Inggris), gerbang dompet dengan daftar baru,
    `useLencanaTab`, Salaman sementara merender dua komponen lama berdampingan. Semua tes lama yang bergantung pada
    jalur diperbarui di langkah ini (§10.1).
-4. **API tiga data baru** + tes fake dan tes privasi (§10.2). Tidak menyentuh HP.
-5. **Migrasi layar per kelompok**, satu commit per kelompok: (a) Salaman; (b) Beranda; (c) Profil (tab) + Profil orang;
-   (d) Acara + Radar; (e) Pesan; (f) sisanya (Feed, Unggahan baru, Buat acara, QR check-in, Koneksi, Kecocokan,
-   Dompet, Diblokir, Lapor, Mulai, keadaan galat gerbang). Tes penjaga §10.1 yang bersifat "seluruh `app/`" dinyalakan
-   di akhir (f); sebelum itu berlaku untuk berkas yang sudah dimigrasi (daftar eksplisit di tes).
+4. **API tiga data baru** + tes fake dan tes privasi (§10.2), dan **isi push Inggris** di `pesan-push.ts` +
+   `radar-notif.ts` beserta tesnya (§7.4). Tidak menyentuh HP.
+5. **Migrasi layar per kelompok**, satu commit per kelompok; setiap kelompok **menerjemahkan layarnya sendiri** dan
+   modul kalimat bersama yang pertama kali disentuhnya, bersama tesnya (§7.4): (a) Salaman; (b) Beranda; (c) Profil
+   (tab) + Profil orang; (d) Acara + Radar; (e) Pesan; (f) sisanya (Feed, Unggahan baru, Buat acara, QR check-in,
+   Koneksi, Kecocokan, Dompet, Diblokir, Lapor, Mulai, keadaan galat gerbang); (g) **sapuan bahasa** — sisa teks
+   Indonesia di `app/`, `components/`, `src/`, `app.json`. Tes penjaga §10.1 yang bersifat "seluruh `app/`" dinyalakan
+   di akhir (f), penjaga bahasa di akhir (g); sebelum itu berlaku untuk berkas yang sudah dimigrasi (daftar eksplisit
+   di tes).
 6. **Dokumen & verifikasi:** amandemen §15, `docs/demo/runbook.md` (langkah demo menyebut tab, bukan tautan beranda),
    hasil uji iPhone ke §10.3.
 
@@ -769,10 +938,21 @@ Tes baru / diganti:
   `(…)` dibuang.
 - **`tautan.test.ts` (baru, baca-kode):** setiap `href="…"` dan `router.push("…")` statis di `app/**` dan
   `components/**` menunjuk rute yang ada; tidak ada lagi `/qr` atau `/scan`.
-- **Fungsi murni baru:** `tierDariLabel` (empat label + tak dikenal), ruas batang `tier + 1`, sapaan per jam (batas
-  04.00, 11.00, 15.00, 18.00), waktu relatif, kalimat pertemuan (`null`, tanpa acara, dengan acara, dengan venue
-  kosong, 0/1/N acara bersama), "Dijamin N…" (0 → `null`), "N koneksi bersama" (absen → `null`), "N orang terlihat di
-  sini", pemisahan kartu radar ke dua bagian tanpa mengubah urutan.
+- **Fungsi murni baru:** `tierDariLabel` (empat label kawat Indonesia + tak dikenal), `labelTier` (0–3 → New/Known/
+  Trusted/Core, di luar jangkauan → New; `LABEL_TIER_EN.length === TIER_LABELS.length`), ruas batang `tier + 1`,
+  sapaan per jam (batas 04:00, 12:00, 18:00), `jamak` (0, 1, 2), tanggal/jam (`"Aug 12"`, tahun lain `"Aug 12, 2025"`,
+  `"08:05"`, `"19:42"`), waktu relatif (setiap batas §7.4), kalimat pertemuan (`null`, tanpa acara, dengan acara,
+  dengan venue kosong, 0/1/N events together), "Vouched for by …" (0 → `null`, 1 → "1 person", N), "N mutual
+  connections" (absen → `null`, 1, N), "N people visible here" (1, N), pemisahan kartu radar ke dua bagian tanpa
+  mengubah urutan.
+- **Tes kalimat yang ada** (`messages`, `blokir-messages`, `event-messages`, `feed-messages`, `feed-alasan`,
+  `meet-messages`, `meet-gerbang-teks`, `pesan-messages`, `radar-messages`, `kecocokan-teks`, `teks-dompet`, `errors`,
+  `galat-jaringan`, `tier`, `judul-layar`, …): string yang diharapkan menjadi Inggris; kasus, cabang, dan judul
+  `describe`/`it` tetap. Tes yang memeriksa kode galat atau nilai kawat tidak berubah.
+- **`bahasa.test.ts` (baru, baca-kode):** penjaga teks Indonesia §7.4, plus: `TIER_LABELS` hanya diimpor oleh
+  `src/tier.ts` (tidak ada berkas lain di `app/`, `components/`, `src/` yang mengimpor atau merendernya); tidak ada
+  `toLocaleString`/`toLocaleDateString`/`toLocaleTimeString` di `app/`, `components/`, `src/` (tanggal lewat
+  `src/waktu.ts`); nilai `ios.infoPlist` di `app.json` persis kalimat §7.4.
 - Tes lama lain tetap hijau tanpa diubah maknanya.
 
 ### 10.2 Tes otomatis — `apps/api` (vitest dengan fake `support/*`)
@@ -799,6 +979,8 @@ Tes baru / diganti:
 - Langkah mutasi dijalankan sungguhan untuk: saringan blokir di (b) dan (c), saringan `revoked_at`, syarat
   `pernahBertemu === false`, cabang terbukti di profil, dan pembangunan kartu kunci demi kunci (ganti dengan spread →
   tes kunci persis harus merah).
+- **Isi push:** `pesan-push.test.ts` dan `radar-notif.test.ts` mengharapkan kalimat Inggris §7.4 (dengan dan tanpa
+  nama, kedua hubungan); pemeriksaan bahwa isi tidak memuat alamat, judul acara, lokasi, atau sel tetap.
 - `pnpm -r test` dan `pnpm -r typecheck` hijau.
 
 ### 10.3 Uji di iPhone (Expo Go) — pemilik project
@@ -809,16 +991,19 @@ Tes baru / diganti:
 3. Kelima tab berpindah; tombol Salaman besar di tengah; tab aktif kuning.
 4. Salaman: mode QR berganti tiap 30 detik; pindah ke Pindai → kamera; pindah tab lalu kembali → kamera/QR tidak
    berjalan di latar (lampu kamera iOS mati saat tab lain). Pindai QR HP kedua (atau `apps/api/tools/peer.ts`) →
-   haptic, toast "Salaman berhasil", Profil orang itu terbuka dengan "✓ bertemu langsung".
-5. Detail acara "Pindai QR host untuk check-in" → tab Salaman mode Pindai; check-in → toast, tetap di layar.
-6. Profil orang yang pernah disalami di acara → kartu Pertemuan menampilkan nama acara; "Dijamin N…" tampil bila ada
-   penjamin yang juga koneksimu.
-7. Radar di acara live dengan dua HP lain (satu koneksi, satu belum) → dua bagian, "hadir sekarang", "N orang
-   terlihat di sini", "N koneksi bersama" hanya di kartu yang belum ditemui. Catat waktu muat radar (§8.5 jalur
+   haptic, toast "Handshake complete", Profil orang itu terbuka dengan "✓ met in person".
+5. Detail acara "Scan the host's QR to check in" → tab Handshake mode Scan; check-in → toast, tetap di layar.
+6. Profil orang yang pernah disalami di acara → kartu "Meetings" menampilkan nama acara; "Vouched for by …" tampil
+   bila ada penjamin yang juga koneksimu.
+7. Radar di acara live dengan dua HP lain (satu koneksi, satu belum) → dua bagian, "here now", "N people visible
+   here", "N mutual connections" hanya di kartu yang belum ditemui. Catat waktu muat radar (§8.5 jalur
    cadangan).
-8. Kirim pesan dari HP lain → lencana tab Pesan; ketuk notifikasi → tab Pesan. Notifikasi radar → tab Acara › Radar.
-9. Ganti dompet dari tab Profil → layar Mulai tanpa tab bar, logo "n", kalimat baru; buat dompet → Beranda.
-10. Semua layar lain dibuka sekali: tidak ada teks gelap-di-atas-gelap, tidak ada nama rute mentah di header.
+8. Kirim pesan dari HP lain → lencana tab Messages; isi notifikasi "New message from …"; ketuk notifikasi → tab
+   Messages. Notifikasi radar (kalimat Inggris §7.4) → tab Events › Radar.
+9. Ganti dompet dari tab Profile → layar Mulai tanpa tab bar, logo "n", "Know the people you've actually met"; buat
+   dompet → Home.
+10. Semua layar lain dibuka sekali: tidak ada teks gelap-di-atas-gelap, tidak ada nama rute mentah di header, tidak
+    ada teks Indonesia (termasuk dialog konfirmasi dan galat).
 
 ## 11. Batas yang Diakui
 
@@ -849,12 +1034,25 @@ Tes baru / diganti:
    orang. Sama dengan hari ini.
 8. **Lencana tab bisa basi sampai 30 detik** (§4.4), dan tidak diperbarui oleh push yang tiba saat aplikasi terbuka
    kecuali tab berganti atau aplikasi kembali ke depan.
-9. **Kartu "Baru kamu temui" dan layar Koneksi memuat nama per orang.** Beranda memakai 3 × 2 permintaan publik;
+9. **Kartu "Recently met" dan layar Koneksi memuat nama per orang.** Beranda memakai 3 × 2 permintaan publik;
    layar Koneksi (hingga 100 baris) tetap menampilkan alamat seperti sekarang, karena `GET /connections/:address` tidak
    mengirim nama dan menambahkannya adalah perubahan API di luar tiga data baru.
 10. **Radar menghitung koneksi bersama setiap 60 detik per penonton.** Untuk acara ratusan orang dengan penonton yang
     punya ratusan koneksi, kueri per kelompok bisa lambat; jalur cadangan §8.5.
 11. **Tombol kembali dari Radar yang dibuka lewat notifikasi pulang ke daftar Acara, bukan Detail acara** (§4.5).
+12. **Pengguna berbahasa Indonesia kini mendapat aplikasi berbahasa Inggris** — diterima pemilik (#15). Tidak ada
+    pengalih bahasa; menambah bahasa kedua nanti berarti memperkenalkan kerangka i18n dan memindahkan setiap kalimat ke
+    berkas terjemahan, di luar fase ini.
+13. **`tierLabel` di kawat tetap bahasa Indonesia** ("Baru", "Dikenal", "Terpercaya", "Inti"). Siapa pun yang membaca
+    API langsung (atau `/live` di `apps/web`, yang hanya memakainya sebagai kunci ukuran simpul) melihat string itu;
+    aplikasi mobile tidak pernah menampilkannya (§7.4). Mengubahnya butuh perubahan `packages/trust` dan `apps/web`,
+    keduanya di luar jalur.
+14. **Teks izin `app.json` tidak terlihat di Expo Go**, yang memakai teks izinnya sendiri; kalimat Inggris §7.4 baru
+    tampil di build EAS (sama dengan batas #3).
+15. **Tag vouch lama tetap bahasa Indonesia** ("paham zk", "desainer", "riset") — isi yang ditandatangani tampil apa
+    adanya; tag baru memakai saran Inggris, jadi satu makna bisa tercatat dalam dua bahasa.
+16. **Penjaga bahasa hanya jaring kata umum** (§7.4); kalimat Indonesia tanpa kata di pola bisa lolos. Sapuan manual
+    langkah 5(g) dan uji §10.3 butir 10 menutup sisanya.
 
 ## 12. Di Luar Lingkup
 
@@ -865,15 +1063,18 @@ Tes baru / diganti:
 - Ekspor dan hapus data satu tap (spec induk §14 butir 8) — keputusan brainstorming sudah ada, spec belum ditulis.
 - Tanda "sudah dibaca" untuk pengirim (R6), indikator mengetik, avatar foto (`pfp_url` belum dipakai).
 - Nama tampilan di `GET /connections/:address`, salaman ulang, notifikasi "salamanmu berhasil" untuk pemegang QR.
-- Perubahan kalimat di luar §7.3 dan §8 — termasuk teks contoh mockup yang berbeda dari kalimat yang ada (R5).
-- `apps/web` (landing, `/live`).
+- Perubahan kalimat di luar terjemahan, §7.3, dan §8 — termasuk teks contoh mockup yang berbeda dari kalimat yang ada
+  (R5).
+- Kerangka i18n, pengalih bahasa, bahasa kedua, dan mengikuti bahasa sistem (#15).
+- Menerjemahkan `tierLabel` di kawat, `TIER_LABELS`, atau tag vouch yang sudah tercatat (§7.4).
+- `apps/web` (landing, `/live`) — sudah berbahasa Inggris.
 
 ## 13. Batas Jalur
 
 | Boleh diubah | Tidak boleh diubah |
 |---|---|
-| `apps/mobile/**` (termasuk `app.json`, `package.json`, `tsconfig.json`, `vitest.config.ts`, `assets/`, `scripts/`) | `packages/contracts/**`, `packages/trust/**` |
-| `apps/api/**` | `apps/web/**` |
+| `apps/mobile/**` (termasuk `app.json`, `package.json`, `tsconfig.json`, `vitest.config.ts`, `assets/`, `scripts/`) | `packages/contracts/**`, `packages/trust/**` (termasuk `TIER_LABELS`) |
+| `apps/api/**` — termasuk teks push `src/pesan-push.ts`, `src/radar-notif.ts` dan tesnya (§7.4) | `apps/web/**` |
 | `packages/shared/**` — **hanya bila** skema benar-benar dibutuhkan (rencana spec ini: tidak ada) | `.env` root, `apps/mobile/.env` (dibaca pun tidak) |
 | `supabase/migrations/0009_*.sql` baru — **hanya** jalur cadangan §8.5 atas permintaan pemilik; diterapkan pemilik | migrasi `0001`–`0008` |
 | `pnpm-lock.yaml` (akibat `expo install` / `bna-ui add`) | |
@@ -893,9 +1094,9 @@ Sesi eksekusi tidak menjalankan migrasi, tidak menyentuh Supabase, dan tidak mem
 - `userInterfaceStyle: "dark"` dan warna latar akar adalah konfigurasi native: berlaku di build EAS setelah dibangun
   ulang, di Expo Go langsung.
 
-## 15. Amandemen Spec Induk (dan spec 4b+5)
+## 15. Amandemen Spec Induk (dan spec 4b+5, 4a, 6)
 
-Langkah 6 rencana implementasi memperbarui:
+Langkah 6 rencana implementasi memperbarui butir 1–4:
 
 1. **`2026-09-03-nearly-design.md` §10.1** — paragraf baru "Amandemen (2026-09-18) — tampilan": tema selalu gelap
    (palet B2), Inter + JetBrains Mono, komponen BNA UI disalin ke `apps/mobile/components/ui/` (atau komponen sendiri
@@ -906,11 +1107,18 @@ Langkah 6 rencana implementasi memperbarui:
 4. **`2026-09-14-nearly-fase-4b5-radar-design.md` §5.2** — catatan amandemen: `KartuRadar` mendapat `koneksiBersama?`
    (angka, hanya kartu yang belum ditemui, hanya ≥ 1), dengan aturan privasi §8.3 spec ini. Daftar "yang TIDAK PERNAH
    ada" tetap berlaku.
+5. **`2026-09-14-nearly-fase-6-demo-design.md` keputusan #5** ("Bahasa landing page: Inggris (aplikasi tetap
+   berbahasa Indonesia)") — diamandemen: aplikasi mobile kini berbahasa Inggris (#15, §7.4); landing tidak berubah.
+6. **`2026-09-08-nearly-fase-4a-blokir-design.md` §8** ("Semua teks berbahasa Indonesia") — diamandemen: teks blokir
+   diterjemahkan ke bahasa Inggris (Block / Unblock, §7.4) dengan register orang kedua yang sama.
+
+Butir 5 dan 6 sudah dicatat di kedua berkas itu bersama perubahan spec ini (catatan satu baris yang menunjuk §7.4);
+langkah 6 hanya memeriksa bahwa catatannya masih ada.
 
 ## 16. Langkah Berikutnya
 
 1. Pemilik project me-review spec ini, terutama R4 (alamat singkat di kartu), R6 (tanpa "Dibaca"), R8 ("jumlah kali"),
-   dan §11 batas #5.
+   §11 batas #5, dan keputusan teknis bahasa di §7.4 (sapaan tiga bagian, format tanggal, saran tag vouch, kalimat push).
 2. Rencana implementasi `docs/superpowers/plans/2026-09-18-nearly-desain-ui.md` di branch `desain-ui`, dieksekusi
    sesi `fcc`.
 3. Langkah 1 (spike) dilaporkan ke pemilik sebelum langkah 2 dimulai; pemilik menjalankan uji iPhone spike.
