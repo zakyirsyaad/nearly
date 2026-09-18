@@ -255,21 +255,32 @@ digantikan splash. Font yang gagal dimuat tidak memblokir aplikasi: teks jatuh k
   memuat `react-native-reanimated@4.6.0` dan `react-native-worklets@0.12.1` secara tidak langsung; keduanya dijadikan
   dependensi langsung `@nearly/mobile`. Ditambah **`expo-clipboard`** (#16C, ada di Expo Go) — dipasang dengan
   `npx expo install expo-clipboard` di langkah 5(b) (Beranda), tugas pertama yang memakainya, bukan di spike.
-- `ThemeProvider` BNA dibungkus di luar `DompetProvider` di `app/_layout.tsx`, bersama penyedia toast BNA.
+- `ThemeProvider` BNA dibungkus di luar `DompetProvider` di `app/_layout.tsx`, bersama penyedia toast BNA. *(Hasil spike: BNA tidak punya `ThemeProvider` — yang dibungkus hanya `ToastProvider`; butir 1 di bawah.)*
 
-**Hal BNA yang BELUM pasti** (dokumentasi daring hanya ringkas; diputuskan di spike, hasilnya dicatat di §11):
+**Hasil spike repo (2026-09-18)** — dijalankan di worktree sementara dari `desain-ui` 3c5450d, lalu dibuang; uji tampil
+di Expo Go (iPhone) tetap langkah 1 pemilik (§9). Menggantikan daftar "hal yang belum pasti" versi awal bagian ini:
 
-1. Letak `ThemeProvider` hasil salinan — dokumentasi menyebut `@/theme/theme-provider` di satu halaman dan
-   `@/providers/theme-provider` di halaman lain.
-2. Apakah `ThemeProvider` BNA membungkus `ThemeProvider` milik `@react-navigation/native` (yang di SDK 57 datang
-   lewat `expo-router`) dan butuh impor langsung paket itu.
-3. Apakah `Input` BNA meneruskan semua `TextInputProps` (`importantForAutofill`, `textContentType`, `keyboardType`,
-   `secureTextEntry`, `autoComplete`) — dibutuhkan isian 12 kata (spec dompet §8 batas #12). Bila tidak, `Input`
-   disunting agar meneruskannya.
-4. Apakah `bna-ui` CLI berjalan di workspace pnpm (mendeteksi `apps/mobile` sebagai proyek Expo, tidak menulis ke
-   akar monorepo), dan apa yang ditulisnya selain `components/ui/`.
-5. Apakah ada plugin babel yang harus ditambahkan untuk reanimated 4 / worklets di SDK 57 (babel-preset-expo
-   diharapkan sudah menyertakannya; tidak ada `babel.config.js` di repo sekarang).
+1. **Tidak ada `ThemeProvider` BNA** dan tidak ada impor `@react-navigation`. `useColor(nama)` membaca `Colors[skema]`
+   dari `theme/colors.ts`; skema = `ModeProvider` (bila dipasang) atau skema OS. Nearly mengisi palet B2 di kunci
+   `light` DAN `dark`, membuat `hooks/useColorScheme.ts` selalu `"dark"`, dan tidak memakai `ModeProvider`. Yang
+   dibungkus di root layout di luar `DompetProvider` adalah `ToastProvider` (yang membawa `GestureHandlerRootView`);
+   toast dipanggil lewat `useToast().toast({ title, description, variant })`.
+2. (Pertanyaan pembungkus tema `@react-navigation` gugur bersama butir 1.)
+3. `Input` BNA: `InputProps extends Omit<TextInputProps, 'style'>` — semua prop `TextInput` diteruskan.
+4. CLI `pnpm dlx bna-ui@latest add <komponen…> --pnpm -y` (versi 3.0.0) berjalan di `apps/mobile` tanpa `init`,
+   asalkan `tsconfig.json` punya `"baseUrl": "."` + `"paths": { "@/*": ["./*"] }` dan `include` memuat folder
+   salinannya. CLI memasang lewat `expo install` versi yang cocok SDK 57: `react-native-reanimated` **4.5.1**,
+   `react-native-worklets` **0.10.1**, `react-native-gesture-handler` ~2.32.0 (dependensi toast, tidak ada di daftar
+   awal), `expo-haptics` ~57.0.3, `lucide-react-native` ^1.47.0 — bukan 4.6.0/0.12.1 yang ada secara tidak langsung.
+   CLI menambah plugin `"expo-image"` ke `app.json` hanya bila komponen `avatar`/`image` disalin.
+5. Tidak ada plugin babel tambahan: `npx expo export --platform ios` membundel reanimated 4.5.1 + worklets 0.10.1
+   (tanpa `babel.config.js`).
+
+Temuan lain: salinan `text` memakai `fontWeight` tanpa `fontFamily` (disunting sesuai §3.3); `theme/globals.ts` bawaan
+berradius pil (`CORNERS` 999, `BORDER_RADIUS` 26) dan disetel ke §3.4; `toast` memuat warna iOS literal (diganti
+token); BNA **punya** `bottom-sheet`, tetapi salinannya gagal `tsc` repo ini (`noUncheckedIndexedAccess`) — R13 tetap:
+sheet salaman memakai `Modal` React Native. Rincian pemakaian: rencana implementasi A
+(`docs/superpowers/plans/2026-09-18-nearly-desain-ui-a-fondasi.md`, Ruling A1).
 
 ### 3.7 Aksesibilitas & ergonomi (keputusan #16E)
 
@@ -1184,7 +1195,8 @@ Tes baru / diganti:
 ## 11. Batas yang Diakui
 
 1. **BNA UI belum terbukti di SDK 57 + pnpm monorepo + Expo Go.** Lima hal belum pasti di §3.6; spike §9 langkah 1
-   memutuskan jalurnya. Hasil spike ditulis di sini.
+   memutuskan jalurnya. Hasil spike ditulis di sini. *Hasil spike repo (2026-09-18):* CLI, typecheck, dan bundel iOS
+   lolos (rincian §3.6); uji tampil di Expo Go menunggu pemilik (rencana A Task 1).
 2. **Font dimuat async.** Splash tertahan sampai font siap; di jaringan Metro yang lambat splash bisa lebih lama dari
    sekarang. Font yang gagal dimuat jatuh ke font sistem tanpa galat — tampilan berbeda, aplikasi tetap jalan.
 3. **Ikon dan splash tidak terlihat di Expo Go.** Expo Go memakai ikonnya sendiri dan tidak menjamin splash kustom
