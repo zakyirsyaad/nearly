@@ -47,7 +47,7 @@ Diputuskan pemilik project (2026-09-18). Ditulis sesuai kata-kata pemilik; tidak
 | 13 | **Urutan:** (1) spike BNA di monorepo SDK 57 — satu tombol BNA tampil di Expo Go; bila gagal, jatuh ke token + komponen sendiri; (2) fondasi tema/font/alias/ikon/splash; (3) navigasi tab + rute notifikasi; (4) API 3 data baru + tes privasi; (5) migrasi layar per kelompok: Salaman, Beranda, Profil, Acara+Radar, Pesan, sisanya; (6) dokumen & verifikasi. Eksekutor: sesi `fcc`. |
 | 14 | **Pengujian:** tes baca-kode (tak ada warna hex di `app/` selain file tema; semua teks lewat komponen Text BNA; setiap TextInput lewat Input BNA — menggantikan `WARNA`/tes warna-isian; judul setiap layar tetap dijaga seperti `test/judul-layar.test.ts`), tes API dengan fake untuk 3 data baru termasuk kasus privasi (Tersembunyi, blokir dua arah, tidak ada nama di koneksi bersama), uji iPhone (Expo Go) oleh pemilik. |
 | 15 | **Bahasa aplikasi mobile: Inggris** (diputuskan 2026-09-18, di fase yang sama karena setiap layar disentuh). Satu bahasa saja — tanpa kerangka i18n, tanpa pengalih bahasa. Istilah terkunci: tab Home · Events · Handshake · Messages · Profile; Salaman (aksi/layar) → Handshake; Terlihat / Tersembunyi → Visible / Hidden; tier Baru · Dikenal · Terpercaya · Inti → New · Known · Trusted · Core; Vouch · Lapor · Blokir / Cabut blokir → Vouch · Report · Block / Unblock; Ingin bertemu / Saling ingin bertemu → Want to meet / You both want to meet; Koneksi · koneksi bersama → Connections · mutual connections; Dompet · 12 kata pemulihan → Wallet · 12-word recovery phrase; lencana "✓ terverifikasi" → "✓ met in person"; "✓ bertemu langsung · N acara bersama" → "✓ met in person · N events together" (tunggal "1 event together"); "Bertemu langsung" → "Met in person"; "Dijamin N orang yang juga kamu kenal" → "Vouched for by N people you know" (tunggal "1 person"); "N koneksi bersama" → "N mutual connections" (tunggal); "N orang terlihat di sini" → "N people visible here"; "hadir sekarang" → "here now"; kalimat Mulai → "Know the people you've actually met"; tombol Mulai → "Create a new wallet" / "Use an existing wallet"; waktu relatif kemarin / N hari lalu → yesterday / N days ago; tanggal "Aug 12"; jam 24 jam "19:42". `apps/web` tidak disentuh (landing dan `/live` sudah berbahasa Inggris). Rincian di §7.4. |
-| 16 | **Hasil review UI/UX** (diputuskan 2026-09-18). **A. Urutan Profil orang + hierarki trust:** baris aksi (Send message utama + Want to meet) pindah tepat di bawah blok kepala (avatar, nama, alamat utuh, lencana), SEBELUM kartu Trust, supaya terlihat tanpa menggulir; Vouch/Report/Block tetap paling bawah. Di kartu Trust nilainya dominan: label kecil redup "Trust" (`caption`) di atas nilai tier (mis. "Trusted") berukuran/berbobot `title`, lalu batang tier, baris bukti, "Vouched for by …". Aturan "nilai lebih keras dari label" berlaku di setiap pasangan label/nilai (mis. hitungan Radar, hitungan tab Profil) — §7.1. **B. Warna ruas kosong batang trust** `#56627d` (token baru `segmentEmpty`), kontras 3,01:1 terhadap card `#0f1420` dan 3,3:1 terhadap `verified` `#37d6a8` (WCAG 1.4.11 non-teks ≥ 3:1); menggantikan `border` untuk ruas kosong (§3.1, §3.4). **C. Alamat sendiri di Beranda disingkat** (`0x9bE5…6ffA`, mono) dengan tombol kecil "Copy" (ketuk → alamat utuh ke clipboard lewat `expo-clipboard`, toast "Address copied" + haptic ringan). Alamat utuh tetap di Dompet dan Profil (tab). Mengubah #1 dan R4; `expo-clipboard` dependensi baru (`npx expo install expo-clipboard`, ada di Expo Go). **D. Sheet salaman berhasil (momen puncak):** "toast lalu pindah ke profil" diganti bottom sheet di atas tab Handshake — dua avatar bertumpuk (milikmu bercincin `primary`, miliknya bercincin `verified`), judul "You met ‹nama›" (tanpa nama → alamat singkat), lencana "✓ met in person", baris redup berisi informasi "Connected. 0x…" yang sudah ada, tombol utama "View profile" (→ `profile/[address]`) dan sekunder "Scan someone else" (menutup sheet, pemindai siap lagi); haptic Success saat sheet terbuka; tanpa animasi kustom; tanpa panggilan API baru; hanya di sisi yang hari ini sudah tahu salaman berhasil (§6.2). Check-in lewat QR host tetap seperti sekarang. **E. Aturan dasar aksesibilitas & ergonomi** (§3.7): target sentuh ≥ 44×44 pt iOS / 48×48 dp Android; skala jarak 4/8/12/16/24/32; maks. 4 ukuran huruf per layar, bobot 400 dan 600 (700 hanya `heading`), tanpa Inter 500, 10.5 dan 11 disatukan ke 11; teks ikut ukuran huruf sistem (label tab & lencana dibatasi 1,3×); Reduce Motion; safe area; `accessibilityLabel` untuk tombol ikon dan batang trust; tes baca-kode penjaga yang murah. |
+| 16 | **Hasil review UI/UX** (diputuskan 2026-09-18). **A. Urutan Profil orang + hierarki trust:** baris aksi (Send message utama + Want to meet) pindah tepat di bawah blok kepala (avatar, nama, alamat utuh, lencana), SEBELUM kartu Trust, supaya terlihat tanpa menggulir; Vouch/Report/Block tetap paling bawah. Di kartu Trust nilainya dominan: label kecil redup "Trust" (`caption`) di atas nilai tier (mis. "Trusted") berukuran/berbobot `title`, lalu batang tier, baris bukti, "Vouched for by …". Aturan "nilai lebih keras dari label" berlaku di setiap pasangan label/nilai (mis. hitungan Radar, hitungan tab Profil) — §7.1. **B. Warna ruas kosong batang trust** `#56627d` (token baru `segmentEmpty`), kontras 3,01:1 terhadap card `#0f1420` dan 3,3:1 terhadap `verified` `#37d6a8` (WCAG 1.4.11 non-teks ≥ 3:1); menggantikan `border` untuk ruas kosong (§3.1, §3.4). **C. Alamat sendiri di Beranda disingkat** (`0x9bE5…6ffA`, mono) dengan tombol kecil "Copy" (ketuk → alamat utuh ke clipboard lewat `expo-clipboard`, toast "Address copied" + haptic ringan). Alamat utuh tetap di Dompet dan Profil (tab). Mengubah #1 dan R4; `expo-clipboard` dependensi baru (`npx expo install expo-clipboard`, ada di Expo Go). **D. Sheet salaman berhasil (momen puncak):** "toast lalu pindah ke profil" diganti bottom sheet di atas tab Handshake — dua avatar bertumpuk (milikmu bercincin `primary`, miliknya bercincin `verified`), judul "You met ‹nama›" (tanpa nama → alamat singkat), lencana "✓ met in person", baris redup berisi informasi "Connected. 0x…" yang sudah ada, tombol utama "View profile" (→ `profile/[address]`) dan sekunder "Scan someone else" (menutup sheet, pemindai siap lagi); haptic Success saat sheet terbuka; tanpa animasi kustom; nama diambil dengan satu panggilan publik `GET /profile/:alamat` yang sudah ada (R14, diputuskan pemilik 2026-09-18); hanya di sisi yang hari ini sudah tahu salaman berhasil (§6.2). Check-in lewat QR host tetap seperti sekarang. **E. Aturan dasar aksesibilitas & ergonomi** (§3.7): target sentuh ≥ 44×44 pt iOS / 48×48 dp Android; skala jarak 4/8/12/16/24/32; maks. 4 ukuran huruf per layar, bobot 400 dan 600 (700 hanya `heading`), tanpa Inter 500, 10.5 dan 11 disatukan ke 11; teks ikut ukuran huruf sistem (label tab & lencana dibatasi 1,3×); Reduce Motion; safe area; `accessibilityLabel` untuk tombol ikon dan batang trust; tes baca-kode penjaga yang murah. |
 
 Teks UI yang dikutip di #1, #3, #8, #10, dan #11 adalah kata-kata pemilik dalam bahasa Indonesia; yang tampil di
 aplikasi adalah padanan Inggrisnya menurut #15 dan §7.4. Di seluruh spec ini, nama Indonesia untuk layar dan tab
@@ -103,11 +103,15 @@ Keputusan teknis yang diambil spec ini (bisa ditinjau di review spec):
   tidak memuat sheet/bottom-sheet, dan menambah satu berarti memverifikasi dependensi gerak/gesture baru di Expo Go di
   luar spike. `Modal` bawaan (`transparent`, `animationType="slide"`, `onRequestClose`) cukup dan tidak menambah
   paket (§6.2).
-- **R14. Judul sheet "You met ‹nama›" jatuh ke alamat singkat hari ini.** Setelah `postAccept` berhasil, pemindai hanya
-  tahu `payload.initiator` (alamat, dari QR) dan `txHash` (respons `{ txHash }`); QR tidak membawa nama, dan acara
-  tidak ada di alur salaman. #16D melarang panggilan API baru khusus sheet, jadi judul memakai `alamatSingkat` dan
-  nama acara tidak ditampilkan. Helper judul tetap menerima nama (§6.2) supaya sumber nama yang sudah ada kelak bisa
-  dipakai tanpa mengubah bentuknya.
+- **R14. Judul sheet "You met ‹nama›": alamat singkat dulu, lalu nama.** Setelah `postAccept` berhasil, pemindai hanya
+  tahu `payload.initiator` (alamat, dari QR) dan `txHash`; QR tidak membawa nama. Pemilik project memutuskan
+  (2026-09-18) nama diambil: sheet **langsung** terbuka dengan "You met ‹alamat singkat›", lalu **satu** panggilan
+  publik `GET /profile/:initiator` **tanpa bukti** — rute dan bentuk yang sama dengan `req<Profile>(`/profile/${address}`)`
+  di `app/profile/[address].tsx`, API tidak berubah — mengisi `displayName`; bila tidak kosong, judul berganti ke
+  "You met ‹nama›" dan huruf avatarnya ikut nama. Galat, waktu habis, atau nama kosong → judul tetap alamat singkat,
+  tanpa pesan galat (sheet tetap berguna). Jawaban yang datang setelah sheet ditutup, atau untuk alamat lain
+  (pemindaian berikutnya), dibuang — bandingkan alamat sebelum `set`. Nama acara tetap tidak ditampilkan (tidak ada
+  di alur salaman).
 
 ## 3. Fondasi Visual
 
@@ -609,9 +613,9 @@ export default function SalamanScreen() {                    // pembungkus: HANY
      signerSalaman.address)` — layar Salaman tidak memuat namamu), miliknya bercincin `verified`
      (`hurufAvatar(null, payload.initiator)`).
   3. **Judul** varian `title`: `judulSheetBertemu(nama, alamat)` di `src/messages.ts` — nama yang sudah di-`trim`
-     tidak kosong → "You met ‹nama›"; selainnya "You met ‹alamatSingkat(alamat)›" (alamat dalam `mono`). Hari ini
-     pemanggil selalu memberi `nama = null`: pemindai hanya tahu `payload.initiator` dan `txHash`, QR tidak membawa
-     nama, dan sheet tidak menambah panggilan API (R14).
+     tidak kosong → "You met ‹nama›"; selainnya "You met ‹alamatSingkat(alamat)›" (alamat dalam `mono`). Sheet dibuka
+     dengan `nama = null`, lalu `nama` diisi dari satu `GET /profile/:initiator` publik (R14); jawaban basi (sheet
+     sudah ditutup atau alamat berbeda) dibuang.
   4. **Lencana** `terverifikasi` "✓ met in person".
   5. **Baris redup** (`caption`): terjemahan kalimat yang ada "Connected. 0x1234…" (`txHash` 10 karakter + "…", mono)
      — informasi yang hari ini tampil sebagai teks hasil. Nama acara **tidak** ditampilkan: alur salaman tidak
@@ -1082,7 +1086,7 @@ Tes baru / diganti:
   `"react-native"` dengan `onRequestClose`, dan `router.push(\`/profile/${…}\`)` hanya di penangan "View profile";
   `onScan` diabaikan selama sheet terbuka; check-in berhasil **tidak** membuka sheet dan tidak berpindah layar; isi
   mode dirender di balik `useIsFocused`; pembungkus hanya memanggil hook dompet; `components/salaman/mode-qr.tsx` dan
-  `src/handshake/useRotatingQr.ts` tidak memuat sheet (sisi QR tidak diberi sinyal baru, §6.2).
+  `src/handshake/useRotatingQr.ts` tidak memuat sheet (sisi QR tidak diberi sinyal baru, §6.2). Pengambilan nama sheet (R14) memakai `/profile/` **tanpa** `kueriBuktiProfil`, dan membandingkan alamat sebelum mengisi nama (jawaban basi dibuang).
 - **`aksesibilitas.test.ts` (baru, baca-kode, §3.7):** tidak ada `allowFontScaling={false}` / `allowFontScaling:
   false` di `app/**`, `components/**`; nilai numerik literal `margin*`/`padding*`/`gap`/`rowGap`/`columnGap` di
   `app/**` dan `components/**` di luar `components/ui/**` ∈ {0, 4, 8, 12, 16, 24, 32}; tidak ada `fontSize` literal di
@@ -1150,7 +1154,7 @@ Tes baru / diganti:
 3. Kelima tab berpindah; tombol Salaman besar di tengah dan tidak menabrak home indicator; tab aktif kuning.
 4. Salaman: mode QR berganti tiap 30 detik; pindah ke Pindai → kamera; pindah tab lalu kembali → kamera/QR tidak
    berjalan di latar (lampu kamera iOS mati saat tab lain). Pindai QR HP kedua (atau `apps/api/tools/peer.ts`) →
-   haptic, sheet "You met 0x…" dengan dua avatar, "✓ met in person", baris "Connected. 0x…"; kamera tidak memindai
+   haptic, sheet "You met 0x…" yang dalam ~1 detik berganti "You met ‹nama›" bila orang itu punya nama, dengan dua avatar, "✓ met in person", baris "Connected. 0x…"; kamera tidak memindai
    ulang selama sheet terbuka. "Scan someone else" → sheet tertutup, pemindai siap. Ulangi dengan HP ketiga (atau
    identitas `peer.ts` lain — satu pasangan hanya bisa salaman sekali, R8), lalu
    "View profile" → Profil orang itu terbuka dengan "✓ met in person". Di HP pemegang QR tidak ada sheet (§11 batas
@@ -1227,9 +1231,9 @@ Tes baru / diganti:
     adanya; tag baru memakai saran Inggris, jadi satu makna bisa tercatat dalam dua bahasa.
 16. **Penjaga bahasa hanya jaring kata umum** (§7.4); kalimat Indonesia tanpa kata di pola bisa lolos. Sapuan manual
     langkah 5(g) dan uji §10.3 butir 10 menutup sisanya.
-17. **Sheet salaman menyapa dengan alamat singkat, bukan nama** (R14): pemindai tidak tahu nama orang yang baru
-    ditemui, dan #16D melarang panggilan API khusus sheet. Nama baru terlihat setelah "View profile". Avatar di sheet
-    memakai huruf dari alamat, termasuk avatarmu sendiri (layar Salaman tidak memuat namamu).
+17. **Sheet salaman sempat menampilkan alamat singkat sebelum nama** (R14): nama datang dari satu panggilan
+    `GET /profile` setelah sheet terbuka; tanpa jaringan atau tanpa nama, judul tetap alamat singkat. Avatarmu
+    sendiri di sheet memakai huruf dari alamat (layar Salaman tidak memuat namamu).
 18. **Label tab dan lencana berhenti membesar di 1,3×** (§3.7) — dipilih demi tata letak tab bar; teks lain ikut
     ukuran sistem tanpa batas, dan pada ukuran aksesibilitas terbesar (di atas ±1,3×) tata letak hanya dijanjikan
     tidak memotong teks penting, bukan tetap rapi.
@@ -1249,7 +1253,7 @@ Tes baru / diganti:
 - Tanda "sudah dibaca" untuk pengirim (R6), indikator mengetik, avatar foto (`pfp_url` belum dipakai).
 - Nama tampilan di `GET /connections/:address`, salaman ulang, notifikasi "salamanmu berhasil" untuk pemegang QR —
   termasuk sheet "You met …" di sisi QR dan sinyal apa pun (polling, push, langganan) yang dibutuhkannya (#16D).
-- Panggilan API baru untuk mengisi nama atau nama acara di sheet salaman (R14).
+- Nama acara di sheet salaman, dan rute/perubahan API baru untuknya (R14; nama orang memakai `GET /profile` yang sudah ada).
 - Animasi kustom untuk sheet salaman (avatar yang bertemu, konfeti, dll.) — hanya geser/pudar bawaan `Modal` (#16D).
 - Perubahan kalimat di luar terjemahan, §7.3, dan §8 — termasuk teks contoh mockup yang berbeda dari kalimat yang ada
   (R5).
@@ -1309,7 +1313,7 @@ langkah 6 hanya memeriksa bahwa catatannya masih ada.
    §11 batas #5, dan keputusan teknis bahasa di §7.4 (sapaan tiga bagian, format tanggal, saran tag vouch, kalimat push).
    **Review UI/UX sudah dilakukan dan diputuskan** (2026-09-18, keputusan #16 A–E): urutan Profil orang dan hierarki
    trust, warna ruas kosong `#56627d`, alamat singkat + Copy di Beranda (R4 diamandemen), sheet salaman berhasil
-   (R13 `Modal`, R14 judul alamat singkat, hanya sisi pemindai), dan aturan dasar §3.7. Hal-hal ini tidak dibuka ulang
+   (R13 `Modal`, R14 judul alamat singkat lalu nama lewat `GET /profile` publik, hanya sisi pemindai), dan aturan dasar §3.7. Hal-hal ini tidak dibuka ulang
    saat implementasi.
 2. Rencana implementasi `docs/superpowers/plans/2026-09-18-nearly-desain-ui.md` di branch `desain-ui`, dieksekusi
    sesi `fcc`.
