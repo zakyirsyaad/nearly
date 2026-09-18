@@ -11,3 +11,6 @@ packages/contracts/cache/
 apps/mobile/.expo/
 apps/mobile/ios/
 apps/mobile/android/
+
+# Mockup brainstorming & ledger SDD (lokal)
+.superpowers/
