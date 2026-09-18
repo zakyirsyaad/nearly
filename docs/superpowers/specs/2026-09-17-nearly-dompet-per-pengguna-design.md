@@ -260,6 +260,12 @@ jumlah yang sama; komponen isi dilepas utuh saat signer hilang, dan dipasang ula
    terbaca sesaat), tidak ada jalan keluar di dalam aplikasi selain memasang ulang Expo Go — lihat batas #4.
 10. **Ketukan notifikasi saat aplikasi mati** baru ditangani setelah dompet selesai dimuat; ketukan yang
     tiba sebelum itu bisa tidak membuka layar tujuan.
+11. **12 kata yang sedang terbuka di layar Dompet ikut terekam cuplikan app switcher iOS** sampai pengguna
+    menekan "Sudah saya catat". Mencegahnya dengan andal butuh modul native (di luar Expo Go); mengosongkan
+    kata lewat `AppState` belum dicoba karena efektivitasnya hanya bisa dibuktikan di iPhone.
+12. **Isian 12 kata di Android** memakai `keyboardType="visible-password"` dan `importantForAutofill="no"`
+    supaya keyboard tidak belajar dari ketikan. Perilakunya per keyboard (Gboard, Samsung) belum diuji di
+    perangkat Android. Deep link `nearly:///radar/<id>` saat aplikasi mati juga belum diuji (lihat #10).
 
 ## 9. Di Luar Lingkup
 
