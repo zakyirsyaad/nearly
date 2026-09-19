@@ -47,7 +47,10 @@ export function opsiTampilan(
   const tampilanBaru = termigrasi.has(kunci);
   return {
     ...(kunci === KUNCI_BERANDA && tampilanBaru ? { headerShown: false as const } : {}),
-    ...(AKAR_TAB_JUDUL_BESAR.has(kunci) ? { headerLargeTitle: true as const } : {}),
+    // Judul besar hanya untuk layar yang sudah dimigrasi: iOS memberi ruang
+    // yang benar hanya bila isinya ScrollView (contentInsetAdjustmentBehavior
+    // "automatic"); layar lama akan tertutup di bagian atasnya.
+    ...(AKAR_TAB_JUDUL_BESAR.has(kunci) && tampilanBaru ? { headerLargeTitle: true as const } : {}),
     ...(tampilanBaru ? { contentStyle: { backgroundColor: warna.background } } : {}),
   };
 }

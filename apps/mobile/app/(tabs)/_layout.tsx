@@ -85,7 +85,7 @@ function LayoutTabsIsi({ signer }: { signer: NearlySigner }) {
                   ? (props) => (
                       <TombolSalaman
                         label={tab.label}
-                        terpilih={props.accessibilityState?.selected === true}
+                        terpilih={props["aria-selected"] === true}
                         onPress={(e) => props.onPress?.(e)}
                       />
                     )

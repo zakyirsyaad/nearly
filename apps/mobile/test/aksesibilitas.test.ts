@@ -64,4 +64,12 @@ describe("aksesibilitas — penjaga baca-kode", () => {
     // Label ikut warna aktif/tak aktif tab bar, bukan warna tetap.
     expect(isi).toContain("color: terpilih ? aktif : redup");
   });
+
+  it("status terpilih tombol Salaman dibaca dari aria-selected (expo-router 57), bukan accessibilityState", () => {
+    // BottomTabItem expo-router 57 mengirim 'aria-selected': focused; tanpa ini
+    // label Handshake selalu abu-abu (uji iPhone 2026-09-19).
+    const isi = baca("app/(tabs)/_layout.tsx");
+    expect(isi).toContain('terpilih={props["aria-selected"] === true}');
+    expect(isi).not.toContain("accessibilityState?.selected");
+  });
 });

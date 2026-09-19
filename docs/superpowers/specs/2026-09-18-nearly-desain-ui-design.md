@@ -457,6 +457,12 @@ Layar tab **tidak dilepas** saat berpindah tab (berbeda dengan Stack lama, yang 
 
 ### 4.7 Judul layar
 
+*Ditambahkan 2026-09-19 (uji iPhone Rencana A):* judul besar iOS (`headerLargeTitle`) di layar akar tab dan Beranda
+tanpa header hanya berlaku untuk layar di `LAYAR_TERMIGRASI`. Judul besar hanya memberi ruang yang benar bila isi
+layar berupa `ScrollView` dengan `contentInsetAdjustmentBehavior="automatic"` — layar lama bukan ScrollView dan
+bagian atasnya tertutup (segmen Show QR/Scan hilang). **Rencana B wajib membangun setiap layar akar tab yang
+dimigrasi (termasuk Salaman) di dalam ScrollView tersebut** sebelum kuncinya masuk `LAYAR_TERMIGRASI`.
+
 `JUDUL_LAYAR` sekarang berkunci **jalur berkas relatif `app/` tanpa `.tsx`, termasuk nama grup**; nilainya bahasa
 Inggris (#15):
 

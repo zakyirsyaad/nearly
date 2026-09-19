@@ -61,7 +61,9 @@ const s = StyleSheet.create({
     borderRadius: RADIUS.salaman + UKURAN.cincinSalaman,
   },
   kolom: { alignItems: "center" },
-  label: { marginTop: jarak.xs },
+  // Naik 4 supaya sejajar dengan label tab lain (uji iPhone 2026-09-19):
+  // cincin yang menonjol mendorong label lebih rendah dari baris label tab.
+  label: { marginTop: -jarak.xs },
   tombol: {
     width: UKURAN.tombolSalaman,
     height: UKURAN.tombolSalaman,

@@ -139,12 +139,17 @@ describe("judul layar", () => {
     expect(opsiTampilan(beranda, new Set([beranda]))).toMatchObject({ headerShown: false });
   });
 
-  it("layar akar tab selain Beranda berjudul besar (spec §4.7)", () => {
+  it("layar akar tab selain Beranda berjudul besar HANYA setelah dimigrasi (spec §4.7)", () => {
+    // Judul besar iOS hanya memberi ruang yang benar bila isi layar ScrollView
+    // (contentInsetAdjustmentBehavior "automatic"). Layar lama bukan ScrollView:
+    // judul besar menutupi bagian atasnya — segmen Show QR/Scan hilang di uji
+    // iPhone 2026-09-19.
     for (const k of [
       "(tabs)/(acara)/events/index", "(tabs)/(salaman)/salaman", "(tabs)/(pesan)/pesan/index",
       "(tabs)/(profil)/profil-saya",
     ]) {
-      expect(opsiTampilan(k), k).toMatchObject({ headerLargeTitle: true });
+      expect(opsiTampilan(k), k).not.toHaveProperty("headerLargeTitle");
+      expect(opsiTampilan(k, new Set([k])), k).toMatchObject({ headerLargeTitle: true });
     }
     expect(opsiTampilan("(tabs)/(acara)/events/[id]")).toEqual({});
   });
