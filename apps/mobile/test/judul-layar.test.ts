@@ -131,8 +131,15 @@ describe("judul layar", () => {
     expect([...LAYAR_TERMIGRASI].filter((k) => !(k in JUDUL_LAYAR))).toEqual([]);
   });
 
-  it("Beranda tanpa header; layar akar tab lain berjudul besar (spec §4.7)", () => {
-    expect(opsiTampilan("(tabs)/(beranda)/index")).toMatchObject({ headerShown: false });
+  it("Beranda lama tetap berheader; tanpa header hanya setelah dimigrasi (sapaan menggantikannya)", () => {
+    // Beranda lama tidak punya jarak aman dari status bar: tanpa header isinya
+    // naik ke area jam, dan ikon status bar terang hilang di latar terang.
+    const beranda = "(tabs)/(beranda)/index";
+    expect(opsiTampilan(beranda)).not.toHaveProperty("headerShown");
+    expect(opsiTampilan(beranda, new Set([beranda]))).toMatchObject({ headerShown: false });
+  });
+
+  it("layar akar tab selain Beranda berjudul besar (spec §4.7)", () => {
     for (const k of [
       "(tabs)/(acara)/events/index", "(tabs)/(salaman)/salaman", "(tabs)/(pesan)/pesan/index",
       "(tabs)/(profil)/profil-saya",

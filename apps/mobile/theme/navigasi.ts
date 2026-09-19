@@ -31,15 +31,23 @@ export type OpsiTampilan = {
 };
 
 /**
- * Opsi tambahan per layar, berkunci kunci JUDUL_LAYAR: Beranda tanpa header
- * (sapaan besar menggantikannya), layar akar tab lain berjudul besar, dan
+ * Opsi tambahan per layar, berkunci kunci JUDUL_LAYAR: Beranda yang sudah
+ * dimigrasi tanpa header (sapaan besar menggantikannya), layar akar tab lain berjudul besar, dan
  * latar isi gelap hanya untuk layar yang sudah dimigrasi (Ruling A2) — layar
  * lama memakai teks hitam bawaan yang tidak terbaca di atas `background`.
  */
-export function opsiTampilan(kunci: string): OpsiTampilan {
+export function opsiTampilan(
+  kunci: string,
+  termigrasi: ReadonlySet<string> = LAYAR_TERMIGRASI,
+): OpsiTampilan {
+  // Beranda baru kehilangan header hanya setelah dimigrasi: Beranda lama tidak
+  // punya jarak aman dari status bar, jadi tanpa header isinya naik ke area jam
+  // dan ikon status bar terang tidak terbaca di latar terangnya (uji iPhone
+  // 2026-09-19).
+  const tampilanBaru = termigrasi.has(kunci);
   return {
-    ...(kunci === KUNCI_BERANDA ? { headerShown: false as const } : {}),
+    ...(kunci === KUNCI_BERANDA && tampilanBaru ? { headerShown: false as const } : {}),
     ...(AKAR_TAB_JUDUL_BESAR.has(kunci) ? { headerLargeTitle: true as const } : {}),
-    ...(LAYAR_TERMIGRASI.has(kunci) ? { contentStyle: { backgroundColor: warna.background } } : {}),
+    ...(tampilanBaru ? { contentStyle: { backgroundColor: warna.background } } : {}),
   };
 }

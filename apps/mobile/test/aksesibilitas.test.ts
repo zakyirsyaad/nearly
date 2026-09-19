@@ -57,4 +57,11 @@ describe("aksesibilitas — penjaga baca-kode", () => {
     expect(baca("app/(tabs)/_layout.tsx")).toContain("UKURAN.tinggiIsiTabBar + insets.bottom");
     expect(baca("components/tab/tombol-salaman.tsx")).toContain("accessibilityLabel={label}");
   });
+
+  it("tombol Salaman menampilkan label \"Handshake\" di bawahnya, seperti tab lain (mockup N1)", () => {
+    const isi = baca("components/tab/tombol-salaman.tsx");
+    expect(isi).toMatch(/<Text\s+variant="label"[^>]*maxFontSizeMultiplier=\{MAKS_SKALA_HURUF_KECIL\}[^>]*>\s*\{label\}\s*<\/Text>/);
+    // Label ikut warna aktif/tak aktif tab bar, bukan warna tetap.
+    expect(isi).toContain("color: terpilih ? aktif : redup");
+  });
 });
