@@ -75,7 +75,9 @@ describe("tanpa kunci dev terbundel", () => {
       "app/(tabs)/(acara)/radar/[eventId].tsx": [`signer:${V}`],
       "app/(tabs)/(beranda)/feed/index.tsx": [`signer:${V}`],
       "app/(tabs)/(beranda)/feed/new.tsx": [`signer:${V}`],
-      "app/(tabs)/(beranda)/index.tsx": [`signer:${V}`],
+      // Dua domain: bukti feed (ConnectionRegistry) dan bendera sudahCheckIn
+      // kartu LIVE (AttendanceRegistry) — spec desain UI §6.1.
+      "app/(tabs)/(beranda)/index.tsx": [`signer:${V}`, "signerHadir:attendanceRegistry"],
       "app/(tabs)/(pesan)/pesan/[address].tsx": [`signer:${V}`],
       "app/(tabs)/(pesan)/pesan/index.tsx": [`signer:${V}`],
       "app/(tabs)/(pesan)/pesan/lapor/[address].tsx": [`signer:${V}`],

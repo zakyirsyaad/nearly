@@ -135,7 +135,7 @@ describe("judul layar", () => {
     // Beranda lama tidak punya jarak aman dari status bar: tanpa header isinya
     // naik ke area jam, dan ikon status bar terang hilang di latar terang.
     const beranda = "(tabs)/(beranda)/index";
-    expect(opsiTampilan(beranda)).not.toHaveProperty("headerShown");
+    expect(opsiTampilan(beranda, new Set())).not.toHaveProperty("headerShown");
     expect(opsiTampilan(beranda, new Set([beranda]))).toMatchObject({ headerShown: false });
   });
 

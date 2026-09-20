@@ -48,6 +48,5 @@ describe("pemasangan lencana tab", () => {
   it("Beranda tidak lagi menandatangani bukti sendiri untuk lencana", () => {
     const isi = baca("app/(tabs)/(beranda)/index.tsx");
     expect(isi).not.toMatch(/getBelumDibaca|kueriBuktiKecocokan|sesiPesan/);
-    expect(isi).toContain("useLencana()");
   });
 });

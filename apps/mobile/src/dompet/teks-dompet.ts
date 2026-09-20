@@ -11,7 +11,7 @@ export function perluPengingatCadangan(d: RingkasDompet): boolean {
 }
 
 export const TEKS_PENGINGAT_CADANGAN =
-  "Catat 12 kata pemulihanmu. Tanpa itu, identitas dan koneksimu hilang kalau HP hilang atau aplikasi dihapus.";
+  "Write down your 12-word recovery phrase. Without it, your identity and connections are gone if you lose this phone or delete the app.";
 
 export const PERINGATAN_MNEMONIK_UTAMA =
   "Jangan pakai 12 kata dompet utama yang menyimpan aset. Kunci dompet disimpan di HP ini, bukan di dompet perangkat keras.";

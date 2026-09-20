@@ -104,4 +104,6 @@ export function layarDalam(induk: string): [string, string][] {
 export const LAYAR_TERMIGRASI: ReadonlySet<string> = new Set<string>([
   // Rencana B1 kelompok (a) — Handshake (spec §9 langkah 5a).
   "(tabs)/(salaman)/salaman",
+  // Rencana B1 kelompok (b) — Beranda (spec §9 langkah 5b).
+  "(tabs)/(beranda)/index",
 ]);

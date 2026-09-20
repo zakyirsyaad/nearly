@@ -73,8 +73,8 @@ describe("kartu radar", () => {
     expect(lencanaKartuRadar({ pernahBertemu: false, salingInginBertemu: true })).toEqual(["Saling ingin bertemu"]);
     expect(lencanaKartuRadar({ pernahBertemu: false, salingInginBertemu: false })).toEqual([]);
   });
-  it("nama kosong → Tanpa nama", () => {
-    expect(namaKartuRadar("  ")).toBe("Tanpa nama");
+  it("nama kosong → Unnamed", () => {
+    expect(namaKartuRadar("  ")).toBe("Unnamed");
     expect(namaKartuRadar(" Budi ")).toBe("Budi");
   });
   it("alamat singkat", () => {

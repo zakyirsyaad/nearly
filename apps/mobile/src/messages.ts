@@ -366,7 +366,7 @@ export function lencanaKartuRadar(k: {
 }
 
 export function namaKartuRadar(displayName: string): string {
-  return displayName.trim() || "Tanpa nama";
+  return displayName.trim() || "Unnamed";
 }
 
 export function alamatSingkat(address: string): string {
