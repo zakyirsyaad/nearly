@@ -112,4 +112,6 @@ export const LAYAR_TERMIGRASI: ReadonlySet<string> = new Set<string>([
   "(tabs)/(profil)/profil-saya",
   "(tabs)/(profil)/connections",
   "(tabs)/(profil)/kecocokan",
+  "(tabs)/(profil)/dompet",
+  "(tabs)/(profil)/blokir",
 ]);

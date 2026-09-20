@@ -1,7 +1,12 @@
 import { useCallback, useState } from "react";
 import { useFocusEffect } from "expo-router";
-import { ActivityIndicator, Button, FlatList, StyleSheet, Text, View } from "react-native";
+import { FlatList, StyleSheet, View } from "react-native";
+import { ShieldOff } from "lucide-react-native";
 import type { Address } from "viem";
+import { KeadaanKosong, KerangkaDaftar } from "@/components/keadaan";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { Text } from "@/components/ui/text";
 import { CONFIG } from "../../../src/config";
 import type { NearlySigner } from "../../../src/signer";
 import { useNearlySigner } from "../../../src/dompet/konteks-dompet";
@@ -9,6 +14,10 @@ import { ApiError } from "../../../src/http";
 import { getBlokir, kueriBuktiBlokir, type BarisBlokir } from "../../../src/blokir-api";
 import { aksiBlokir } from "../../../src/blokir-actions";
 import { blokirErrorMessage, blokirTombolLabel } from "../../../src/messages";
+import {
+  KOSONG_BLOKIR, TEKS_BLOKIR_DICABUT_GAGAL_MUAT, TEKS_GAGAL_MUAT_BLOKIR,
+} from "../../../src/teks-akun";
+import { teksGagalBlokir } from "../../../src/teks-profil";
 
 export default function BlokirScreen() {
   const signer = useNearlySigner(CONFIG.verifyingContract);
@@ -26,28 +35,21 @@ function BlokirScreenIsi({ signer }: { signer: NearlySigner }) {
 
   // TIDAK menangkap galatnya sendiri: pemanggil (pemicu fokus di bawah, dan
   // `cabut`) yang memutuskan apa arti kegagalan di konteks masing-masing.
-  // Kalau fungsi ini menangkap sendiri, `catch` di sekitar `await muat()` di
-  // `cabut` jadi kode mati — padahal justru DI SANA kegagalan reload berarti
-  // sesuatu yang berbeda dari kegagalan muat pertama kali (lihat komentar di
-  // `cabut`).
   const muat = useCallback(async () => {
     const { blokir } = await getBlokir(await kueriBuktiBlokir(signer));
     setBaris(blokir);
     setPesan(null);
   }, [signer]);
 
-  // SATU pemicu. `useFocusEffect` sudah menyala saat layar pertama kali
-  // fokus — yaitu saat mount — jadi `useEffect` di sebelahnya akan jadi
-  // duplikat: dua tanda tangan dan dua permintaan setiap layar dibuka.
-  //
+  // SATU pemicu. `useFocusEffect` sudah menyala saat layar pertama kali fokus.
   // Galat dari `muat` ditangani DI SINI, bukan di dalam `muat`, supaya muat
-  // pertama kali yang gagal mengosongkan daftar dan menampilkan pesan galat —
-  // beda dengan reload di dalam `cabut`, yang tidak boleh mengosongkan daftar
-  // yang barusan berhasil diperbarui aksinya.
+  // pertama yang gagal mengosongkan daftar dan menampilkan pesan galat — beda
+  // dengan reload di dalam `cabut`, yang tidak boleh mengosongkan daftar yang
+  // barusan berhasil diperbarui aksinya.
   useFocusEffect(useCallback(() => {
     muat().catch((e) => {
       setBaris([]);
-      setPesan(e instanceof ApiError ? blokirErrorMessage(e.code) : "Daftar blokir gagal dimuat.");
+      setPesan(e instanceof ApiError ? blokirErrorMessage(e.code) : TEKS_GAGAL_MUAT_BLOKIR);
     });
   }, [muat]));
 
@@ -58,7 +60,7 @@ function BlokirScreenIsi({ signer }: { signer: NearlySigner }) {
     try {
       await aksiBlokir(signer, alamat as Address, true);
     } catch (e) {
-      setPesan(e instanceof ApiError ? blokirErrorMessage(e.code) : "Gagal mencabut blokir.");
+      setPesan(e instanceof ApiError ? blokirErrorMessage(e.code) : teksGagalBlokir(true));
       setSibuk(null);
       return;
     }
@@ -71,51 +73,55 @@ function BlokirScreenIsi({ signer }: { signer: NearlySigner }) {
       // dibuang dari state lokal (tanpa membuang seluruh daftar) dan
       // pesannya jujur: aksinya berhasil, cuma daftarnya yang gagal segar.
       setBaris((b) => b?.filter((x) => x.address !== alamat) ?? b);
-      setPesan("Blokir sudah dicabut, tapi daftarnya gagal dimuat ulang.");
+      setPesan(TEKS_BLOKIR_DICABUT_GAGAL_MUAT);
     }
   }
 
-  if (baris === null) return <ActivityIndicator style={s.tengah} />;
+  if (baris === null) {
+    return (
+      <View style={s.muat}>
+        <KerangkaDaftar />
+      </View>
+    );
+  }
 
   return (
-    <View style={s.root}>
-      {pesan && <Text style={s.pesan}>{pesan}</Text>}
-      <FlatList
-        data={baris}
-        keyExtractor={(b) => b.address}
-        ListEmptyComponent={
-          // Kalau `pesan` terisi, daftar kosong ini BUKAN berarti "kamu tidak
-          // memblokir siapa pun" — itu kegagalan otorisasi, dan menampilkannya
-          // sebagai keadaan normal adalah kebohongan yang tidak bisa dideteksi
-          // pengguna.
-          pesan ? null : (
-            <Text style={s.kosong}>
-              Kamu belum memblokir siapa pun. Blokir bisa dipasang dari layar profil seseorang.
-            </Text>
-          )
-        }
-        renderItem={({ item }) => (
-          <View style={s.kartu}>
-            <Text style={s.alamat}>{item.address}</Text>
-            <Button
-              // `true` tetap: setiap baris di layar ini, by construction, adalah
-              // orang yang sudah diblokir pengguna.
-              title={blokirTombolLabel(true, sibuk === item.address)}
-              disabled={sibuk === item.address}
-              onPress={() => { void cabut(item.address); }}
-            />
-          </View>
-        )}
-      />
-    </View>
+    <FlatList
+      contentContainerStyle={s.daftar}
+      contentInsetAdjustmentBehavior="automatic"
+      data={baris}
+      keyExtractor={(b) => b.address}
+      ListHeaderComponent={pesan ? <Text variant="caption">{pesan}</Text> : null}
+      ListEmptyComponent={
+        // Kalau `pesan` terisi, daftar kosong ini BUKAN berarti "kamu tidak
+        // memblokir siapa pun" — itu kegagalan otorisasi, dan menampilkannya
+        // sebagai keadaan normal adalah kebohongan yang tidak bisa dideteksi
+        // pengguna.
+        pesan ? null : (
+          <KeadaanKosong Ikon={ShieldOff} kalimat={KOSONG_BLOKIR} />
+        )
+      }
+      renderItem={({ item }) => (
+        <Card style={s.kartu}>
+          <Text variant="mono">{item.address}</Text>
+          <Button
+            variant="destructive"
+            // `true` tetap: setiap baris di layar ini, by construction, adalah
+            // orang yang sudah diblokir pengguna.
+            disabled={sibuk === item.address}
+            loading={sibuk === item.address}
+            onPress={() => { void cabut(item.address); }}
+          >
+            {blokirTombolLabel(true, sibuk === item.address)}
+          </Button>
+        </Card>
+      )}
+    />
   );
 }
 
 const s = StyleSheet.create({
-  root: { flex: 1, padding: 16, gap: 12 },
-  tengah: { flex: 1 },
-  pesan: { color: "#b00", marginBottom: 8 },
-  kosong: { color: "#666", lineHeight: 20 },
-  kartu: { paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: "#eee", gap: 8 },
-  alamat: { fontFamily: "monospace", fontSize: 12 },
+  muat: { flex: 1, padding: 16 },
+  daftar: { padding: 16, gap: 12 },
+  kartu: { gap: 8 },
 });

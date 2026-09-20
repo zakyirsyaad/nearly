@@ -1,10 +1,20 @@
 import { useState } from "react";
-import { Alert, Button, ScrollView, Share, StyleSheet, Text, View } from "react-native";
+import { Alert, ScrollView, Share, StyleSheet, View } from "react-native";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { Text } from "@/components/ui/text";
+import { useKabar } from "@/hooks/useKabar";
 import { useDompet } from "../../../src/dompet/konteks-dompet";
 import {
   kataBernomor, PERINGATAN_LIHAT_MNEMONIK, peringatanGantiDompet, pesanGalatDompet,
   TEKS_TANPA_MNEMONIK,
 } from "../../../src/dompet/teks-dompet";
+import {
+  CATATAN_ALAMAT, CATATAN_GANTI_DOMPET, JUDUL_DIALOG_12_KATA, JUDUL_DIALOG_GANTI,
+  LABEL_12_KATA, LABEL_ALAMAT, LABEL_GANTI_DOMPET, labelGantiDompet, TEKS_BAGIKAN_ALAMAT,
+  TEKS_BATAL, TEKS_CATATAN_TERSIMPAN, TEKS_HAPUS_DOMPET, TEKS_LIHAT_12_KATA,
+  TEKS_SUDAH_DICATAT, TEKS_TAMPILKAN,
+} from "../../../src/teks-akun";
 
 export default function DompetScreen() {
   const {
@@ -13,6 +23,7 @@ export default function DompetScreen() {
   const [kata, setKata] = useState<string[] | null>(null);
   const [sibuk, setSibuk] = useState(false);
   const [pesan, setPesan] = useState<string | null>(null);
+  const kabar = useKabar();
 
   // Sesaat setelah Ganti dompet, sebelum gerbang memindahkan ke layar Mulai.
   if (address === null) return null;
@@ -37,9 +48,9 @@ export default function DompetScreen() {
   };
 
   const lihatKata = () => {
-    Alert.alert("Lihat 12 kata pemulihan?", PERINGATAN_LIHAT_MNEMONIK, [
-      { text: "Batal", style: "cancel" },
-      { text: "Tampilkan", onPress: () => { void bukaKata(); } },
+    Alert.alert(JUDUL_DIALOG_12_KATA, PERINGATAN_LIHAT_MNEMONIK, [
+      { text: TEKS_BATAL, style: "cancel" },
+      { text: TEKS_TAMPILKAN, onPress: () => { void bukaKata(); } },
     ]);
   };
 
@@ -47,7 +58,8 @@ export default function DompetScreen() {
     try {
       await tandaiSudahDicadangkan();
       setKata(null);
-      setPesan("Tersimpan. Simpan catatanmu di tempat yang aman dan tidak online.");
+      setPesan(null);
+      kabar.berhasil(TEKS_CATATAN_TERSIMPAN);
     } catch (e) {
       setPesan(pesanGalatDompet(e));
     }
@@ -65,50 +77,51 @@ export default function DompetScreen() {
   };
 
   const ganti = () => {
-    Alert.alert("Ganti dompet?", peringatanGantiDompet({ punyaMnemonik, sudahDicadangkan }), [
-      { text: "Batal", style: "cancel" },
-      { text: "Hapus dompet dari HP ini", style: "destructive", onPress: () => { void hapus(); } },
+    Alert.alert(JUDUL_DIALOG_GANTI, peringatanGantiDompet({ punyaMnemonik, sudahDicadangkan }), [
+      { text: TEKS_BATAL, style: "cancel" },
+      { text: TEKS_HAPUS_DOMPET, style: "destructive", onPress: () => { void hapus(); } },
     ]);
   };
 
   return (
-    <ScrollView contentContainerStyle={s.root}>
-      <Text style={s.label}>Alamat</Text>
-      {/* Alamat tampil utuh — alamat-lah identitasnya (spec induk §9.2). */}
-      <Text style={s.alamat} selectable>{address}</Text>
-      <Button title="Bagikan alamat" onPress={bagikan} />
-      <Text style={s.catatan}>
-        Alamat boleh dibagikan, misalnya ke panitia untuk daftar seed. Yang tidak boleh dibagikan
-        kepada siapa pun adalah 12 kata pemulihan.
-      </Text>
+    <ScrollView contentContainerStyle={s.root} contentInsetAdjustmentBehavior="automatic">
+      <Card style={s.kartu}>
+        <Text variant="caption">{LABEL_ALAMAT}</Text>
+        {/* Alamat tampil utuh — alamat-lah identitasnya (spec induk §9.2). */}
+        <Text variant="mono" selectable>{address}</Text>
+        <Button variant="outline" onPress={bagikan}>{TEKS_BAGIKAN_ALAMAT}</Button>
+        <Text variant="caption">{CATATAN_ALAMAT}</Text>
+      </Card>
 
-      <Text style={s.label}>12 kata pemulihan</Text>
-      {!punyaMnemonik && <Text style={s.catatan}>{TEKS_TANPA_MNEMONIK}</Text>}
-      {punyaMnemonik && kata === null && (
-        <Button title="Lihat 12 kata pemulihan" onPress={lihatKata} />
-      )}
-      {kata && (
-        <View style={s.kotakKata}>
-          {kata.map((k) => <Text key={k} style={s.kata}>{k}</Text>)}
-          <Button title="Sudah saya catat" onPress={() => { void sudahDicatat(); }} />
-        </View>
-      )}
+      <Card style={s.kartu}>
+        <Text variant="caption">{LABEL_12_KATA}</Text>
+        {!punyaMnemonik ? <Text variant="caption">{TEKS_TANPA_MNEMONIK}</Text> : null}
+        {punyaMnemonik && kata === null ? (
+          <Button variant="outline" onPress={lihatKata}>{TEKS_LIHAT_12_KATA}</Button>
+        ) : null}
+        {kata ? (
+          <View style={s.kotakKata}>
+            {kata.map((k) => <Text key={k} variant="mono">{k}</Text>)}
+            <Button onPress={() => { void sudahDicatat(); }}>{TEKS_SUDAH_DICATAT}</Button>
+          </View>
+        ) : null}
+      </Card>
 
-      <Text style={s.label}>Ganti dompet</Text>
-      <Text style={s.catatan}>Menghapus dompet ini dari HP, lalu kembali ke layar Mulai.</Text>
-      <Button title={sibuk ? "Menghapus…" : "Ganti dompet"} color="#b00" disabled={sibuk} onPress={ganti} />
+      <Card style={s.kartu}>
+        <Text variant="caption">{LABEL_GANTI_DOMPET}</Text>
+        <Text variant="caption">{CATATAN_GANTI_DOMPET}</Text>
+        <Button variant="destructive" loading={sibuk} disabled={sibuk} onPress={ganti}>
+          {labelGantiDompet(sibuk)}
+        </Button>
+      </Card>
 
-      {pesan && <Text style={s.pesan}>{pesan}</Text>}
+      {pesan ? <Text variant="caption">{pesan}</Text> : null}
     </ScrollView>
   );
 }
 
 const s = StyleSheet.create({
-  root: { padding: 16, gap: 10 },
-  label: { fontSize: 13, fontWeight: "600", opacity: 0.7, paddingTop: 12 },
-  alamat: { fontFamily: "Courier", fontSize: 13 },
-  catatan: { fontSize: 13, lineHeight: 19, opacity: 0.6 },
-  kotakKata: { borderWidth: StyleSheet.hairlineWidth, borderRadius: 8, padding: 12, gap: 6 },
-  kata: { fontFamily: "Courier", fontSize: 16 },
-  pesan: { fontSize: 15, lineHeight: 22 },
+  root: { padding: 16, paddingBottom: 32, gap: 16 },
+  kartu: { gap: 8 },
+  kotakKata: { gap: 8 },
 });
