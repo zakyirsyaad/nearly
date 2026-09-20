@@ -29,6 +29,6 @@ describe("mode layar Salaman (spec desain UI §6.2)", () => {
     const checkin = isi.indexOf("decodeCheckInQr(data)");
     expect(checkin).toBeGreaterThan(-1);
     expect(checkin).toBeLessThan(isi.indexOf("decodeQr(data)"));
-    expect(isi).toContain("if (busy) return;");
+    expect(isi).toContain("if (busy || hasil) return;");
   });
 });

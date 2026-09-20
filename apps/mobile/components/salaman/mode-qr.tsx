@@ -1,32 +1,47 @@
 import QRCode from "react-native-qrcode-svg";
-import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
+import { StyleSheet, View } from "react-native";
+import { KeadaanGalat } from "@/components/keadaan";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Text } from "@/components/ui/text";
+import { useColor } from "@/hooks/useColor";
+import { RADIUS, UKURAN } from "@/theme/globals";
 import type { NearlySigner } from "../../src/signer";
 import { useRotatingQr } from "../../src/handshake/useRotatingQr";
+import { CATATAN_LOKASI_QR, teksHitungMundurQr } from "../../src/teks-salaman";
 
 /**
- * Mode "Show QR" layar Salaman — isi app/qr.tsx lama, dipindah apa adanya
- * (spec desain UI §6.2, Ruling A10). Dipasang hanya saat tab Salaman fokus dan
- * mode ini aktif; melepasnya menghentikan useRotatingQr, dan memasangnya lagi
- * langsung membuat offer baru. Tampilan dan kalimat dimigrasi Rencana B 5(a).
+ * Mode "Show QR" layar Salaman (spec desain UI §6.2). Dipasang hanya saat tab
+ * Salaman fokus dan mode ini aktif (R10); melepasnya menghentikan
+ * useRotatingQr, dan memasangnya lagi langsung membuat offer baru.
+ *
+ * QR digambar di atas pelat `text` supaya kontras pemindai terjaga di tema
+ * gelap — kode QR gelap di atas latar gelap tidak terbaca kamera.
  */
 export function ModeQr({ signerSalaman }: { signerSalaman: NearlySigner }) {
-  const { value, secondsLeft, error } = useRotatingQr(signerSalaman);
+  const { value, secondsLeft, error, refresh } = useRotatingQr(signerSalaman);
+  const pelat = useColor("text");
 
-  if (error) return <View style={s.root}><Text style={s.err}>{error}</Text></View>;
-  if (!value) return <View style={s.root}><ActivityIndicator /></View>;
+  if (error) return <KeadaanGalat kalimat={error} onCobaLagi={() => void refresh()} />;
 
   return (
     <View style={s.root}>
-      <QRCode value={value} size={260} />
-      <Text style={s.hint}>Minta dia memindai ini. Berganti dalam {secondsLeft} detik.</Text>
-      <Text style={s.addr} selectable>{signerSalaman.address}</Text>
+      <View style={[s.pelat, { backgroundColor: pelat }]}>
+        {value ? (
+          <QRCode value={value} size={UKURAN.qr} />
+        ) : (
+          <Skeleton width={UKURAN.qr} height={UKURAN.qr} />
+        )}
+      </View>
+      {value ? <Text variant="body" style={s.rata}>{teksHitungMundurQr(secondsLeft)}</Text> : null}
+      {/* Alamat UTUH di sini (R4): ini layar detail milikmu sendiri. */}
+      <Text variant="mono" selectable>{signerSalaman.address}</Text>
+      <Text variant="caption" style={s.rata}>{CATATAN_LOKASI_QR}</Text>
     </View>
   );
 }
 
 const s = StyleSheet.create({
-  root: { flex: 1, alignItems: "center", justifyContent: "center", gap: 20, padding: 24 },
-  hint: { fontSize: 15, opacity: 0.7, textAlign: "center" },
-  addr: { fontFamily: "Courier", fontSize: 12, opacity: 0.5 },
-  err: { fontSize: 15, textAlign: "center" },
+  root: { alignItems: "center", gap: 16, paddingVertical: 24 },
+  pelat: { padding: 12, borderRadius: RADIUS.pelatQr },
+  rata: { textAlign: "center" },
 });

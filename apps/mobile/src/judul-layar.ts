@@ -101,4 +101,7 @@ export function layarDalam(induk: string): [string, string][] {
  * hanya layar ini yang dijaga penjaga tampilan baru (test/support/berkas.ts).
  * Rencana A: kosong.
  */
-export const LAYAR_TERMIGRASI: ReadonlySet<string> = new Set<string>([]);
+export const LAYAR_TERMIGRASI: ReadonlySet<string> = new Set<string>([
+  // Rencana B1 kelompok (a) — Handshake (spec §9 langkah 5a).
+  "(tabs)/(salaman)/salaman",
+]);

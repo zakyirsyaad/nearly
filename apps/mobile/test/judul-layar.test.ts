@@ -148,7 +148,7 @@ describe("judul layar", () => {
       "(tabs)/(acara)/events/index", "(tabs)/(salaman)/salaman", "(tabs)/(pesan)/pesan/index",
       "(tabs)/(profil)/profil-saya",
     ]) {
-      expect(opsiTampilan(k), k).not.toHaveProperty("headerLargeTitle");
+      expect(opsiTampilan(k, new Set()), k).not.toHaveProperty("headerLargeTitle");
       expect(opsiTampilan(k, new Set([k])), k).toMatchObject({ headerLargeTitle: true });
     }
     expect(opsiTampilan("(tabs)/(acara)/events/[id]")).toEqual({});

@@ -1,39 +1,56 @@
 import { useState } from "react";
 import { CameraView, useCameraPermissions } from "expo-camera";
-import { Button, StyleSheet, Text, View } from "react-native";
+import { StyleSheet, View } from "react-native";
 import { checkInAcceptTypedData, decodeCheckInQr, decodeQr, isQrExpired } from "@nearly/shared";
+import { SheetBertemu, type HasilSalaman } from "@/components/salaman/sheet-bertemu";
+import { Button } from "@/components/ui/button";
+import { Text } from "@/components/ui/text";
+import { useColor } from "@/hooks/useColor";
+import { useKabar } from "@/hooks/useKabar";
+import { RADIUS } from "@/theme/globals";
 import { CONFIG } from "../../src/config";
 import type { NearlySigner } from "../../src/signer";
 import { getCurrentCell } from "../../src/location";
 import { ApiError, postAccept } from "../../src/api";
 import { eventErrorMessage, handshakeErrorMessage } from "../../src/messages";
 import { postCheckIn } from "../../src/events-api";
+import {
+  teksCheckInBerhasil, TEKS_BUKAN_QR_NEARLY, TEKS_GAGAL_CHECK_IN, TEKS_GAGAL_SALAMAN,
+  TEKS_IZIN_KAMERA, TEKS_PINDAI_LAGI, TEKS_QR_SENDIRI, TEKS_TOMBOL_IZIN_KAMERA,
+} from "../../src/teks-salaman";
 
 /**
- * Mode "Scan" layar Salaman — isi app/scan.tsx lama, dipindah apa adanya
- * (spec desain UI §6.2, Ruling A10). Dua domain EIP-712: check-in terikat
- * AttendanceRegistry (`signerHadir`), salaman terikat ConnectionRegistry
- * (`signerSalaman`); keduanya diambil pembungkus layar — hook tidak boleh
- * dipanggil di dalam callback pemindai. Dipasang hanya saat tab Salaman fokus
- * (kamera dilepas saat pindah tab). Sheet "You met …", tampilan, dan kalimat
- * Inggris adalah Rencana B 5(a).
+ * Mode "Scan" layar Salaman (spec desain UI §6.2). Dua domain EIP-712:
+ * check-in terikat AttendanceRegistry (`signerHadir`), salaman terikat
+ * ConnectionRegistry (`signerSalaman`); keduanya diambil pembungkus layar —
+ * hook tidak boleh dipanggil di dalam callback pemindai. Dipasang hanya saat
+ * tab Salaman fokus, jadi kamera dilepas saat pindah tab (R10).
+ *
+ * Salaman berhasil membuka sheet "You met …" (#16D) dan TIDAK berpindah layar;
+ * check-in berhasil tetap teks hasil + "Scan again", ditambah toast dan haptic.
  */
 export function ModePindai({ signerHadir, signerSalaman }: { signerHadir: NearlySigner; signerSalaman: NearlySigner }) {
   const [permission, requestPermission] = useCameraPermissions();
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState<string | null>(null);
+  const [hasil, setHasil] = useState<HasilSalaman | null>(null);
+  const kabar = useKabar();
+  const garis = useColor("border");
 
   if (!permission?.granted) {
     return (
       <View style={s.root}>
-        <Text style={s.p}>Nearly butuh kamera untuk memindai QR orang yang kamu temui.</Text>
-        <Button title="Izinkan kamera" onPress={requestPermission} />
+        <Text variant="body" style={s.rata}>{TEKS_IZIN_KAMERA}</Text>
+        <Button onPress={() => void requestPermission()}>{TEKS_TOMBOL_IZIN_KAMERA}</Button>
       </View>
     );
   }
 
   async function onScan(data: string) {
-    if (busy) return;
+    // Penjaga sheet (§6.2 butir 8): selama sheet terbuka kamera masih
+    // menangkap QR yang sama, dan pindaian kedua akan memicu
+    // already_connected untuk pasangan yang barusan berhasil.
+    if (busy || hasil) return;
     setBusy(true);
     try {
       // QR check-in dicoba LEBIH DULU. Keduanya JSON, dan hanya yang ini
@@ -61,12 +78,13 @@ export function ModePindai({ signerHadir, signerSalaman }: { signerHadir: Nearly
             eventId: checkin.eventId, nonce: checkin.nonce, attendee: signer.address,
             expiresAt: checkin.expiresAt.toString(), sigAttendee, cell, atMs,
           });
-          setResult(`Check-in berhasil. ${txHash.slice(0, 10)}…`);
+          setResult(teksCheckInBerhasil(txHash));
+          kabar.berhasil(teksCheckInBerhasil(txHash));
         } catch (e) {
           setResult(
             e instanceof ApiError
               ? eventErrorMessage(e.code, e.reason)
-              : e instanceof Error ? e.message : "Check-in gagal.",
+              : e instanceof Error ? e.message : TEKS_GAGAL_CHECK_IN,
           );
         }
         return;
@@ -74,7 +92,7 @@ export function ModePindai({ signerHadir, signerSalaman }: { signerHadir: Nearly
 
       const payload = decodeQr(data);
       if (!payload) {
-        setResult("QR ini bukan QR Nearly.");
+        setResult(TEKS_BUKAN_QR_NEARLY);
         return;
       }
       if (isQrExpired(payload, Date.now())) {
@@ -84,7 +102,7 @@ export function ModePindai({ signerHadir, signerSalaman }: { signerHadir: Nearly
 
       const signer = signerSalaman;
       if (signer.address.toLowerCase() === payload.initiator.toLowerCase()) {
-        setResult("Itu QR-mu sendiri.");
+        setResult(TEKS_QR_SENDIRI);
         return;
       }
 
@@ -106,12 +124,15 @@ export function ModePindai({ signerHadir, signerSalaman }: { signerHadir: Nearly
         cell,
         atMs,
       });
-      setResult(`Terkoneksi. ${txHash.slice(0, 10)}…`);
+      // Momen puncak: sheet, bukan teks hasil dan bukan pindah layar (#16D).
+      // Hasil pindai sebelumnya dibersihkan supaya tidak ikut terbaca di balik sheet.
+      setResult(null);
+      setHasil({ initiator: payload.initiator, txHash });
     } catch (e) {
       setResult(
         e instanceof ApiError
           ? handshakeErrorMessage(e.code, e.reason)
-          : e instanceof Error ? e.message : "Handshake gagal.",
+          : e instanceof Error ? e.message : TEKS_GAGAL_SALAMAN,
       );
     } finally {
       setBusy(false);
@@ -120,19 +141,33 @@ export function ModePindai({ signerHadir, signerSalaman }: { signerHadir: Nearly
 
   return (
     <View style={s.root}>
-      <CameraView
-        style={s.cam}
-        barcodeScannerSettings={{ barcodeTypes: ["qr"] }}
-        onBarcodeScanned={({ data }) => void onScan(data)}
-      />
-      {result && <Text style={s.p}>{result}</Text>}
-      {result && <Button title="Pindai lagi" onPress={() => setResult(null)} />}
+      {/* Persegi, bukan flex: isi layar berada di dalam ScrollView supaya
+          judul besar iOS memberi ruang yang benar (spec §4.7). */}
+      <View style={[s.jendela, { borderColor: garis }]}>
+        <CameraView
+          style={s.cam}
+          barcodeScannerSettings={{ barcodeTypes: ["qr"] }}
+          onBarcodeScanned={({ data }) => void onScan(data)}
+        />
+      </View>
+      {result ? <Text variant="body" style={s.rata}>{result}</Text> : null}
+      {result ? (
+        <Button variant="outline" onPress={() => setResult(null)}>{TEKS_PINDAI_LAGI}</Button>
+      ) : null}
+      {hasil ? (
+        <SheetBertemu
+          hasil={hasil}
+          alamatSendiri={signerSalaman.address}
+          onTutup={() => setHasil(null)}
+        />
+      ) : null}
     </View>
   );
 }
 
 const s = StyleSheet.create({
-  root: { flex: 1, gap: 16 },
-  cam: { flex: 1, borderRadius: 16, overflow: "hidden" },
-  p: { fontSize: 15, lineHeight: 22, textAlign: "center" },
+  root: { gap: 16, paddingVertical: 16 },
+  jendela: { width: "100%", aspectRatio: 1, borderWidth: 1, borderRadius: RADIUS.kartu, overflow: "hidden" },
+  cam: { flex: 1 },
+  rata: { textAlign: "center" },
 });

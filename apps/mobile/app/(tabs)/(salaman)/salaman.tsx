@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { StyleSheet, View } from "react-native";
+import { ScrollView, StyleSheet } from "react-native";
 import { router, useIsFocused, useLocalSearchParams } from "expo-router";
 import { ModePindai } from "@/components/salaman/mode-pindai";
 import { ModeQr } from "@/components/salaman/mode-qr";
@@ -39,15 +39,23 @@ function SalamanIsi({ signerHadir, signerSalaman }: { signerHadir: NearlySigner;
   const fokus = useIsFocused();
 
   return (
-    <View style={s.root}>
+    // Judul besar iOS hanya memberi ruang yang benar bila isinya ScrollView
+    // dengan penyesuaian inset otomatis (spec §4.7, amandemen 2026-09-19).
+    <ScrollView
+      style={s.flex}
+      contentContainerStyle={s.root}
+      contentInsetAdjustmentBehavior="automatic"
+      keyboardShouldPersistTaps="handled"
+    >
       <Segmen pilihan={PILIHAN_MODE_SALAMAN} nilai={mode} onGanti={setMode} />
       {fokus && (mode === "qr"
         ? <ModeQr signerSalaman={signerSalaman} />
         : <ModePindai signerHadir={signerHadir} signerSalaman={signerSalaman} />)}
-    </View>
+    </ScrollView>
   );
 }
 
 const s = StyleSheet.create({
-  root: { flex: 1, padding: 16, gap: 16 },
+  flex: { flex: 1 },
+  root: { padding: 16, gap: 16 },
 });

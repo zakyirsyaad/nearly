@@ -50,6 +50,7 @@ export const RADIUS = {
   gelembungSudut: 4,
   lencana: 5,
   sheet: 12,
+  pelatQr: 12,
   batang: 3,
 } as const;
 
@@ -62,6 +63,7 @@ export const UKURAN = {
   avatarKartu: 42,
   avatarSheet: 56,
   avatarKepala: 64,
+  qr: 260,
   batangTrust: 6,
   batangTrustKecil: 5,
   celahRuas: 2,

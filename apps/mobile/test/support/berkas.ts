@@ -31,9 +31,9 @@ export function tanpaKomentar(isi: string): string {
  * baru (Ruling A4). Rencana B mengosongkan himpunan ini.
  */
 export const KOMPONEN_BELUM_DIMIGRASI: ReadonlySet<string> = new Set<string>([
-  // app/qr.tsx dan app/scan.tsx dipindah apa adanya (Ruling A10) — Rencana B 5(a).
-  "components/salaman/mode-qr.tsx",
-  "components/salaman/mode-pindai.tsx",
+  // Kosong sejak Rencana B1 kelompok (a): kedua mode Salaman sudah dimigrasi.
+  // Konstantanya dipertahankan untuk komponen yang dipindah apa adanya di
+  // Rencana B2 (Pesan, Radar); B2 menghapusnya bila tidak terpakai.
 ]);
 
 /**

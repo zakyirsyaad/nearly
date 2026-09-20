@@ -61,3 +61,45 @@ describe("sheet salaman berhasil (spec desain UI §6.2, R13)", () => {
     expect(isi).toContain("nama={null}");
   });
 });
+
+const pindai = () => tanpaKomentar(baca("components/salaman/mode-pindai.tsx"));
+
+describe("mode Pindai memakai sheet, bukan teks hasil (spec §6.2, keputusan #16D)", () => {
+  it("postAccept berhasil membuka sheet dan tidak berpindah layar", () => {
+    const isi = pindai();
+    expect(isi).toContain("setHasil({ initiator: payload.initiator, txHash });");
+    expect(isi).toContain("<SheetBertemu");
+    expect(isi).not.toContain("router.push(");
+    expect(isi).not.toContain("router.navigate(");
+  });
+
+  it("onScan diabaikan selama sheet terbuka", () => {
+    expect(pindai()).toContain("if (busy || hasil) return;");
+  });
+
+  it("check-in berhasil tetap teks hasil + toast, tanpa sheet", () => {
+    const isi = pindai();
+    const cabang = isi.slice(isi.indexOf("const checkin = decodeCheckInQr(data);"), isi.indexOf("const payload = decodeQr(data);"));
+    expect(cabang).toContain("setResult(teksCheckInBerhasil(txHash));");
+    expect(cabang).toContain("kabar.berhasil(teksCheckInBerhasil(txHash));");
+    expect(cabang).not.toContain("setHasil(");
+  });
+
+  it("sisi QR tidak diberi sinyal baru — mode QR dan useRotatingQr tidak memuat sheet", () => {
+    expect(baca("components/salaman/mode-qr.tsx")).not.toContain("SheetBertemu");
+    expect(baca("src/handshake/useRotatingQr.ts")).not.toContain("SheetBertemu");
+  });
+});
+
+describe("judul besar layar Handshake (spec §4.7, amandemen 2026-09-19)", () => {
+  it("isi layar berada di dalam ScrollView dengan penyesuaian inset otomatis", () => {
+    const isi = baca("app/(tabs)/(salaman)/salaman.tsx");
+    expect(isi).toContain('contentInsetAdjustmentBehavior="automatic"');
+    expect(isi).toContain("<ScrollView");
+  });
+
+  it("kuncinya terdaftar di LAYAR_TERMIGRASI", async () => {
+    const { LAYAR_TERMIGRASI } = await import("../src/judul-layar");
+    expect(LAYAR_TERMIGRASI.has("(tabs)/(salaman)/salaman")).toBe(true);
+  });
+});
