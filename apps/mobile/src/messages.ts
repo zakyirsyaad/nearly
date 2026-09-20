@@ -9,7 +9,7 @@ import { MAKS_NAMA_TAMPILAN, panjangNamaTampilan, type Visibilitas } from "@near
  * jadi tiap layar tidak perlu mengarang versinya sendiri.
  */
 export const KALIMAT_SERVER_TAK_TERJANGKAU =
-  "Server Nearly tidak bisa dihubungi. Periksa koneksi internetmu, lalu coba lagi.";
+  "Nearly's server can't be reached. Check your internet connection, then try again.";
 
 /** Disebar ke setiap peta galat supaya tidak ada yang jatuh ke kalimat umum. */
 export const GALAT_JARINGAN: Record<string, string> = {
@@ -18,54 +18,54 @@ export const GALAT_JARINGAN: Record<string, string> = {
 
 const PESAN: Record<string, string> = {
   ...GALAT_JARINGAN,
-  expired: "QR-nya sudah kedaluwarsa. Minta QR baru, lalu pindai lagi.",
-  offer_not_found: "QR ini tidak dikenali. Minta dia membuka layar QR lagi.",
-  offer_consumed: "QR ini sudah dipakai. Minta QR baru.",
-  bad_offer_signature: "QR ini tidak sah. Minta dia membuka layar QR lagi.",
-  bad_accept_signature: "Tanda tanganmu tidak sah. Coba pindai ulang.",
-  nonce_used: "QR ini sudah pernah dipakai. Minta QR baru.",
-  already_connected: "Kalian sudah terkoneksi. Satu koneksi berlaku selamanya.",
-  quota_exceeded: "Kamu sudah mencapai batas koneksi hari ini. Lanjut besok.",
-  chain_error: "Jaringan sedang tersendat. Coba lagi sebentar.",
-  invalid_body: "Ada yang salah dengan permintaannya. Coba pindai ulang.",
+  expired: "That QR code has expired. Ask for a new one, then scan again.",
+  offer_not_found: "This QR code isn't recognized. Ask them to open their QR screen again.",
+  offer_consumed: "This QR code has already been used. Ask for a new one.",
+  bad_offer_signature: "This QR code isn't valid. Ask them to open their QR screen again.",
+  bad_accept_signature: "Your signature isn't valid. Try scanning again.",
+  nonce_used: "This QR code has been used before. Ask for a new one.",
+  already_connected: "You're already connected. One connection lasts forever.",
+  quota_exceeded: "You've reached today's connection limit. Continue tomorrow.",
+  chain_error: "The network is congested. Try again in a moment.",
+  invalid_body: "Something was wrong with the request. Try scanning again.",
 };
 
 export function handshakeErrorMessage(code: string, reason?: string): string {
   if (code === "not_colocated") {
     return reason === "time_too_far"
-      ? "Jaraknya oke, tapi selisih waktunya terlalu lama. Pindai ulang sekarang."
-      : "Kalian terlalu jauh. Handshake hanya berhasil kalau kalian benar-benar berdekatan.";
+      ? "You're close enough, but too much time has passed. Scan again now."
+      : "You're too far apart. A handshake only works when you're really next to each other.";
   }
-  return PESAN[code] ?? "Handshake gagal. Coba lagi.";
+  return PESAN[code] ?? "Handshake failed. Try again.";
 }
 
 const EVENT_MESSAGES: Record<string, string> = {
   ...GALAT_JARINGAN,
-  not_rsvped: "RSVP dulu untuk bisa check-in di acara ini.",
-  already_checked_in: "Kamu sudah check-in di acara ini.",
-  already_rsvped: "Kamu sudah RSVP di acara ini.",
-  event_not_live: "Check-in hanya bisa saat acara sedang berlangsung.",
-  event_over: "Acara ini sudah selesai.",
-  event_not_found: "Acara ini tidak ditemukan.",
-  event_exists: "Acara dengan id itu sudah ada.",
-  outside_geofence: "Kamu berada di luar lokasi acara. Check-in hanya bisa di venue.",
-  offer_not_found: "QR check-in ini tidak dikenali. Minta host menampilkannya lagi.",
-  offer_consumed: "QR check-in ini sudah terpakai. Minta host menampilkannya lagi.",
-  nonce_used: "QR check-in ini sudah pernah dipakai.",
-  not_host: "Hanya host acara yang bisa membuka check-in.",
-  expired: "QR-nya sudah kedaluwarsa. Minta host menampilkannya lagi.",
-  bad_signature: "Tanda tangan tidak cocok.",
-  chain_error: "Jaringan sedang bermasalah. Coba lagi sebentar lagi.",
-  invalid_body: "Ada isian yang belum benar.",
+  not_rsvped: "RSVP first to check in at this event.",
+  already_checked_in: "You've already checked in at this event.",
+  already_rsvped: "You've already RSVP'd to this event.",
+  event_not_live: "Check-in is only open while the event is running.",
+  event_over: "This event is over.",
+  event_not_found: "This event wasn't found.",
+  event_exists: "An event with that id already exists.",
+  outside_geofence: "You're outside the event's location. Check-in only works at the venue.",
+  offer_not_found: "This check-in QR code isn't recognized. Ask the host to show it again.",
+  offer_consumed: "This check-in QR code has already been used. Ask the host to show it again.",
+  nonce_used: "This check-in QR code has been used before.",
+  not_host: "Only the event host can open check-in.",
+  expired: "That QR code has expired. Ask the host to show it again.",
+  bad_signature: "The signature doesn't match.",
+  chain_error: "The network is having trouble. Try again in a moment.",
+  invalid_body: "Some of the details aren't right yet.",
 };
 
 export function eventErrorMessage(code: string, reason?: string): string {
   if (code === "not_colocated") {
     return reason === "time_too_far"
-      ? "Terlalu lama sejak QR ditampilkan. Minta host menampilkannya lagi."
-      : "Kamu terlalu jauh dari host. Dekati orang yang menampilkan QR.";
+      ? "Too much time has passed since the QR code was shown. Ask the host to show it again."
+      : "You're too far from the host. Move closer to the person showing the QR code.";
   }
-  return EVENT_MESSAGES[code] ?? "Gagal. Coba lagi.";
+  return EVENT_MESSAGES[code] ?? "Something went wrong. Try again.";
 }
 
 const FEED_MESSAGES: Record<string, string> = {

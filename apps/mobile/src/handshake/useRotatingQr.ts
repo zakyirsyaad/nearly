@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { encodeQr, makeNonce, qrExpiresAt, QR_TTL_MS } from "@nearly/shared";
 import type { NearlySigner } from "../signer";
 import { getCurrentCell } from "../location";
+import { TEKS_GAGAL_SIAPKAN_QR } from "../teks-salaman";
 import { postOffer } from "../api";
 
 /**
@@ -35,7 +36,7 @@ export function useRotatingQr(signer: NearlySigner) {
       setSecondsLeft(QR_TTL_MS / 1000);
       setError(null);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Gagal menyiapkan QR");
+      setError(e instanceof Error ? e.message : TEKS_GAGAL_SIAPKAN_QR);
     }
   }, [signer]);
 
