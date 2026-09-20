@@ -1,26 +1,38 @@
 import { useEffect, useState } from "react";
-import { Link } from "expo-router";
-import { Button, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import { router } from "expo-router";
+import { Pressable, ScrollView, StyleSheet, View } from "react-native";
 import { periksaNamaTampilan, type Visibilitas } from "@nearly/shared";
+import { BatangTrust } from "@/components/batang-trust";
+import { Lencana } from "@/components/lencana";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Text } from "@/components/ui/text";
+import { useColor } from "@/hooks/useColor";
+import { useKabar } from "@/hooks/useKabar";
+import { RADIUS, UKURAN } from "@/theme/globals";
 import { CONFIG } from "../../../src/config";
 import type { NearlySigner } from "../../../src/signer";
 import { useNearlySigner } from "../../../src/dompet/konteks-dompet";
-import { ApiError } from "../../../src/http";
+import { ApiError, req } from "../../../src/http";
+import { useLencana } from "../../../src/lencana/konteks-lencana";
 import { sesiPesan } from "../../../src/pesan/sesi";
 import { getProfilSaya, simpanProfil } from "../../../src/radar/radar-api";
 import {
-  KALIMAT_BATAS_TERSEMBUNYI,
-  kalimatVisibilitas,
-  labelSimpanProfil,
-  pesanNamaTidakSah,
-  profilErrorMessage,
-  sisaKarakterNama,
+  KALIMAT_BATAS_TERSEMBUNYI, kalimatVisibilitas, labelSimpanProfil, namaKartuRadar,
+  pesanNamaTidakSah, profilErrorMessage, sisaKarakterNama, teksLencana,
 } from "../../../src/messages";
-import { WARNA } from "../../../src/warna";
+import {
+  CATATAN_NAMA, LABEL_NAMA_TAMPILAN, LABEL_TERLIHAT, LABEL_TERSEMBUNYI, LABEL_VISIBILITAS,
+  PLACEHOLDER_NAMA, TAUTAN_BLOKIR, TAUTAN_DOMPET, TAUTAN_KECOCOKAN, TAUTAN_KONEKSI,
+  TEKS_GAGAL_MUAT_PROFIL_SAYA, TEKS_GAGAL_SIMPAN, TEKS_TERSIMPAN,
+} from "../../../src/teks-akun";
+import { pasanganKoneksi } from "../../../src/teks-profil";
+import { fetchTrust, type TrustResponse } from "../../../src/trust-api";
 
 const MODE: { nilai: Visibilitas; judul: string }[] = [
-  { nilai: "terlihat", judul: "Terlihat" },
-  { nilai: "tersembunyi", judul: "Tersembunyi" },
+  { nilai: "terlihat", judul: LABEL_TERLIHAT },
+  { nilai: "tersembunyi", judul: LABEL_TERSEMBUNYI },
 ];
 
 export default function ProfilSayaScreen() {
@@ -32,12 +44,37 @@ export default function ProfilSayaScreen() {
   return <ProfilSayaScreenIsi key={signer.address} signer={signer} />;
 }
 
+/** Satu baris tautan di daftar bawah, setinggi target sentuh (spec §3.7). */
+function BarisTautan({
+  label,
+  lencana,
+  onPress,
+}: {
+  label: string;
+  lencana?: string | null;
+  onPress: () => void;
+}) {
+  return (
+    <Pressable onPress={onPress} accessibilityRole="button" style={s.tautan}>
+      <Text variant="body" style={s.tebal}>{label}</Text>
+      {lencana ? <Lencana varian="teks" teks={lencana} /> : null}
+    </Pressable>
+  );
+}
+
 function ProfilSayaScreenIsi({ signer }: { signer: NearlySigner }) {
   const [nama, setNama] = useState("");
   const [visibilitas, setVisibilitas] = useState<Visibilitas>("terlihat");
   const [dimuat, setDimuat] = useState(false);
   const [sibuk, setSibuk] = useState(false);
   const [pesan, setPesan] = useState<string | null>(null);
+  const [koneksi, setKoneksi] = useState<number | null>(null);
+  const [trust, setTrust] = useState<TrustResponse | null>(null);
+  const { kecocokanBaru } = useLencana();
+  const kabar = useKabar();
+  const merah = useColor("destructive");
+  const garis = useColor("border");
+  const kuning = useColor("primary");
 
   useEffect(() => {
     void (async () => {
@@ -46,12 +83,21 @@ function ProfilSayaScreenIsi({ signer }: { signer: NearlySigner }) {
         setNama(p.displayName);
         setVisibilitas(p.visibilitas);
       } catch (e) {
-        setPesan(e instanceof ApiError ? profilErrorMessage(e.code) : "Profil gagal dimuat.");
+        setPesan(e instanceof ApiError ? profilErrorMessage(e.code) : TEKS_GAGAL_MUAT_PROFIL_SAYA);
       } finally {
         setDimuat(true);
       }
     })();
   }, [signer]);
+
+  // Kepala: angka publik dan tier sendiri. Gagal sendiri — kepala yang tidak
+  // lengkap tidak boleh menutup bagian nama dan visibilitas di bawahnya.
+  useEffect(() => {
+    req<{ connectionCount: number }>(`/profile/${signer.address}`)
+      .then((p) => setKoneksi(p.connectionCount))
+      .catch(() => {});
+    fetchTrust(signer.address).then(setTrust).catch(() => {});
+  }, [signer.address]);
 
   async function simpan() {
     if (sibuk) return;
@@ -64,82 +110,106 @@ function ProfilSayaScreenIsi({ signer }: { signer: NearlySigner }) {
     try {
       await simpanProfil(signer, { displayName: cek.nama, visibilitas });
       setNama(cek.nama);
-      setPesan("Tersimpan.");
+      setPesan(null);
+      // Aksi penting → toast hijau + haptic (spec §7.2).
+      kabar.berhasil(TEKS_TERSIMPAN);
     } catch (e) {
-      setPesan(e instanceof ApiError ? profilErrorMessage(e.code) : "Gagal menyimpan. Coba lagi.");
+      setPesan(e instanceof ApiError ? profilErrorMessage(e.code) : TEKS_GAGAL_SIMPAN);
     } finally {
       setSibuk(false);
     }
   }
 
   const sisa = sisaKarakterNama(nama);
+  const pasangan = koneksi === null ? null : pasanganKoneksi(koneksi);
 
   return (
     <ScrollView
       contentContainerStyle={s.root}
+      contentInsetAdjustmentBehavior="automatic"
       automaticallyAdjustKeyboardInsets
       keyboardShouldPersistTaps="handled"
     >
-      <Text style={s.label}>Nama tampilan</Text>
-      <TextInput
-        value={nama}
-        onChangeText={setNama}
-        placeholder="Tanpa nama"
-        editable={dimuat && !sibuk}
-        autoCorrect={false}
-        style={[s.isian, { color: WARNA.teks }]}
-        placeholderTextColor={WARNA.placeholder}
-      />
-      {/* Penghitung code point, bukan maxLength — maxLength menghitung unit UTF-16 dan memotong emoji. */}
-      <Text style={[s.penghitung, sisa < 0 && s.lebih]}>{sisa}</Text>
-      <Text style={s.catatan}>Nama tidak unik. Alamatmu selalu tampil di sebelahnya.</Text>
-
-      <Text style={s.label}>Visibilitas</Text>
-      {MODE.map((m) => (
-        <Pressable
-          key={m.nilai}
-          onPress={() => setVisibilitas(m.nilai)}
-          disabled={!dimuat || sibuk}
-          style={[s.mode, visibilitas === m.nilai && s.modeDipilih]}
-          accessibilityRole="radio"
-          accessibilityState={{ selected: visibilitas === m.nilai }}
-        >
-          <Text style={s.modeJudul}>
-            {visibilitas === m.nilai ? "● " : "○ "}
-            {m.judul}
-          </Text>
-          <Text style={s.modePenjelasan}>{kalimatVisibilitas(m.nilai)}</Text>
-        </Pressable>
-      ))}
-      <Text style={s.catatan}>{KALIMAT_BATAS_TERSEMBUNYI}</Text>
-
-      <View style={s.tombol}>
-        <Button
-          title={labelSimpanProfil(sibuk)}
-          onPress={() => void simpan()}
-          disabled={!dimuat || sibuk || sisa < 0}
-        />
+      <View style={s.kepala}>
+        <Text variant="title">{namaKartuRadar(nama)}</Text>
+        {/* Alamat UTUH di layar detail milikmu sendiri (R4). */}
+        <Text variant="mono" selectable>{signer.address}</Text>
+        {pasangan ? (
+          <View style={s.barisNilai}>
+            <Text variant="title">{pasangan.angka}</Text>
+            <Text variant="caption">{pasangan.kata}</Text>
+          </View>
+        ) : null}
+        {trust ? <BatangTrust tier={trust.tier} denganLabel /> : null}
       </View>
-      {pesan && <Text style={s.pesan}>{pesan}</Text>}
 
-      <Text style={s.label}>Dompet</Text>
-      <Link href="/dompet" style={s.tautan}>Alamat, 12 kata pemulihan, dan ganti dompet</Link>
+      <View style={s.bagian}>
+        <Text variant="caption">{LABEL_NAMA_TAMPILAN}</Text>
+        <Input
+          value={nama}
+          onChangeText={setNama}
+          placeholder={PLACEHOLDER_NAMA}
+          editable={dimuat && !sibuk}
+          autoCorrect={false}
+        />
+        {/* Penghitung code point, bukan maxLength — maxLength menghitung unit UTF-16 dan memotong emoji. */}
+        <Text variant="caption" style={[s.penghitung, sisa < 0 ? { color: merah } : null]}>{sisa}</Text>
+        <Text variant="caption">{CATATAN_NAMA}</Text>
+      </View>
+
+      <View style={s.bagian}>
+        <Text variant="caption">{LABEL_VISIBILITAS}</Text>
+        {MODE.map((m) => {
+          const terpilih = visibilitas === m.nilai;
+          return (
+            <Pressable
+              key={m.nilai}
+              onPress={() => setVisibilitas(m.nilai)}
+              disabled={!dimuat || sibuk}
+              style={[s.mode, { borderColor: terpilih ? kuning : garis }]}
+              accessibilityRole="radio"
+              accessibilityState={{ selected: terpilih }}
+            >
+              <Text variant="body" style={s.tebal}>{terpilih ? "● " : "○ "}{m.judul}</Text>
+              <Text variant="caption">{kalimatVisibilitas(m.nilai)}</Text>
+            </Pressable>
+          );
+        })}
+        <Text variant="caption">{KALIMAT_BATAS_TERSEMBUNYI}</Text>
+        <Button onPress={() => void simpan()} loading={sibuk} disabled={!dimuat || sibuk || sisa < 0}>
+          {labelSimpanProfil(sibuk)}
+        </Button>
+        {pesan ? <Text variant="caption">{pesan}</Text> : null}
+      </View>
+
+      <Card style={s.daftar}>
+        <BarisTautan label={TAUTAN_KONEKSI} onPress={() => router.push("/connections")} />
+        <BarisTautan
+          label={TAUTAN_KECOCOKAN}
+          lencana={teksLencana(kecocokanBaru)}
+          onPress={() => router.push("/kecocokan")}
+        />
+        <BarisTautan label={TAUTAN_DOMPET} onPress={() => router.push("/dompet")} />
+        <BarisTautan label={TAUTAN_BLOKIR} onPress={() => router.push("/blokir")} />
+      </Card>
     </ScrollView>
   );
 }
 
 const s = StyleSheet.create({
-  root: { padding: 16, gap: 10 },
-  label: { fontSize: 13, fontWeight: "600", opacity: 0.7, paddingTop: 8 },
-  isian: { borderWidth: StyleSheet.hairlineWidth, borderRadius: 8, padding: 10, fontSize: 16 },
-  penghitung: { fontSize: 12, opacity: 0.6, alignSelf: "flex-end" },
-  lebih: { color: "#b00", opacity: 1 },
-  catatan: { fontSize: 13, lineHeight: 19, opacity: 0.6 },
-  mode: { borderWidth: StyleSheet.hairlineWidth, borderRadius: 8, padding: 12, gap: 4 },
-  modeDipilih: { borderWidth: 2 },
-  modeJudul: { fontSize: 16, fontWeight: "600" },
-  modePenjelasan: { fontSize: 14, lineHeight: 20, opacity: 0.75 },
-  tombol: { paddingTop: 8 },
-  pesan: { fontSize: 15, lineHeight: 22 },
-  tautan: { fontSize: 15, fontWeight: "600", paddingVertical: 6 },
+  root: { padding: 16, paddingBottom: 32, gap: 24 },
+  kepala: { gap: 8 },
+  barisNilai: { flexDirection: "row", alignItems: "baseline", gap: 4 },
+  bagian: { gap: 8 },
+  penghitung: { alignSelf: "flex-end" },
+  mode: { borderWidth: 1, borderRadius: RADIUS.kartu, padding: 12, gap: 4 },
+  daftar: { gap: 4 },
+  tautan: {
+    minHeight: UKURAN.sentuh,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 8,
+  },
+  tebal: { fontWeight: "600" },
 });

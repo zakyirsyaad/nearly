@@ -98,18 +98,18 @@ describe("penghitung nama", () => {
 describe("profil", () => {
   it("setiap kode POST /profil punya kalimatnya sendiri", () => {
     for (const code of ["nama_tidak_sah", "expired", "bad_signature", "butuh_autentikasi", "invalid_body", "server_tak_terjangkau"]) {
-      expect(profilErrorMessage(code)).not.toBe("Gagal. Coba lagi sebentar.");
+      expect(profilErrorMessage(code)).not.toBe("Something went wrong. Try again in a moment.");
     }
   });
   it("kalimat visibilitas berbeda per mode dan menyebut timbal balik", () => {
-    expect(kalimatVisibilitas("tersembunyi")).toMatch(/tidak bisa membuka radar/);
+    expect(kalimatVisibilitas("tersembunyi")).toMatch(/can't open the radar/);
     expect(kalimatVisibilitas("terlihat")).not.toBe(kalimatVisibilitas("tersembunyi"));
   });
   it("batas Tersembunyi menyebut on-chain", () => {
     expect(KALIMAT_BATAS_TERSEMBUNYI).toMatch(/on-chain/);
   });
   it("label simpan", () => {
-    expect(labelSimpanProfil(false)).toBe("Simpan");
-    expect(labelSimpanProfil(true)).toBe("Menyimpan…");
+    expect(labelSimpanProfil(false)).toBe("Save");
+    expect(labelSimpanProfil(true)).toBe("Saving…");
   });
 });

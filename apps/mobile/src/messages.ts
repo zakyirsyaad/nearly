@@ -380,34 +380,34 @@ export function sisaKarakterNama(nama: string): number {
 
 export function kalimatVisibilitas(v: Visibilitas): string {
   return v === "terlihat"
-    ? "Orang lain di acara yang sama bisa melihatmu di radar, dan kamu bisa membuka radar."
-    : "Kamu tidak muncul di radar dan tidak memicu notifikasi kedekatan — tapi kamu juga tidak bisa membuka radar.";
+    ? "Other people at the same event can see you on the radar, and you can open the radar."
+    : "You don't show up on the radar and you don't trigger proximity notifications — but you can't open the radar either.";
 }
 
 export const KALIMAT_BATAS_TERSEMBUNYI =
-  "Tersembunyi tidak menyembunyikan salaman dan check-in: keduanya tetap tercatat publik on-chain.";
+  "Hidden doesn't hide handshakes and check-ins: both stay recorded publicly on-chain.";
 
 export function pesanNamaTidakSah(alasan: "terlalu_panjang" | "karakter_terlarang"): string {
   return alasan === "terlalu_panjang"
-    ? `Nama paling panjang ${MAKS_NAMA_TAMPILAN} karakter.`
-    : "Nama memuat karakter tak terlihat atau pengatur arah teks. Hapus karakter itu lalu coba lagi.";
+    ? `Names can be at most ${MAKS_NAMA_TAMPILAN} characters.`
+    : "Your name contains invisible or text-direction characters. Remove them, then try again.";
 }
 
 const PROFIL_MESSAGES: Record<string, string> = {
   ...GALAT_JARINGAN,
-  nama_tidak_sah: "Nama tidak sah. Periksa panjang dan karakternya.",
-  expired: "Permintaannya sudah kedaluwarsa. Coba lagi.",
-  bad_signature: "Tanda tangan tidak cocok. Coba lagi.",
-  butuh_autentikasi: "Sesi tidak sah. Tutup lalu buka lagi layar ini.",
-  invalid_body: "Ada isian yang belum benar.",
+  nama_tidak_sah: "That name isn't valid. Check its length and characters.",
+  expired: "This request has expired. Try again.",
+  bad_signature: "The signature doesn't match. Try again.",
+  butuh_autentikasi: "Your session isn't valid. Close this screen, then open it again.",
+  invalid_body: "Some of the details aren't right yet.",
 };
 
 export function profilErrorMessage(code: string): string {
-  return PROFIL_MESSAGES[code] ?? "Gagal. Coba lagi sebentar.";
+  return PROFIL_MESSAGES[code] ?? "Something went wrong. Try again in a moment.";
 }
 
 export function labelSimpanProfil(sibuk: boolean): string {
-  return sibuk ? "Menyimpan…" : "Simpan";
+  return sibuk ? "Saving…" : "Save";
 }
 
 /**
