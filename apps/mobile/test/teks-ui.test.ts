@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { hitSlopSampai, TARGET_SENTUH } from "../src/aksesibilitas";
-import { judulSheetBertemu } from "../src/messages";
+import { alamatSingkat, AWALAN_SHEET_BERTEMU, judulSheetBertemu } from "../src/messages";
 import { hurufAvatar, LENCANA_BERTEMU, LENCANA_RINGKAS, TEKS_COBA_LAGI } from "../src/teks-ui";
 import { UKURAN } from "../theme/globals";
 
@@ -30,6 +30,11 @@ describe("judulSheetBertemu (spec §6.2, R14)", () => {
     for (const nama of ["", "   ", null]) {
       expect(judulSheetBertemu(nama, ALAMAT)).toBe("You met 0x9bE5…6ffA");
     }
+  });
+
+  it("awalan judul dipisah supaya alamat singkat bisa dirender mono di sheet", () => {
+    expect(judulSheetBertemu(null, ALAMAT)).toBe(`${AWALAN_SHEET_BERTEMU}${alamatSingkat(ALAMAT)}`);
+    expect(judulSheetBertemu("Rina", ALAMAT)).toBe(`${AWALAN_SHEET_BERTEMU}Rina`);
   });
 });
 

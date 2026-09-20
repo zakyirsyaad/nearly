@@ -410,11 +410,12 @@ export function labelSimpanProfil(sibuk: boolean): string {
 }
 
 /**
- * Judul sheet salaman berhasil (spec desain UI §6.2, R14): nama yang di-trim
- * tidak kosong → "You met ‹nama›"; selainnya "You met ‹alamat singkat›".
- * Dipakai Rencana B 5(a).
+ * Awalan judul, dipisah supaya sheet bisa merender alamat singkat dengan
+ * varian `mono` (spec §6.2 butir 3) tanpa memecah kalimatnya sendiri di JSX.
  */
+export const AWALAN_SHEET_BERTEMU = "You met ";
+
 export function judulSheetBertemu(nama: string | null, alamat: string): string {
   const n = nama?.trim() ?? "";
-  return n ? `You met ${n}` : `You met ${alamatSingkat(alamat)}`;
+  return `${AWALAN_SHEET_BERTEMU}${n || alamatSingkat(alamat)}`;
 }
