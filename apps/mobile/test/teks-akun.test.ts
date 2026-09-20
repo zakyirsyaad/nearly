@@ -3,6 +3,7 @@ import {
   CATATAN_NAMA, LABEL_NAMA_TAMPILAN, LABEL_TERLIHAT, LABEL_TERSEMBUNYI, LABEL_VISIBILITAS,
   PLACEHOLDER_NAMA, TAUTAN_BLOKIR, TAUTAN_DOMPET, TAUTAN_KECOCOKAN, TAUTAN_KONEKSI,
   TEKS_GAGAL_MUAT_PROFIL_SAYA, TEKS_GAGAL_SIMPAN, TEKS_TERSIMPAN,
+  KOSONG_KECOCOKAN, LENCANA_SALING_INGIN_BERTEMU, TEKS_GAGAL_KECOCOKAN,
 } from "../src/teks-akun";
 
 // Istilah terkunci spec desain UI §7.4 (keputusan #15).
@@ -31,5 +32,16 @@ describe("teks grup tab Profile", () => {
   it("placeholder nama memakai kata yang sama dengan kartu orang tanpa nama", async () => {
     const { namaKartuRadar } = await import("../src/messages");
     expect(PLACEHOLDER_NAMA).toBe(namaKartuRadar(""));
+  });
+});
+
+describe("teks Koneksi dan Kecocokan", () => {
+  it("lencana kecocokan memakai istilah terkunci, tanpa titik", () => {
+    expect(LENCANA_SALING_INGIN_BERTEMU).toBe("You both want to meet");
+  });
+
+  it("kalimat kosong kecocokan mengajak menandai, bukan sekadar menyatakan kosong", () => {
+    expect(KOSONG_KECOCOKAN.toLowerCase()).toContain("mark");
+    expect(TEKS_GAGAL_KECOCOKAN.length).toBeGreaterThan(0);
   });
 });

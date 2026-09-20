@@ -27,3 +27,13 @@ export const TAUTAN_KONEKSI = "Connections";
 export const TAUTAN_KECOCOKAN = "You both want to meet";
 export const TAUTAN_DOMPET = "Address, 12-word recovery phrase, and switch wallet";
 export const TAUTAN_BLOKIR = "Blocked";
+
+/* Koneksi dan Kecocokan — app/(tabs)/(profil)/{connections,kecocokan}.tsx */
+
+/** Terjemahan lencana `lencanaKartuRadar` yang ada, tanpa titik (teks lencana). */
+export const LENCANA_SALING_INGIN_BERTEMU = "You both want to meet";
+
+export const KOSONG_KECOCOKAN =
+  "No one has matched with you yet. Mark the people you want to meet — if they mark you back, you'll both know.";
+
+export const TEKS_GAGAL_KECOCOKAN = "Couldn't load your matches.";

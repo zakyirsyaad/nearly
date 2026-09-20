@@ -1,10 +1,16 @@
 import { useEffect, useState } from "react";
-import { Link } from "expo-router";
-import { FlatList, StyleSheet, Text, View } from "react-native";
+import { router } from "expo-router";
+import { FlatList, Pressable, StyleSheet, View } from "react-native";
+import { Handshake } from "lucide-react-native";
+import { KeadaanKosong, KerangkaDaftar } from "@/components/keadaan";
+import { Card } from "@/components/ui/card";
+import { Text } from "@/components/ui/text";
 import { CONFIG } from "../../../src/config";
 import { req } from "../../../src/http";
 import type { NearlySigner } from "../../../src/signer";
 import { useNearlySigner } from "../../../src/dompet/konteks-dompet";
+import { KOSONG_KONEKSI, TEKS_AKSI_HANDSHAKE } from "../../../src/teks-beranda";
+import { waktuRelatif } from "../../../src/waktu";
 
 type Row = { address: string; txHash: string; at: number };
 
@@ -26,36 +32,45 @@ function ConnectionsIsi({ signer }: { signer: NearlySigner }) {
       .catch(() => setRows([]));
   }, [signer.address]);
 
-  if (!rows) return <View style={s.root}><Text>Memuat…</Text></View>;
-
-  if (rows.length === 0) {
+  if (!rows) {
     return (
-      <View style={s.root}>
-        <Text style={s.empty}>
-          Belum ada koneksi. Koneksi hanya bisa dibuat dengan bertemu langsung.
-        </Text>
+      <View style={s.muat}>
+        <KerangkaDaftar />
       </View>
     );
   }
 
+  const kini = new Date();
+
   return (
     <FlatList
-      contentContainerStyle={s.list}
+      contentContainerStyle={s.daftar}
+      contentInsetAdjustmentBehavior="automatic"
       data={rows}
       keyExtractor={(r) => r.address}
+      ListEmptyComponent={
+        <KeadaanKosong
+          Ikon={Handshake}
+          kalimat={KOSONG_KONEKSI}
+          aksi={{ label: TEKS_AKSI_HANDSHAKE, onPress: () => router.push("/salaman") }}
+        />
+      }
       renderItem={({ item }) => (
-        <Link href={`/profile/${item.address}`} style={s.row}>
-          <Text style={s.addr}>{item.address}</Text>
-        </Link>
+        <Pressable onPress={() => router.push(`/profile/${item.address}`)} accessibilityRole="button">
+          <Card style={s.kartu}>
+            {/* GET /connections tidak mengirim nama; alamat adalah identitasnya
+                (spec §9.2, §11 batas #9). */}
+            <Text variant="mono">{item.address}</Text>
+            <Text variant="caption">{waktuRelatif(new Date(item.at), kini)}</Text>
+          </Card>
+        </Pressable>
       )}
     />
   );
 }
 
 const s = StyleSheet.create({
-  root: { flex: 1, justifyContent: "center", padding: 24 },
-  list: { padding: 16 },
-  row: { paddingVertical: 14 },
-  addr: { fontFamily: "Courier", fontSize: 13 },
-  empty: { fontSize: 15, lineHeight: 22, textAlign: "center", opacity: 0.7 },
+  muat: { flex: 1, padding: 16 },
+  daftar: { padding: 16, gap: 12 },
+  kartu: { gap: 4 },
 });
