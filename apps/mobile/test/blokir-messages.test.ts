@@ -17,18 +17,18 @@ describe("blokirErrorMessage", () => {
 
 describe("blokirTombolLabel", () => {
   it("belum diblokir → mengajak memblokir", () => {
-    expect(blokirTombolLabel(false, false)).toContain("Blokir");
+    expect(blokirTombolLabel(false, false)).toContain("Block");
   });
 
   it("sudah diblokir → menawarkan mencabut", () => {
-    expect(blokirTombolLabel(true, false)).toContain("Cabut");
+    expect(blokirTombolLabel(true, false)).toContain("Unblock");
   });
 
   // Label harus jujur tentang apa yang terjadi kalau diketuk. Sedang sibuk
   // berarti ketukan berikutnya tidak melakukan apa-apa, jadi labelnya tidak
   // boleh menjanjikan aksi.
   it("sedang sibuk → tidak menjanjikan aksi apa pun", () => {
-    expect(blokirTombolLabel(false, true)).not.toContain("Blokir");
-    expect(blokirTombolLabel(true, true)).not.toContain("Cabut");
+    expect(blokirTombolLabel(false, true)).not.toContain("Block");
+    expect(blokirTombolLabel(true, true)).not.toContain("Unblock");
   });
 });

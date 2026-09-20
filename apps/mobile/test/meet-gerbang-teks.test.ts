@@ -23,11 +23,15 @@ describe("teksInginBertemuCount", () => {
   });
 
   it("nol SUNGGUHAN tetap ditampilkan sebagai nol", () => {
-    expect(teksInginBertemuCount(0)).toBe("0 orang ingin bertemu dia");
+    expect(teksInginBertemuCount(0)).toBe("0 people want to meet them");
   });
 
   it("angka biasa tampil apa adanya", () => {
-    expect(teksInginBertemuCount(12)).toBe("12 orang ingin bertemu dia");
+    expect(teksInginBertemuCount(12)).toBe("12 people want to meet them");
+  });
+
+  it("satu orang memakai bentuk tunggal", () => {
+    expect(teksInginBertemuCount(1)).toBe("1 person wants to meet them");
   });
 });
 
@@ -45,11 +49,11 @@ describe("tombolTandaLabel", () => {
   });
 
   it("false berarti tombol menandai", () => {
-    expect(tombolTandaLabel(false, biasa)).toBe("Ingin bertemu");
+    expect(tombolTandaLabel(false, biasa)).toBe("Want to meet");
   });
 
   it("true berarti tombol mencabut", () => {
-    expect(tombolTandaLabel(true, biasa)).toBe("Batal ingin bertemu");
+    expect(tombolTandaLabel(true, biasa)).toBe("Undo want to meet");
   });
 
   it("profil sendiri tidak pernah punya tombol, walau bendera terbaca", () => {
@@ -58,8 +62,8 @@ describe("tombolTandaLabel", () => {
   });
 
   it("sibuk mengganti judulnya, bukan menghilangkan tombolnya", () => {
-    expect(tombolTandaLabel(false, { milikSendiri: false, sibuk: true })).toBe("Mengirim…");
-    expect(tombolTandaLabel(true, { milikSendiri: false, sibuk: true })).toBe("Mengirim…");
+    expect(tombolTandaLabel(false, { milikSendiri: false, sibuk: true })).toBe("Sending…");
+    expect(tombolTandaLabel(true, { milikSendiri: false, sibuk: true })).toBe("Sending…");
   });
 
   it("sibuk TIDAK memunculkan tombol untuk keadaan yang tidak diketahui", () => {

@@ -1,4 +1,5 @@
 import { MAKS_ISI_PESAN } from "@nearly/shared";
+import { jamak } from "./jamak";
 import { MAKS_BUKTI_LAPORAN, MIN_ALASAN_LAPORAN } from "./pesan/pesan-actions";
 import { MAKS_NAMA_TAMPILAN, panjangNamaTampilan, type Visibilitas } from "@nearly/shared";
 
@@ -89,26 +90,26 @@ export function feedErrorMessage(code: string): string {
 
 const MEET_MESSAGES: Record<string, string> = {
   ...GALAT_JARINGAN,
-  expired: "Permintaannya sudah kedaluwarsa. Coba lagi.",
-  bad_signature: "Tanda tangan tidak cocok. Coba lagi.",
-  tandai_diri: "Kamu tidak bisa menandai dirimu sendiri.",
+  expired: "This request has expired. Try again.",
+  bad_signature: "The signature doesn't match. Try again.",
+  tandai_diri: "You can't mark yourself.",
   // Penandatanganan buktinya otomatis, jadi ini bukan salah pengguna — buktinya
   // hilang, kedaluwarsa, atau dibuat dari dompet yang berbeda dari yang
   // dipakai sekarang. Muat ulang layarnya memaksa bukti baru dibuat.
-  butuh_bukti: "Buktinya belum ada, sudah kedaluwarsa, atau dari dompet yang berbeda. Muat ulang layar ini untuk mencoba lagi.",
-  invalid_body: "Ada isian yang belum benar.",
-  invalid_address: "Alamatnya tidak valid. Coba lagi dari layar sebelumnya.",
+  butuh_bukti: "The proof is missing, expired, or from a different wallet. Reload this screen to try again.",
+  invalid_body: "Some of the details aren't right yet.",
+  invalid_address: "That address isn't valid. Try again from the previous screen.",
   // POST /meet mengembalikan ini (403) kalau penanda tangan dan target
   // punya hubungan blokir, arah mana pun. Kalimatnya sengaja netral: tidak
   // bilang siapa yang memblokir siapa, dan tidak bilang "saling memblokir"
   // (itu salah untuk blokir sepihak). Spec menerima bahwa orang yang
   // diblokir bisa MENYIMPULKAN adanya blokir dari sini — tapi tidak
   // memberitahunya secara eksplisit.
-  terblokir: "Kamu tidak bisa menandai orang ini.",
+  terblokir: "You can't mark this person.",
 };
 
 export function meetErrorMessage(code: string): string {
-  return MEET_MESSAGES[code] ?? "Gagal. Coba lagi sebentar.";
+  return MEET_MESSAGES[code] ?? "Something went wrong. Try again in a moment.";
 }
 
 /**
@@ -123,8 +124,8 @@ export function meetErrorMessage(code: string): string {
  */
 export function meetSuccessMessage(sudahDitandai: boolean): string {
   return sudahDitandai
-    ? "Ditandai. Kalau dia menandaimu balik, kalian akan saling tahu."
-    : "Dibatalkan. Dia tidak lagi tahu kamu menandainya.";
+    ? "Marked. If they mark you back, you'll both know."
+    : "Undone. They no longer know you marked them.";
 }
 
 /**
@@ -167,7 +168,7 @@ export function alasanMuncul(hop: 0 | 1 | 2 | null, displayName: string): string
  */
 export function teksInginBertemuCount(jumlah: number | undefined): string | null {
   if (jumlah === undefined) return null;
-  return `${jumlah} orang ingin bertemu dia`;
+  return jamak(jumlah, "person wants to meet them", "people want to meet them");
 }
 
 /**
@@ -186,8 +187,8 @@ export function tombolTandaLabel(
 ): string | null {
   if (opsi.milikSendiri) return null;
   if (sudahKutandai === undefined) return null;
-  if (opsi.sibuk) return "Mengirim…";
-  return sudahKutandai ? "Batal ingin bertemu" : "Ingin bertemu";
+  if (opsi.sibuk) return "Sending…";
+  return sudahKutandai ? "Undo want to meet" : "Want to meet";
 }
 
 /**
@@ -223,17 +224,17 @@ export function teksKutandaiHadir(jumlah: number | undefined): string | null {
 
 const BLOKIR_MESSAGES: Record<string, string> = {
   ...GALAT_JARINGAN,
-  blokir_diri: "Kamu tidak bisa memblokir dirimu sendiri.",
-  bad_signature: "Tanda tangan tidak cocok. Coba lagi.",
-  expired: "Permintaannya sudah kedaluwarsa. Coba lagi.",
+  blokir_diri: "You can't block yourself.",
+  bad_signature: "The signature doesn't match. Try again.",
+  expired: "This request has expired. Try again.",
   // Sama seperti di layar kecocokan: bukan salah pengguna, dan yang menolong
   // adalah memuat ulang, bukan mengetuk tombol yang sama lagi.
-  butuh_bukti: "Buktinya belum ada, sudah kedaluwarsa, atau dari dompet yang berbeda. Muat ulang layar ini untuk mencoba lagi.",
-  invalid_body: "Ada isian yang belum benar.",
+  butuh_bukti: "The proof is missing, expired, or from a different wallet. Reload this screen to try again.",
+  invalid_body: "Some of the details aren't right yet.",
 };
 
 export function blokirErrorMessage(code: string): string {
-  return BLOKIR_MESSAGES[code] ?? "Gagal. Coba lagi sebentar.";
+  return BLOKIR_MESSAGES[code] ?? "Something went wrong. Try again in a moment.";
 }
 
 /**
@@ -242,8 +243,8 @@ export function blokirErrorMessage(code: string): string {
  * sudah dipakai `teksLencana` dan `tombolTandaLabel`.
  */
 export function blokirTombolLabel(sudahDiblokir: boolean, sibuk: boolean): string {
-  if (sibuk) return "Mengirim…";
-  return sudahDiblokir ? "Cabut blokir" : "Blokir orang ini";
+  if (sibuk) return "Sending…";
+  return sudahDiblokir ? "Unblock" : "Block this person";
 }
 
 const PESAN_MESSAGES: Record<string, string> = {
