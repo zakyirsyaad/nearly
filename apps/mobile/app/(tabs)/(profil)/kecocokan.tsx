@@ -3,9 +3,8 @@ import { router, useFocusEffect } from "expo-router";
 import { FlatList, StyleSheet, View } from "react-native";
 import { Users } from "lucide-react-native";
 import { KartuOrang } from "@/components/kartu-orang";
-import { KeadaanKosong, KerangkaDaftar } from "@/components/keadaan";
+import { KeadaanGalat, KeadaanKosong, KerangkaDaftar } from "@/components/keadaan";
 import { Lencana } from "@/components/lencana";
-import { Text } from "@/components/ui/text";
 import { CONFIG } from "../../../src/config";
 import type { NearlySigner } from "../../../src/signer";
 import { useNearlySigner } from "../../../src/dompet/konteks-dompet";
@@ -44,7 +43,8 @@ function KecocokanScreenIsi({ signer }: { signer: NearlySigner }) {
       // Titik lencana tab Profil hilang sekarang, bukan 30 detik lagi (spec §4.4).
       muatUlangLencana();
     } catch (e) {
-      setBaris([]);
+      // Baris yang sudah tampil DIPERTAHANKAN (review B1 M1, spec §7.2): muat
+      // ulang saat fokus yang gagal tidak boleh membuat kecocokanmu hilang.
       setPesan(e instanceof ApiError ? meetErrorMessage(e.code) : TEKS_GAGAL_KECOCOKAN);
     }
   }, [signer, muatUlangLencana]);
@@ -62,7 +62,11 @@ function KecocokanScreenIsi({ signer }: { signer: NearlySigner }) {
   if (baris === null) {
     return (
       <View style={s.muat}>
-        <KerangkaDaftar />
+        {pesan ? (
+          <KeadaanGalat kalimat={pesan} onCobaLagi={() => void muat()} />
+        ) : (
+          <KerangkaDaftar />
+        )}
       </View>
     );
   }
@@ -73,7 +77,7 @@ function KecocokanScreenIsi({ signer }: { signer: NearlySigner }) {
       contentInsetAdjustmentBehavior="automatic"
       data={baris}
       keyExtractor={(k) => k.address}
-      ListHeaderComponent={pesan ? <Text variant="caption">{pesan}</Text> : null}
+      ListHeaderComponent={pesan ? <KeadaanGalat kalimat={pesan} onCobaLagi={() => void muat()} /> : null}
       ListEmptyComponent={
         // Kalau `pesan` terisi (mis. 403 butuh_bukti), daftar kosong ini BUKAN
         // berarti "belum ada kecocokan" — itu kegagalan otorisasi. Menampilkan

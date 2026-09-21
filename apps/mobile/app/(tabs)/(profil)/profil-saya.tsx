@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { router, useFocusEffect } from "expo-router";
 import { Pressable, ScrollView, StyleSheet, View } from "react-native";
+import { ChevronRight } from "lucide-react-native";
 import { periksaNamaTampilan, type Visibilitas } from "@nearly/shared";
 import { BatangTrust } from "@/components/batang-trust";
 import { KeadaanGalat } from "@/components/keadaan";
@@ -21,7 +22,7 @@ import { bolehMuatFokus } from "../../../src/muat-fokus";
 import { sesiPesan } from "../../../src/pesan/sesi";
 import { getProfilSaya, simpanProfil } from "../../../src/radar/radar-api";
 import {
-  KALIMAT_BATAS_TERSEMBUNYI, kalimatVisibilitas, labelSimpanProfil, namaKartuRadar,
+  KALIMAT_BATAS_TERSEMBUNYI, kalimatVisibilitas, labelSimpanProfil,
   pesanNamaTidakSah, profilErrorMessage, sisaKarakterNama, teksLencana,
 } from "../../../src/messages";
 import {
@@ -56,16 +57,27 @@ function BarisTautan({
   lencana?: string | null;
   onPress: () => void;
 }) {
+  const redup = useColor("textMuted");
   return (
     <Pressable onPress={onPress} accessibilityRole="button" style={s.tautan}>
-      <Text variant="body" style={s.tebal}>{label}</Text>
-      {lencana ? <Lencana varian="teks" teks={lencana} /> : null}
+      {/* Label panjang ("Address, 12-word recovery phrase, …") membungkus,
+          tidak mendorong chevron keluar kartu. */}
+      <Text variant="body" style={[s.tebal, s.menyusut]}>{label}</Text>
+      <View style={s.ujungTautan}>
+        {lencana ? <Lencana varian="teks" teks={lencana} /> : null}
+        {/* Tanda baris navigasi (catatan eksekutor B1 E2); dekoratif. */}
+        <ChevronRight color={redup} size={20} />
+      </View>
     </Pressable>
   );
 }
 
 function ProfilSayaScreenIsi({ signer }: { signer: NearlySigner }) {
   const [nama, setNama] = useState("");
+  // Nama yang TERSIMPAN di server, terpisah dari isian (review B1 M4): kepala
+  // tidak ikut berubah selagi nama diketik, dan tidak mengaku "Unnamed" saat
+  // profilnya gagal dimuat. null = belum diketahui atau kosong.
+  const [namaTersimpan, setNamaTersimpan] = useState<string | null>(null);
   const [visibilitas, setVisibilitas] = useState<Visibilitas>("terlihat");
   const [dimuat, setDimuat] = useState(false);
   const [galatMuat, setGalatMuat] = useState<string | null>(null);
@@ -89,6 +101,7 @@ function ProfilSayaScreenIsi({ signer }: { signer: NearlySigner }) {
     try {
       const p = await getProfilSaya(await sesiPesan(signer));
       setNama(p.displayName);
+      setNamaTersimpan(p.displayName.trim() || null);
       setVisibilitas(p.visibilitas);
       setDimuat(true);
     } catch (e) {
@@ -131,6 +144,7 @@ function ProfilSayaScreenIsi({ signer }: { signer: NearlySigner }) {
     try {
       await simpanProfil(signer, { displayName: cek.nama, visibilitas });
       setNama(cek.nama);
+      setNamaTersimpan(cek.nama.trim() || null);
       setPesan(null);
       // Aksi penting → toast hijau + haptic (spec §7.2).
       kabar.berhasil(TEKS_TERSIMPAN);
@@ -152,7 +166,7 @@ function ProfilSayaScreenIsi({ signer }: { signer: NearlySigner }) {
       keyboardShouldPersistTaps="handled"
     >
       <View style={s.kepala}>
-        <Text variant="title">{namaKartuRadar(nama)}</Text>
+        {namaTersimpan ? <Text variant="title">{namaTersimpan}</Text> : null}
         {/* Alamat UTUH di layar detail milikmu sendiri (R4). */}
         <Text variant="mono" selectable>{signer.address}</Text>
         {pasangan ? (
@@ -239,4 +253,6 @@ const s = StyleSheet.create({
     gap: 8,
   },
   tebal: { fontWeight: "600" },
+  menyusut: { flexShrink: 1 },
+  ujungTautan: { flexDirection: "row", alignItems: "center", gap: 8 },
 });

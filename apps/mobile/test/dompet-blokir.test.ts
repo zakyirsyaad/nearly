@@ -34,7 +34,7 @@ describe("layar Diblokir (spec §7.1, §7.2)", () => {
   });
 
   it("daftar kosong DI SAMPING galat tetap bukan keadaan kosong", () => {
-    expect(blokir()).toContain("pesan ? null : (");
+    expect(blokir()).toContain("galatMuat ? null : (");
   });
 
   it("kegagalan MUAT ULANG setelah cabut tidak mengaku aksinya gagal", () => {

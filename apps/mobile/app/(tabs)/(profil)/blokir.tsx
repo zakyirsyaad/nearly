@@ -3,7 +3,7 @@ import { useFocusEffect } from "expo-router";
 import { FlatList, StyleSheet, View } from "react-native";
 import { ShieldOff } from "lucide-react-native";
 import type { Address } from "viem";
-import { KeadaanKosong, KerangkaDaftar } from "@/components/keadaan";
+import { KeadaanGalat, KeadaanKosong, KerangkaDaftar } from "@/components/keadaan";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Text } from "@/components/ui/text";
@@ -32,26 +32,29 @@ function BlokirScreenIsi({ signer }: { signer: NearlySigner }) {
   const [baris, setBaris] = useState<BarisBlokir[] | null>(null);
   const [pesan, setPesan] = useState<string | null>(null);
   const [sibuk, setSibuk] = useState<string | null>(null);
+  // Galat MUAT terpisah dari pesan AKSI: "Try again" memuat ulang daftar, jadi
+  // ia tidak boleh muncul di bawah kegagalan mencabut blokir.
+  const [galatMuat, setGalatMuat] = useState<string | null>(null);
 
   // TIDAK menangkap galatnya sendiri: pemanggil (pemicu fokus di bawah, dan
   // `cabut`) yang memutuskan apa arti kegagalan di konteks masing-masing.
   const muat = useCallback(async () => {
     const { blokir } = await getBlokir(await kueriBuktiBlokir(signer));
     setBaris(blokir);
-    setPesan(null);
+    setGalatMuat(null);
   }, [signer]);
 
-  // SATU pemicu. `useFocusEffect` sudah menyala saat layar pertama kali fokus.
-  // Galat dari `muat` ditangani DI SINI, bukan di dalam `muat`, supaya muat
-  // pertama yang gagal mengosongkan daftar dan menampilkan pesan galat — beda
-  // dengan reload di dalam `cabut`, yang tidak boleh mengosongkan daftar yang
-  // barusan berhasil diperbarui aksinya.
-  useFocusEffect(useCallback(() => {
-    muat().catch((e) => {
-      setBaris([]);
-      setPesan(e instanceof ApiError ? blokirErrorMessage(e.code) : TEKS_GAGAL_MUAT_BLOKIR);
+  // Galat dari `muat` ditangani DI SINI, bukan di dalam `muat`: reload di
+  // dalam `cabut` punya arti kegagalannya sendiri. Baris yang sudah tampil
+  // DIPERTAHANKAN (review B1 M1, spec §7.2).
+  const muatDenganGalat = useCallback(() => {
+    return muat().catch((e: unknown) => {
+      setGalatMuat(e instanceof ApiError ? blokirErrorMessage(e.code) : TEKS_GAGAL_MUAT_BLOKIR);
     });
-  }, [muat]));
+  }, [muat]);
+
+  // SATU pemicu. `useFocusEffect` sudah menyala saat layar pertama kali fokus.
+  useFocusEffect(useCallback(() => { void muatDenganGalat(); }, [muatDenganGalat]));
 
   async function cabut(alamat: string) {
     if (sibuk) return;
@@ -80,7 +83,11 @@ function BlokirScreenIsi({ signer }: { signer: NearlySigner }) {
   if (baris === null) {
     return (
       <View style={s.muat}>
-        <KerangkaDaftar />
+        {galatMuat ? (
+          <KeadaanGalat kalimat={galatMuat} onCobaLagi={() => void muatDenganGalat()} />
+        ) : (
+          <KerangkaDaftar />
+        )}
       </View>
     );
   }
@@ -91,13 +98,20 @@ function BlokirScreenIsi({ signer }: { signer: NearlySigner }) {
       contentInsetAdjustmentBehavior="automatic"
       data={baris}
       keyExtractor={(b) => b.address}
-      ListHeaderComponent={pesan ? <Text variant="caption">{pesan}</Text> : null}
+      ListHeaderComponent={
+        galatMuat || pesan ? (
+          <View style={s.kepala}>
+            {galatMuat ? <KeadaanGalat kalimat={galatMuat} onCobaLagi={() => void muatDenganGalat()} /> : null}
+            {pesan ? <Text variant="caption">{pesan}</Text> : null}
+          </View>
+        ) : null
+      }
       ListEmptyComponent={
-        // Kalau `pesan` terisi, daftar kosong ini BUKAN berarti "kamu tidak
+        // Kalau `galatMuat` terisi, daftar kosong ini BUKAN berarti "kamu tidak
         // memblokir siapa pun" — itu kegagalan otorisasi, dan menampilkannya
         // sebagai keadaan normal adalah kebohongan yang tidak bisa dideteksi
         // pengguna.
-        pesan ? null : (
+        galatMuat ? null : (
           <KeadaanKosong Ikon={ShieldOff} kalimat={KOSONG_BLOKIR} />
         )
       }
@@ -124,4 +138,5 @@ const s = StyleSheet.create({
   muat: { flex: 1, padding: 16 },
   daftar: { padding: 16, gap: 12 },
   kartu: { gap: 8 },
+  kepala: { gap: 8 },
 });

@@ -61,3 +61,85 @@ describe("Profil orang: tombol Done setinggi target sentuh (M6)", () => {
     expect(x).toMatch(/selesai: \{ minHeight: UKURAN\.sentuh, justifyContent: "center" \}/);
   });
 });
+
+describe("Kecocokan: muat ulang yang gagal tidak mengosongkan daftar (M1, M11)", () => {
+  const isi = () => tanpaKomentar(baca("app/(tabs)/(profil)/kecocokan.tsx"));
+
+  it("catch memuat galat tanpa membuang baris yang sudah tampil", () => {
+    const muat = potong(isi(), "const muat = useCallback(", "}, [signer, muatUlangLencana]);");
+    expect(muat).not.toContain("setBaris([])");
+    expect(muat).toContain("setPesan(");
+  });
+
+  it("muat pertama yang gagal tampil sebagai galat + Try again, bukan kerangka selamanya", () => {
+    expect(isi()).toMatch(
+      /if \(baris === null\) \{[\s\S]*?\{pesan \? \(\s*<KeadaanGalat kalimat=\{pesan\} onCobaLagi=\{\(\) => void muat\(\)\} \/>/,
+    );
+  });
+
+  it("galat di atas daftar yang sudah tampil punya Try again", () => {
+    expect(isi()).toContain(
+      "ListHeaderComponent={pesan ? <KeadaanGalat kalimat={pesan} onCobaLagi={() => void muat()} /> : null}",
+    );
+  });
+
+  it("daftar kosong di samping galat bukan keadaan kosong; muat saat fokus tetap satu pemicu", () => {
+    const x = isi();
+    expect(x).toMatch(/ListEmptyComponent=\{\s*pesan \? null : \(/);
+    expect(x).toContain("useFocusEffect(useCallback(() => { void muat(); }, [muat]));");
+    expect(x).not.toMatch(/\buseEffect\(/);
+  });
+});
+
+describe("Diblokir: muat ulang yang gagal tidak mengosongkan daftar (M1, M11)", () => {
+  const isi = () => tanpaKomentar(baca("app/(tabs)/(profil)/blokir.tsx"));
+
+  it("galat muat terpisah dari pesan aksi, dan tidak mengosongkan baris", () => {
+    const muat = potong(isi(), "const muatDenganGalat = useCallback(", "}, [muat]);");
+    expect(muat).toContain("setGalatMuat(");
+    expect(muat).not.toContain("setBaris(");
+  });
+
+  it("muat pertama yang gagal tampil sebagai galat + Try again", () => {
+    expect(isi()).toMatch(
+      /if \(baris === null\) \{[\s\S]*?\{galatMuat \? \(\s*<KeadaanGalat kalimat=\{galatMuat\} onCobaLagi=\{\(\) => void muatDenganGalat\(\)\} \/>/,
+    );
+  });
+
+  it("galat di atas daftar yang sudah tampil punya Try again; pesan aksi tetap teks", () => {
+    const x = isi();
+    expect(x).toContain("{galatMuat ? <KeadaanGalat kalimat={galatMuat} onCobaLagi={() => void muatDenganGalat()} /> : null}");
+    expect(x).toContain("{pesan ? <Text variant=\"caption\">{pesan}</Text> : null}");
+  });
+
+  it("daftar kosong di samping galat bukan keadaan kosong; muat saat fokus lewat muatDenganGalat", () => {
+    const x = isi();
+    expect(x).toMatch(/ListEmptyComponent=\{\s*galatMuat \? null : \(/);
+    expect(x).toContain("useFocusEffect(useCallback(() => { void muatDenganGalat(); }, [muatDenganGalat]));");
+  });
+});
+
+describe("Profil (tab): kepala memakai nama TERSIMPAN (M4) dan baris tautan bertanda chevron (E2)", () => {
+  const isi = () => tanpaKomentar(baca("app/(tabs)/(profil)/profil-saya.tsx"));
+
+  it("kepala tidak menampilkan isian yang sedang diketik, dan tidak 'Unnamed' setelah gagal muat", () => {
+    const kepala = potong(isi(), "<View style={s.kepala}>", "{trust ?");
+    expect(kepala).toContain('{namaTersimpan ? <Text variant="title">{namaTersimpan}</Text> : null}');
+    expect(kepala).not.toContain("{nama}");
+    expect(kepala).not.toContain("namaKartuRadar(");
+  });
+
+  it("nama tersimpan diisi saat muat berhasil dan saat simpan berhasil", () => {
+    const x = isi();
+    const muat = potong(x, "const muatProfil = useCallback(", "}, [signer]);");
+    expect(muat).toContain("setNamaTersimpan(p.displayName.trim() || null);");
+    const simpan = potong(x, "async function simpan() {", "\n  }\n");
+    expect(simpan).toMatch(/await simpanProfil\([\s\S]*setNamaTersimpan\(cek\.nama\.trim\(\) \|\| null\);/);
+  });
+
+  it("BarisTautan menampilkan ChevronRight redup dan labelnya boleh membungkus", () => {
+    const baris = potong(isi(), "function BarisTautan(", "\n}\n");
+    expect(baris).toContain("<ChevronRight color={redup} size={20} />");
+    expect(baris).toContain("style={[s.tebal, s.menyusut]}");
+  });
+});
