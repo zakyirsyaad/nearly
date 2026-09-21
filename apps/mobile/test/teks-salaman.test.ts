@@ -6,6 +6,7 @@ import {
   TEKS_GAGAL_SALAMAN,
   TEKS_GAGAL_SIAPKAN_QR,
   TEKS_IZIN_LOKASI,
+  namaSheetUntuk,
   potongTxHash,
   teksCheckInBerhasil,
   teksHitungMundurQr,
@@ -73,5 +74,22 @@ describe("kalimat galat lokal Handshake", () => {
   it("galat lain memakai kalimat cadangan, bukan message-nya", () => {
     expect(kalimatGagalLokal(new Error("gagal (500)"), TEKS_GAGAL_CHECK_IN)).toBe(TEKS_GAGAL_CHECK_IN);
     expect(kalimatGagalLokal("bukan Error", TEKS_GAGAL_SIAPKAN_QR)).toBe(TEKS_GAGAL_SIAPKAN_QR);
+  });
+});
+
+describe("namaSheetUntuk (R14, review B1 M8)", () => {
+  const A = "0x9bE5aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa6ffA";
+  const B = "0x1111bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb2222";
+
+  it("belum ada jawaban → tanpa nama", () => {
+    expect(namaSheetUntuk(null, A)).toBeNull();
+  });
+
+  it("jawaban untuk alamat yang sama dipakai, tanpa peka huruf besar", () => {
+    expect(namaSheetUntuk({ alamat: A.toLowerCase(), nama: "Rina" }, A)).toBe("Rina");
+  });
+
+  it("jawaban untuk pindaian lain dibuang", () => {
+    expect(namaSheetUntuk({ alamat: B, nama: "Rina" }, A)).toBeNull();
   });
 });

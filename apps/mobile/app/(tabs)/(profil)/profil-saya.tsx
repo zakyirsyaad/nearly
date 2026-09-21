@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useRef, useState } from "react";
-import { router, useFocusEffect } from "expo-router";
+import { useCallback, useEffect, useState } from "react";
+import { router } from "expo-router";
 import { Pressable, ScrollView, StyleSheet, View } from "react-native";
 import { ChevronRight } from "lucide-react-native";
 import { periksaNamaTampilan, type Visibilitas } from "@nearly/shared";
@@ -12,13 +12,13 @@ import { Input } from "@/components/ui/input";
 import { Text } from "@/components/ui/text";
 import { useColor } from "@/hooks/useColor";
 import { useKabar } from "@/hooks/useKabar";
+import { useMuatSaatFokus } from "@/hooks/useMuatSaatFokus";
 import { RADIUS, UKURAN } from "@/theme/globals";
 import { CONFIG } from "../../../src/config";
 import type { NearlySigner } from "../../../src/signer";
 import { useNearlySigner } from "../../../src/dompet/konteks-dompet";
 import { ApiError, req } from "../../../src/http";
 import { useLencana } from "../../../src/lencana/konteks-lencana";
-import { bolehMuatFokus } from "../../../src/muat-fokus";
 import { sesiPesan } from "../../../src/pesan/sesi";
 import { getProfilSaya, simpanProfil } from "../../../src/radar/radar-api";
 import {
@@ -115,23 +115,22 @@ function ProfilSayaScreenIsi({ signer }: { signer: NearlySigner }) {
 
   // Kepala: angka publik dan tier sendiri. Gagal sendiri — kepala yang tidak
   // lengkap tidak boleh menutup bagian nama dan visibilitas di bawahnya.
-  const muatKepala = useCallback(() => {
-    req<{ connectionCount: number }>(`/profile/${signer.address}`)
-      .then((p) => setKoneksi(p.connectionCount))
-      .catch(() => {});
-    fetchTrust(signer.address).then(setTrust).catch(() => {});
+  const muatKepala = useCallback(async () => {
+    const [koneksiOk, trustOk] = await Promise.all([
+      req<{ connectionCount: number }>(`/profile/${signer.address}`)
+        .then((p) => { setKoneksi(p.connectionCount); return true; })
+        .catch(() => false),
+      fetchTrust(signer.address)
+        .then((t) => { setTrust(t); return true; })
+        .catch(() => false),
+    ]);
+    return koneksiOk && trustOk;
   }, [signer.address]);
 
   // Tab tetap terpasang (expo-router 57): tanpa ini angka koneksi dan tier
   // tidak pernah berubah setelah salaman atau vouch. Dibatasi sekali per 30
-  // detik, sama dengan Beranda (spec §4.6).
-  const terakhir = useRef<number | null>(null);
-  useFocusEffect(useCallback(() => {
-    const kini = Date.now();
-    if (!bolehMuatFokus(terakhir.current, kini)) return;
-    terakhir.current = kini;
-    void muatKepala();
-  }, [muatKepala]));
+  // detik, kecuali data berubah atau muat sebelumnya gagal (spec §4.6, M7).
+  useMuatSaatFokus(muatKepala);
 
   async function simpan() {
     if (sibuk) return;

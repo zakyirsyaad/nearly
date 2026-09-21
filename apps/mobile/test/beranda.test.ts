@@ -51,8 +51,7 @@ describe("Beranda baru (spec desain UI §6.1)", () => {
 
   it("memuat saat fokus, paling sering sekali per 30 detik (§4.6)", () => {
     const isi = beranda();
-    expect(isi).toContain("useFocusEffect(");
-    expect(isi).toContain("bolehMuatFokus(terakhir.current, kini)");
+    expect(isi).toContain("useMuatSaatFokus(muatSemua);");
   });
 
   it('"Recently met" memakai KartuOrang dan waktu relatif', () => {

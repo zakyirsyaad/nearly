@@ -56,11 +56,9 @@ describe("tab Profil: gagal muat tidak membuka formulir, kepala segar saat fokus
     expect(galatDulu).toBeLessThan(x.indexOf("{LABEL_NAMA_TAMPILAN}"));
   });
 
-  it("angka koneksi dan tier dimuat saat fokus, dibatasi bolehMuatFokus (spec §4.6)", () => {
+  it("angka koneksi dan tier dimuat saat fokus lewat useMuatSaatFokus (spec §4.6, review B1 M7)", () => {
     const x = isi();
-    const fokus = potong(x, "useFocusEffect(useCallback(() => {", "}, [muatKepala]));");
-    expect(fokus).toContain("bolehMuatFokus(terakhir.current, kini)");
-    expect(fokus).toContain("void muatKepala();");
+    expect(x).toContain("useMuatSaatFokus(muatKepala);");
     const kepala = potong(x, "const muatKepala = useCallback(", "}, [signer.address]);");
     expect(kepala).toContain("connectionCount");
     expect(kepala).toContain("fetchTrust(signer.address)");

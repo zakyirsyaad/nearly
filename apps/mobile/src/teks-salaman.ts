@@ -70,3 +70,15 @@ export function kalimatGagalLokal(e: unknown, cadangan: string): string {
 /** Cadangan saat galat bukan ApiError — kalimat yang ada. */
 export const TEKS_GAGAL_SALAMAN = "Handshake failed. Try again.";
 export const TEKS_GAGAL_CHECK_IN = "Check-in failed.";
+
+/** Nama dari GET /profile publik, bersama alamat yang MEMINTANYA (R14). */
+export type SimpananNama = { alamat: string; nama: string | null };
+
+/**
+ * R14: jawaban yang datang untuk pindaian lain dibuang — alamatnya dibandingkan
+ * saat render, jadi sheet pindaian kedua tidak pernah memakai nama orang
+ * pertama (review B1 M8, Ruling B2-4).
+ */
+export function namaSheetUntuk(simpanan: SimpananNama | null, alamat: string): string | null {
+  return simpanan !== null && simpanan.alamat.toLowerCase() === alamat.toLowerCase() ? simpanan.nama : null;
+}

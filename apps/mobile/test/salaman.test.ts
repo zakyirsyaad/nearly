@@ -32,9 +32,9 @@ describe("sheet salaman berhasil (spec desain UI §6.2, R13)", () => {
   });
 
   it("jawaban basi dibuang dengan membandingkan alamat sebelum mengisi nama (R14)", () => {
-    const isi = sheet();
-    expect(isi).toContain("if (!terpasang.current) return;");
-    expect(isi).toContain("if (alamatKini.current.toLowerCase() !== untuk.toLowerCase()) return;");
+    const isi = baca("components/salaman/sheet-bertemu.tsx");
+    expect(isi).toContain("setSimpananNama({ alamat: untuk, nama: p.displayName ?? null })");
+    expect(isi).toContain("const nama = namaSheetUntuk(simpananNama, hasil.initiator);");
   });
 
   it("View profile menutup sheet lalu membuka profil; hanya di penangan itu ada router.push", () => {

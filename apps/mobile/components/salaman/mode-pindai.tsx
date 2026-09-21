@@ -14,6 +14,7 @@ import { getCurrentCell } from "../../src/location";
 import { ApiError, postAccept } from "../../src/api";
 import { eventErrorMessage, handshakeErrorMessage } from "../../src/messages";
 import { postCheckIn } from "../../src/events-api";
+import { tandaiDataBerubah } from "../../src/muat-fokus";
 import {
   kalimatGagalLokal, teksCheckInBerhasil, TEKS_BUKAN_QR_NEARLY, TEKS_GAGAL_CHECK_IN, TEKS_GAGAL_SALAMAN,
   TEKS_IZIN_KAMERA, TEKS_PINDAI_LAGI, TEKS_QR_SENDIRI, TEKS_TOMBOL_IZIN_KAMERA,
@@ -82,6 +83,9 @@ export function ModePindai({ signerHadir, signerSalaman }: { signerHadir: Nearly
             eventId: checkin.eventId, nonce: checkin.nonce, attendee: signer.address,
             expiresAt: checkin.expiresAt.toString(), sigAttendee, cell, atMs,
           });
+          // Kartu LIVE Beranda dan Detail acara memuat ulang "You're checked in"
+          // saat difokuskan, walau belum 30 detik (review B1 M7).
+          tandaiDataBerubah();
           setResult(teksCheckInBerhasil(txHash));
           kabar.berhasil(teksCheckInBerhasil(txHash));
         } catch (e) {
@@ -128,6 +132,9 @@ export function ModePindai({ signerHadir, signerSalaman }: { signerHadir: Nearly
         cell,
         atMs,
       });
+      // "Recently met" di Beranda dan angka koneksi di Profil segar saat
+      // difokuskan, walau belum 30 detik (review B1 M7).
+      tandaiDataBerubah();
       // Momen puncak: sheet, bukan teks hasil dan bukan pindah layar (#16D).
       // Hasil pindai sebelumnya dibersihkan supaya tidak ikut terbaca di balik sheet.
       setResult(null);

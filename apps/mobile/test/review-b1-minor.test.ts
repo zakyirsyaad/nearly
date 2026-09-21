@@ -149,3 +149,47 @@ describe("Profil (tab): kepala memakai nama TERSIMPAN (M4) dan baris tautan bert
     expect(baris).toContain("style={[s.tebal, s.menyusut]}");
   });
 });
+
+describe("kesegaran lintas tab (M7, Ruling B2-3)", () => {
+  it("useMuatSaatFokus membatasi lewat perluMuatUlang dan melepas batas bila muat gagal", () => {
+    const x = tanpaKomentar(baca("hooks/useMuatSaatFokus.ts"));
+    expect(x).toContain("perluMuatUlang(terakhir.current, generasiDimuat.current, kini, generasi)");
+    expect(x).toContain("if (!berhasil && terakhir.current === kini) terakhir.current = null;");
+  });
+
+  it("Beranda memuat keempat bagian lewat useMuatSaatFokus, dan setiap bagian melapor berhasil/gagal", () => {
+    const x = tanpaKomentar(baca("app/(tabs)/(beranda)/index.tsx"));
+    expect(x).toContain("useMuatSaatFokus(muatSemua);");
+    expect(x).toMatch(/const hasil = await Promise\.all\(\[muatNama\(\), muatLive\(\), muatKoneksi\(\), muatFeed\(\)\]\);\s*return hasil\.every\(Boolean\);/);
+    for (const nama of ["muatNama", "muatLive", "muatKoneksi", "muatFeed"]) {
+      const badan = potong(x, `const ${nama} = useCallback(async () => {`, "}, [");
+      expect(badan, nama).toContain("return true;");
+      expect(badan, nama).toContain("return false;");
+    }
+    expect(x).not.toContain("bolehMuatFokus(");
+  });
+
+  it("kepala Profil (tab) memuat lewat useMuatSaatFokus", () => {
+    const x = tanpaKomentar(baca("app/(tabs)/(profil)/profil-saya.tsx"));
+    expect(x).toContain("useMuatSaatFokus(muatKepala);");
+    expect(x).not.toContain("bolehMuatFokus(");
+  });
+
+  it("salaman dan check-in yang berhasil menandai data berubah", () => {
+    const x = tanpaKomentar(baca("components/salaman/mode-pindai.tsx"));
+    const checkIn = potong(x, "await postCheckIn(", "kabar.berhasil(");
+    expect(checkIn).toContain("tandaiDataBerubah();");
+    const salaman = potong(x, "await postAccept(", "setHasil(");
+    expect(salaman).toContain("tandaiDataBerubah();");
+  });
+});
+
+describe("sheet salaman: nama per alamat (M8, R14)", () => {
+  it("jawaban disimpan bersama alamat pemintanya dan dibandingkan saat render; ref lama dihapus", () => {
+    const x = tanpaKomentar(baca("components/salaman/sheet-bertemu.tsx"));
+    expect(x).toContain("const nama = namaSheetUntuk(simpananNama, hasil.initiator);");
+    expect(x).toContain("if (aktif) setSimpananNama({ alamat: untuk, nama: p.displayName ?? null });");
+    expect(x).not.toContain("alamatKini");
+    expect(x).not.toContain("terpasang");
+  });
+});

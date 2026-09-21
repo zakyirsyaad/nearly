@@ -1,5 +1,5 @@
-import { useCallback, useRef, useState } from "react";
-import { router, useFocusEffect } from "expo-router";
+import { useCallback, useState } from "react";
+import { router } from "expo-router";
 import { Pressable, ScrollView, StyleSheet, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import * as Clipboard from "expo-clipboard";
@@ -14,6 +14,7 @@ import { Card } from "@/components/ui/card";
 import { Text } from "@/components/ui/text";
 import { useColor } from "@/hooks/useColor";
 import { useKabar } from "@/hooks/useKabar";
+import { useMuatSaatFokus } from "@/hooks/useMuatSaatFokus";
 import { MAKS_SKALA_HURUF_KECIL, RADIUS } from "@/theme/globals";
 import { hitSlopSampai } from "../../../src/aksesibilitas";
 import { CONFIG } from "../../../src/config";
@@ -24,7 +25,6 @@ import { getDiscovery, getEvent, type EventSummary } from "../../../src/events-a
 import { getFeed, kueriBuktiFeed } from "../../../src/feed-api";
 import { req } from "../../../src/http";
 import { alamatSingkat, namaKartuRadar } from "../../../src/messages";
-import { bolehMuatFokus } from "../../../src/muat-fokus";
 import {
   JUDUL_FEED, JUDUL_RECENTLY_MET, KOSONG_KONEKSI, LABEL_SALIN_ALAMAT, pasanganCheckIn,
   TEKS_AKSI_HANDSHAKE, TEKS_ALAMAT_DISALIN, TEKS_BUKA_ACARA, TEKS_BUKA_DOMPET, TEKS_BUKA_RADAR,
@@ -101,8 +101,10 @@ function HomeIsi({
     try {
       const p = await req<{ displayName?: string }>(`/profile/${signer.address}`);
       setNama(p.displayName?.trim() || null);
+      return true;
     } catch {
       // Nama bukan identitas; tanpa nama, alamatnya tetap tampil (spec §9.2).
+      return false;
     }
   }, [signer.address]);
 
@@ -133,8 +135,10 @@ function HomeIsi({
         }
       }));
       setLive(rinci);
+      return true;
     } catch {
       setLive([]);
+      return false;
     }
   }, [signerHadir]);
 
@@ -156,10 +160,12 @@ function HomeIsi({
         return { alamat: k.address, nama: namaOrang, tier, waktu: waktuRelatif(new Date(k.at), kini) };
       }));
       setKoneksi(kartu);
+      return true;
     } catch {
       // Daftar yang sudah tampil dibiarkan; galat hanya muncul bila belum ada
       // apa pun untuk ditampilkan (§7.2).
       setGalatKoneksi(true);
+      return false;
     }
   }, [signer.address]);
 
@@ -173,23 +179,21 @@ function HomeIsi({
         waktu: waktuRelatif(new Date(p.createdAtMs), kini),
         isi: p.body,
       })));
+      return true;
     } catch {
       setFeed([]);
+      return false;
     }
   }, [signer]);
 
   // Memuat saat fokus, paling sering sekali per 30 detik (spec §4.6) — setara
-  // "satu tanda tangan per pembukaan beranda" hari ini.
-  const terakhir = useRef<number | null>(null);
-  useFocusEffect(useCallback(() => {
-    const kini = Date.now();
-    if (!bolehMuatFokus(terakhir.current, kini)) return;
-    terakhir.current = kini;
-    void muatNama();
-    void muatLive();
-    void muatKoneksi();
-    void muatFeed();
-  }, [muatNama, muatLive, muatKoneksi, muatFeed]));
+  // "satu tanda tangan per pembukaan beranda" hari ini — kecuali data berubah
+  // (salaman, check-in) atau pemuatan sebelumnya gagal (review B1 M7).
+  const muatSemua = useCallback(async () => {
+    const hasil = await Promise.all([muatNama(), muatLive(), muatKoneksi(), muatFeed()]);
+    return hasil.every(Boolean);
+  }, [muatNama, muatLive, muatKoneksi, muatFeed]);
+  useMuatSaatFokus(muatSemua);
 
   return (
     <SafeAreaView edges={["top"]} style={s.flex}>

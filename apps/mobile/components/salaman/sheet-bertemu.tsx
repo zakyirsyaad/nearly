@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { router } from "expo-router";
 import { Modal, StyleSheet, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -13,7 +13,7 @@ import { jarak, RADIUS, UKURAN } from "@/theme/globals";
 import { req } from "../../src/http";
 import { alamatSingkat, AWALAN_SHEET_BERTEMU, judulSheetBertemu } from "../../src/messages";
 import {
-  teksTerkoneksi, TEKS_LIHAT_PROFIL, TEKS_PINDAI_ORANG_LAIN,
+  namaSheetUntuk, teksTerkoneksi, TEKS_LIHAT_PROFIL, TEKS_PINDAI_ORANG_LAIN, type SimpananNama,
 } from "../../src/teks-salaman";
 
 /** Yang diketahui pemindai setelah postAccept berhasil — alamat dari QR + txHash. */
@@ -36,22 +36,20 @@ export function SheetBertemu({
   alamatSendiri: string;
   onTutup: () => void;
 }) {
-  const [nama, setNama] = useState<string | null>(null);
+  const [simpananNama, setSimpananNama] = useState<SimpananNama | null>(null);
+  // R14: nama hanya dipakai untuk alamat yang memintanya (Ruling B2-4).
+  const nama = namaSheetUntuk(simpananNama, hasil.initiator);
   const gerakDikurangi = useGerakDikurangi();
   const insets = useSafeAreaInsets();
   const selubung = useColor("selubung");
   const latar = useColor("card");
   const garis = useColor("border");
 
-  // R14: jawaban yang datang setelah sheet ditutup, atau untuk pindaian
-  // BERIKUTNYA, dibuang — alamatnya dibandingkan sebelum `setNama`. Tanpa ini,
-  // sheet pindaian kedua bisa berganti nama menjadi nama orang pertama.
-  const terpasang = useRef(true);
-  const alamatKini = useRef(hasil.initiator);
-  alamatKini.current = hasil.initiator;
-
   useEffect(() => {
-    terpasang.current = true;
+    // Jawaban yang datang setelah efek ini dibersihkan (sheet ditutup atau
+    // alamat berganti) tidak disimpan; jawaban yang lolos pun disimpan BERSAMA
+    // alamatnya dan dibandingkan saat render (namaSheetUntuk).
+    let aktif = true;
     // Haptic tepat saat sheet TERBUKA (§6.2 butir 7), bukan saat ditutup.
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
     const untuk = hasil.initiator;
@@ -60,13 +58,11 @@ export function SheetBertemu({
     // nama kosong → judul tetap alamat singkat, tanpa pesan galat (R14).
     req<{ displayName?: string }>(`/profile/${untuk}`)
       .then((p) => {
-        if (!terpasang.current) return;
-        if (alamatKini.current.toLowerCase() !== untuk.toLowerCase()) return;
-        setNama(p.displayName ?? null);
+        if (aktif) setSimpananNama({ alamat: untuk, nama: p.displayName ?? null });
       })
       .catch(() => {});
     return () => {
-      terpasang.current = false;
+      aktif = false;
     };
   }, [hasil.initiator]);
 
