@@ -73,8 +73,24 @@ describe("mode Pindai memakai sheet, bukan teks hasil (spec §6.2, keputusan #16
     expect(isi).not.toContain("router.navigate(");
   });
 
-  it("onScan diabaikan selama sheet terbuka", () => {
-    expect(pindai()).toContain("if (busy || hasil) return;");
+  it("onScan diabaikan selama sheet terbuka atau hasil masih tampil (review B1 #I2)", () => {
+    const isi = pindai();
+    // Kamera terus memanggil onBarcodeScanned selama QR di depan lensa: hasil
+    // teks harus bertahan sampai "Scan again", dan dua kejadian dalam satu
+    // frame tidak boleh lolos lewat state `busy` yang basi.
+    expect(isi).toContain("if (sibukRef.current || hasil || result) return;");
+    expect(isi).toContain("sibukRef.current = true;");
+    expect(isi).toContain("sibukRef.current = false;");
+  });
+
+  it("galat non-ApiError tidak menampilkan e.message mentah (review B1 #I1)", () => {
+    expect(pindai()).not.toContain("e.message");
+    expect(pindai()).toContain("kalimatGagalLokal(e, TEKS_GAGAL_CHECK_IN)");
+    expect(pindai()).toContain("kalimatGagalLokal(e, TEKS_GAGAL_SALAMAN)");
+    const qr = tanpaKomentar(baca("src/handshake/useRotatingQr.ts"));
+    expect(qr).not.toContain("e.message");
+    expect(qr).toContain("kalimatGagalLokal(e, TEKS_GAGAL_SIAPKAN_QR)");
+    expect(tanpaKomentar(baca("src/location.ts"))).toContain('this.name = "LocationDeniedError";');
   });
 
   it("check-in berhasil tetap teks hasil + toast, tanpa sheet", () => {

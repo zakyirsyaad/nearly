@@ -24,11 +24,11 @@ describe("mode layar Salaman (spec desain UI §6.2)", () => {
     expect(isi).toContain("<ModePindai signerHadir={signerHadir} signerSalaman={signerSalaman} />");
   });
 
-  it("mode Pindai tetap mencoba QR check-in sebelum QR salaman, dengan penjaga busy", () => {
+  it("mode Pindai tetap mencoba QR check-in sebelum QR salaman, dengan penjaga pindai ganda", () => {
     const isi = baca("components/salaman/mode-pindai.tsx");
     const checkin = isi.indexOf("decodeCheckInQr(data)");
     expect(checkin).toBeGreaterThan(-1);
     expect(checkin).toBeLessThan(isi.indexOf("decodeQr(data)"));
-    expect(isi).toContain("if (busy || hasil) return;");
+    expect(isi).toContain("if (sibukRef.current || hasil || result) return;");
   });
 });

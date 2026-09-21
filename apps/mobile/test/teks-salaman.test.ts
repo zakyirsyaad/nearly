@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 import {
   CATATAN_LOKASI_QR,
+  kalimatGagalLokal,
+  TEKS_GAGAL_CHECK_IN,
+  TEKS_GAGAL_SALAMAN,
+  TEKS_GAGAL_SIAPKAN_QR,
+  TEKS_IZIN_LOKASI,
   potongTxHash,
   teksCheckInBerhasil,
   teksHitungMundurQr,
@@ -52,5 +57,21 @@ describe("teks-salaman.ts murni", () => {
     for (const [nama, nilai] of Object.entries(modul)) {
       if (typeof nilai === "string") expect(nilai.length, nama).toBeGreaterThan(0);
     }
+  });
+});
+
+// Review B1 #I1: galat lokal (bukan ApiError) tidak boleh menampilkan
+// Error.message mentah — LocationDeniedError berbahasa Indonesia.
+describe("kalimat galat lokal Handshake", () => {
+  it("izin lokasi ditolak menjadi kalimat Inggris", () => {
+    const e = new Error("Izin lokasi ditolak");
+    e.name = "LocationDeniedError";
+    expect(kalimatGagalLokal(e, TEKS_GAGAL_SALAMAN)).toBe(TEKS_IZIN_LOKASI);
+    expect(TEKS_IZIN_LOKASI).toBe("Handshake needs location access to confirm you're both in the same place.");
+  });
+
+  it("galat lain memakai kalimat cadangan, bukan message-nya", () => {
+    expect(kalimatGagalLokal(new Error("gagal (500)"), TEKS_GAGAL_CHECK_IN)).toBe(TEKS_GAGAL_CHECK_IN);
+    expect(kalimatGagalLokal("bukan Error", TEKS_GAGAL_SIAPKAN_QR)).toBe(TEKS_GAGAL_SIAPKAN_QR);
   });
 });

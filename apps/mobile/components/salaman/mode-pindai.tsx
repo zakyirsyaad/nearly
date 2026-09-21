@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { CameraView, useCameraPermissions } from "expo-camera";
 import { StyleSheet, View } from "react-native";
 import { checkInAcceptTypedData, decodeCheckInQr, decodeQr, isQrExpired } from "@nearly/shared";
@@ -15,7 +15,7 @@ import { ApiError, postAccept } from "../../src/api";
 import { eventErrorMessage, handshakeErrorMessage } from "../../src/messages";
 import { postCheckIn } from "../../src/events-api";
 import {
-  teksCheckInBerhasil, TEKS_BUKAN_QR_NEARLY, TEKS_GAGAL_CHECK_IN, TEKS_GAGAL_SALAMAN,
+  kalimatGagalLokal, teksCheckInBerhasil, TEKS_BUKAN_QR_NEARLY, TEKS_GAGAL_CHECK_IN, TEKS_GAGAL_SALAMAN,
   TEKS_IZIN_KAMERA, TEKS_PINDAI_LAGI, TEKS_QR_SENDIRI, TEKS_TOMBOL_IZIN_KAMERA,
 } from "../../src/teks-salaman";
 
@@ -31,7 +31,9 @@ import {
  */
 export function ModePindai({ signerHadir, signerSalaman }: { signerHadir: NearlySigner; signerSalaman: NearlySigner }) {
   const [permission, requestPermission] = useCameraPermissions();
-  const [busy, setBusy] = useState(false);
+  // Ref, bukan state: dua kejadian pindai dalam satu frame sama-sama membaca
+  // state lama, dan keduanya akan lolos penjaga.
+  const sibukRef = useRef(false);
   const [result, setResult] = useState<string | null>(null);
   const [hasil, setHasil] = useState<HasilSalaman | null>(null);
   const kabar = useKabar();
@@ -47,11 +49,13 @@ export function ModePindai({ signerHadir, signerSalaman }: { signerHadir: Nearly
   }
 
   async function onScan(data: string) {
-    // Penjaga sheet (§6.2 butir 8): selama sheet terbuka kamera masih
-    // menangkap QR yang sama, dan pindaian kedua akan memicu
-    // already_connected untuk pasangan yang barusan berhasil.
-    if (busy || hasil) return;
-    setBusy(true);
+    // Kamera terus memanggil onBarcodeScanned selama QR di depan lensa.
+    // Selama sheet terbuka (§6.2 butir 8) atau hasil teks masih tampil,
+    // pindaian berikutnya diabaikan sampai "Scan again" — kalau tidak,
+    // check-in berhasil langsung ditimpa already_checked_in, dan galat
+    // salaman mengulang lokasi + tanda tangan + jaringan tiap detik.
+    if (sibukRef.current || hasil || result) return;
+    sibukRef.current = true;
     try {
       // QR check-in dicoba LEBIH DULU. Keduanya JSON, dan hanya yang ini
       // membawa penanda k:"checkin" — jadi urutannya tidak ambigu, tapi
@@ -84,7 +88,7 @@ export function ModePindai({ signerHadir, signerSalaman }: { signerHadir: Nearly
           setResult(
             e instanceof ApiError
               ? eventErrorMessage(e.code, e.reason)
-              : e instanceof Error ? e.message : TEKS_GAGAL_CHECK_IN,
+              : kalimatGagalLokal(e, TEKS_GAGAL_CHECK_IN),
           );
         }
         return;
@@ -132,10 +136,10 @@ export function ModePindai({ signerHadir, signerSalaman }: { signerHadir: Nearly
       setResult(
         e instanceof ApiError
           ? handshakeErrorMessage(e.code, e.reason)
-          : e instanceof Error ? e.message : TEKS_GAGAL_SALAMAN,
+          : kalimatGagalLokal(e, TEKS_GAGAL_SALAMAN),
       );
     } finally {
-      setBusy(false);
+      sibukRef.current = false;
     }
   }
 

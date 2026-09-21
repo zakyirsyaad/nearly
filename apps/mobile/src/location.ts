@@ -4,6 +4,9 @@ import { encodeCell } from "@nearly/shared";
 export class LocationDeniedError extends Error {
   constructor() {
     super("Izin lokasi ditolak");
+    // Nama dipakai kalimatGagalLokal (src/teks-salaman.ts) yang murni dan
+    // tidak boleh mengimpor expo-location demi instanceof.
+    this.name = "LocationDeniedError";
   }
 }
 

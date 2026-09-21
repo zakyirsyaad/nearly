@@ -53,6 +53,20 @@ export const TEKS_PINDAI_LAGI = "Scan again";
 export const TEKS_LIHAT_PROFIL = "View profile";
 export const TEKS_PINDAI_ORANG_LAIN = "Scan someone else";
 
-/** Cadangan saat galat bukan ApiError dan bukan Error — kalimat yang ada. */
+/** Izin lokasi ditolak — Handshake dan check-in sama-sama butuh sel lokasi. */
+export const TEKS_IZIN_LOKASI =
+  "Handshake needs location access to confirm you're both in the same place.";
+
+/**
+ * Kalimat untuk galat yang BUKAN ApiError (review B1 #I1). Error.message tidak
+ * pernah ditampilkan: pesannya ditulis untuk pengembang dan sebagian
+ * berbahasa Indonesia. Dikenali lewat nama, bukan instanceof, supaya modul
+ * ini tetap murni.
+ */
+export function kalimatGagalLokal(e: unknown, cadangan: string): string {
+  return e instanceof Error && e.name === "LocationDeniedError" ? TEKS_IZIN_LOKASI : cadangan;
+}
+
+/** Cadangan saat galat bukan ApiError — kalimat yang ada. */
 export const TEKS_GAGAL_SALAMAN = "Handshake failed. Try again.";
 export const TEKS_GAGAL_CHECK_IN = "Check-in failed.";
