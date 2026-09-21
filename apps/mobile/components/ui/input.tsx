@@ -206,7 +206,7 @@ export const Input = forwardRef<TextInput, InputProps>(
                 numberOfLines={rows}
                 style={[getInputStyle(), inputStyle]}
                 placeholderTextColor={error ? danger : warnaPlaceholder}
-                placeholder={placeholder || 'Type your message...'}
+                placeholder={placeholder}
                 onFocus={handleFocus}
                 onBlur={handleBlur}
                 editable={!disabled}
@@ -528,7 +528,7 @@ export const GroupedInputItem = forwardRef<TextInput, GroupedInputItemProps>(
                   inputStyle,
                 ]}
                 placeholderTextColor={error ? danger + '99' : muted}
-                placeholder={placeholder || 'Type your message...'}
+                placeholder={placeholder}
                 editable={!disabled}
                 selectionColor={primary}
                 onFocus={handleFocus}

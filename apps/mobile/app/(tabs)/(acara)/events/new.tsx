@@ -1,7 +1,11 @@
 import { useState } from "react";
 import { useRouter } from "expo-router";
-import { Button, StyleSheet, Text, TextInput, View } from "react-native";
-import { cellToBytes32, createEventTypedData, makeEventId, GEOFENCE_SPAN_M } from "@nearly/shared";
+import { ScrollView, StyleSheet, View } from "react-native";
+import { cellToBytes32, createEventTypedData, makeEventId } from "@nearly/shared";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Text } from "@/components/ui/text";
+import { useKabar } from "@/hooks/useKabar";
 import { CONFIG } from "../../../../src/config";
 import type { NearlySigner } from "../../../../src/signer";
 import { useNearlySigner } from "../../../../src/dompet/konteks-dompet";
@@ -9,7 +13,11 @@ import { getCurrentCell } from "../../../../src/location";
 import { ApiError } from "../../../../src/api";
 import { postCreateEvent } from "../../../../src/events-api";
 import { eventErrorMessage } from "../../../../src/messages";
-import { WARNA } from "../../../../src/warna";
+import { tandaiDataBerubah } from "../../../../src/muat-fokus";
+import {
+  catatanPusatAcara, kalimatGagalAcara, LABEL_NAMA_ACARA, LABEL_TEMPAT_ACARA, labelBuatAcara,
+  TEKS_ACARA_DIBUAT, TEKS_GAGAL_BUAT_ACARA,
+} from "../../../../src/teks-acara";
 
 /** Acara berdurasi tiga jam mulai sekarang. Fase ini tidak punya pemilih tanggal. */
 const DURASI_DETIK = 3 * 3600;
@@ -25,6 +33,7 @@ export default function NewEventScreen() {
 
 function NewEventScreenIsi({ signer }: { signer: NearlySigner }) {
   const router = useRouter();
+  const kabar = useKabar();
 
   const [title, setTitle] = useState("");
   const [venue, setVenue] = useState("");
@@ -56,12 +65,16 @@ function NewEventScreenIsi({ signer }: { signer: NearlySigner }) {
         cell, startsAt: startsAt.toString(), endsAt: endsAt.toString(),
         expiresAt: expiresAt.toString(), sigHost,
       });
+      // Aksi penting → toast + haptic (spec §7.2, Ruling B2-6). Daftar Acara
+      // memuat ulang saat kembali, walau belum 30 detik (Ruling B2-3).
+      kabar.berhasil(TEKS_ACARA_DIBUAT);
+      tandaiDataBerubah();
       router.replace(`/events/${eventId}`);
     } catch (e) {
       setPesan(
         e instanceof ApiError
           ? eventErrorMessage(e.code, e.reason)
-          : e instanceof Error ? e.message : "Gagal membuat acara.",
+          : kalimatGagalAcara(e, TEKS_GAGAL_BUAT_ACARA),
       );
     } finally {
       setBusy(false);
@@ -69,30 +82,28 @@ function NewEventScreenIsi({ signer }: { signer: NearlySigner }) {
   }
 
   return (
-    <View style={s.root}>
-      <TextInput
-        style={[s.input, { color: WARNA.teks }]}
-        placeholderTextColor={WARNA.placeholder}
-        placeholder="Nama acara" value={title} onChangeText={setTitle}
-      />
-      <TextInput
-        style={[s.input, { color: WARNA.teks }]}
-        placeholderTextColor={WARNA.placeholder}
-        placeholder="Nama tempat (opsional)" value={venue} onChangeText={setVenue}
-      />
-      <Text style={s.catatan}>
-        Lokasi kamu saat menekan tombol ini menjadi pusat area acara
-        (sekitar {GEOFENCE_SPAN_M} meter). Berdirilah di venue.
-      </Text>
-      <Button title={busy ? "Membuat…" : "Buat acara"} onPress={() => void buat()} disabled={busy} />
-      {pesan && <Text style={s.p}>{pesan}</Text>}
-    </View>
+    <ScrollView
+      contentContainerStyle={s.root}
+      contentInsetAdjustmentBehavior="automatic"
+      automaticallyAdjustKeyboardInsets
+      keyboardShouldPersistTaps="handled"
+    >
+      <View style={s.bagian}>
+        <Text variant="caption">{LABEL_NAMA_ACARA}</Text>
+        <Input value={title} onChangeText={setTitle} editable={!busy} accessibilityLabel={LABEL_NAMA_ACARA} />
+      </View>
+      <View style={s.bagian}>
+        <Text variant="caption">{LABEL_TEMPAT_ACARA}</Text>
+        <Input value={venue} onChangeText={setVenue} editable={!busy} accessibilityLabel={LABEL_TEMPAT_ACARA} />
+      </View>
+      <Text variant="caption">{catatanPusatAcara()}</Text>
+      <Button loading={busy} disabled={busy} onPress={() => void buat()}>{labelBuatAcara(busy)}</Button>
+      {pesan ? <Text variant="caption">{pesan}</Text> : null}
+    </ScrollView>
   );
 }
 
 const s = StyleSheet.create({
-  root: { flex: 1, padding: 16, gap: 12 },
-  input: { borderWidth: StyleSheet.hairlineWidth, borderRadius: 10, padding: 12, fontSize: 16 },
-  catatan: { fontSize: 13, opacity: 0.7, lineHeight: 19 },
-  p: { fontSize: 15, lineHeight: 22 },
+  root: { padding: 16, paddingBottom: 32, gap: 24 },
+  bagian: { gap: 8 },
 });

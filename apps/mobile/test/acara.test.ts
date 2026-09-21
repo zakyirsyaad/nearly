@@ -71,3 +71,51 @@ describe("Detail acara (spec §7.1 pola detail)", () => {
     expect(muat).not.toContain("rsvpTypedData(");
   });
 });
+
+const buat = () => tanpaKomentar(baca("app/(tabs)/(acara)/events/new.tsx"));
+const qrHost = () => tanpaKomentar(baca("app/(tabs)/(acara)/events/[id]/host-qr.tsx"));
+
+describe("Buat acara (spec §7.1 pola formulir)", () => {
+  it("dimigrasi; label kecil di atas Input BNA", () => {
+    expect(LAYAR_TERMIGRASI.has("(tabs)/(acara)/events/new")).toBe(true);
+    const x = buat();
+    expect(x).toContain('<Text variant="caption">{LABEL_NAMA_ACARA}</Text>');
+    expect(x).toContain('<Text variant="caption">{LABEL_TEMPAT_ACARA}</Text>');
+    expect(x).not.toContain("WARNA");
+  });
+
+  it("berhasil → toast + generasi data naik, lalu pindah ke detail", () => {
+    const x = buat();
+    const berhasil = x.slice(x.indexOf("await postCreateEvent("), x.indexOf("router.replace(`/events/${eventId}`)"));
+    expect(berhasil).toContain("kabar.berhasil(TEKS_ACARA_DIBUAT);");
+    expect(berhasil).toContain("tandaiDataBerubah();");
+  });
+
+  it("galat bukan ApiError tidak merender Error.message (Ruling B2-14)", () => {
+    const x = buat();
+    expect(x).toContain("kalimatGagalAcara(e, TEKS_GAGAL_BUAT_ACARA)");
+    expect(x).not.toContain("e.message");
+  });
+});
+
+describe("QR check-in host (spec §4.6, §7.1 pola detail)", () => {
+  it("dimigrasi; QR hanya dipasang saat layar fokus (review Rencana A #2)", () => {
+    expect(LAYAR_TERMIGRASI.has("(tabs)/(acara)/events/[id]/host-qr")).toBe(true);
+    const x = qrHost();
+    expect(x).toContain("const fokus = useIsFocused();");
+    expect(x).toContain("return fokus ? <QrCheckInAktif signer={signer} /> : null;");
+  });
+
+  it("QR di atas pelat terang, ukuran token, petunjuk berbahasa Inggris", () => {
+    const x = qrHost();
+    expect(x).toContain('const pelat = useColor("text");');
+    expect(x).toContain("<QRCode value={value} size={UKURAN.qr} />");
+    expect(x).toContain("teksPetunjukQrHost(secondsLeft)");
+  });
+});
+
+describe("Input BNA tanpa placeholder bawaan (Ruling B2-15)", () => {
+  it("tidak ada 'Type your message...' di salinan Input", () => {
+    expect(baca("components/ui/input.tsx")).not.toContain("Type your message");
+  });
+});
