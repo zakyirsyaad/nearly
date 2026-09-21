@@ -1,10 +1,12 @@
-import { useState } from "react";
-import { Alert, ScrollView, Share, StyleSheet, View } from "react-native";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { useFocusEffect } from "expo-router";
+import { Alert, AppState, ScrollView, Share, StyleSheet, View } from "react-native";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Text } from "@/components/ui/text";
 import { useKabar } from "@/hooks/useKabar";
 import { useDompet } from "../../../src/dompet/konteks-dompet";
+import { kataHarusDitutup } from "../../../src/dompet/tampil-kata";
 import {
   kataBernomor, PERINGATAN_LIHAT_MNEMONIK, peringatanGantiDompet, pesanGalatDompet,
   TEKS_TANPA_MNEMONIK,
@@ -24,6 +26,25 @@ export default function DompetScreen() {
   const [sibuk, setSibuk] = useState(false);
   const [pesan, setPesan] = useState<string | null>(null);
   const kabar = useKabar();
+  const fokus = useRef(false);
+
+  // 12 kata ditutup di DUA pintu (review B1 M3, Ruling B2-1): saat layar
+  // kehilangan fokus — tab tetap terpasang saat pindah tab — dan saat aplikasi
+  // meninggalkan keadaan aktif, sebelum iOS mengambil cuplikan app switcher.
+  useFocusEffect(useCallback(() => {
+    fokus.current = true;
+    return () => {
+      fokus.current = false;
+      setKata(null);
+    };
+  }, []));
+
+  useEffect(() => {
+    const langganan = AppState.addEventListener("change", (k) => {
+      if (kataHarusDitutup(k)) setKata(null);
+    });
+    return () => langganan.remove();
+  }, []);
 
   // Sesaat setelah Ganti dompet, sebelum gerbang memindahkan ke layar Mulai.
   if (address === null) return null;
@@ -40,6 +61,9 @@ export default function DompetScreen() {
         setPesan(TEKS_TANPA_MNEMONIK);
         return;
       }
+      // Pengguna bisa pindah tab atau keluar aplikasi selagi kata dibaca dari
+      // penyimpan aman — kata tidak dibuka di layar yang sudah ditinggalkan.
+      if (!fokus.current || kataHarusDitutup(AppState.currentState)) return;
       setKata(kataBernomor(m));
       setPesan(null);
     } catch (e) {
