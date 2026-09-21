@@ -80,6 +80,12 @@ export default function ProfileScreen() {
   const { address } = useLocalSearchParams<{ address: string }>();
   const scrollRef = useRef<ScrollView>(null);
 
+  // Penjaga SINKRON ketukan ganda (review B1 M2): dua ketukan dalam satu
+  // frame sama-sama membaca `vouchBusy`/`reportBusy` lama dari closure yang
+  // sama, lalu vouch kedua gagal "already vouched" di bawah toast berhasil.
+  const vouchBerjalan = useRef(false);
+  const laporBerjalan = useRef(false);
+
   /**
    * Menggulirkan isian ke atas keyboard.
    *
@@ -182,7 +188,8 @@ export default function ProfileScreen() {
   }
 
   async function handleVouch() {
-    if (!signer || selectedTags.length === 0) return;
+    if (!signer || selectedTags.length === 0 || vouchBerjalan.current) return;
+    vouchBerjalan.current = true;
     setVouchBusy(true);
     setVouchMessage(null);
     try {
@@ -197,12 +204,14 @@ export default function ProfileScreen() {
       // Kode kegagalan mentah dari server tidak pernah tampil apa adanya.
       setVouchMessage(e instanceof Error ? pesanGagal(e.message) : pesanGagal(""));
     } finally {
+      vouchBerjalan.current = false;
       setVouchBusy(false);
     }
   }
 
   async function handleReport() {
-    if (!signer || !reportReason.trim()) return;
+    if (!signer || !reportReason.trim() || laporBerjalan.current) return;
+    laporBerjalan.current = true;
     setReportBusy(true);
     try {
       await sendReport(signer, address as Address, reportReason.trim());
@@ -216,6 +225,7 @@ export default function ProfileScreen() {
     } catch (e) {
       setReportMessage(e instanceof Error ? pesanGagal(e.message) : pesanGagal(""));
     } finally {
+      laporBerjalan.current = false;
       setReportBusy(false);
     }
   }
@@ -455,7 +465,7 @@ export default function ProfileScreen() {
                   akan tertutup keyboard, persis masalah yang mau diselesaikan. */}
               <View style={s.barisNilai}>
                 <Text variant="caption" style={s.menyusut}>{TEKS_LABEL_ALASAN}</Text>
-                <Pressable onPress={() => Keyboard.dismiss()} hitSlop={12} accessibilityRole="button">
+                <Pressable onPress={() => Keyboard.dismiss()} hitSlop={12} accessibilityRole="button" style={s.selesai}>
                   <Text variant="label" style={{ color: kuning }}>{TEKS_SELESAI}</Text>
                 </Pressable>
               </View>
@@ -515,6 +525,8 @@ const s = StyleSheet.create({
   // Teks panjang di baris label + nilai membungkus ke baris baru alih-alih
   // mendorong saudaranya keluar kartu (review B1 #I5).
   menyusut: { flexShrink: 1 },
+  // Target sentuh "Done" ≥ 48 tanpa membesarkan hurufnya (review B1 M6, §3.7).
+  selesai: { minHeight: UKURAN.sentuh, justifyContent: "center" },
   tag: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
   pil: {
     borderWidth: 1,

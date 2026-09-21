@@ -50,7 +50,14 @@ describe("dua medan baru API di layar Profil orang (spec §8.1, §8.2)", () => {
     const isi = profil();
     const kartu = isi.indexOf("{JUDUL_PERTEMUAN}");
     expect(kartu).toBeGreaterThan(-1);
-    expect(isi.slice(0, kartu)).toMatch(/p\.pertemuan \?[\s\S]*$/);
+    // Blok bersyarat yang MEMBUNGKUS kartu, bukan sembarang `p.pertemuan ?`
+    // sebelumnya — lencana kepala sudah memuat `{p.pertemuan ? <Lencana`,
+    // jadi asersi lama selalu benar (review B1 M9).
+    const pembuka = isi.lastIndexOf("{p.pertemuan ? (", kartu);
+    expect(pembuka).toBeGreaterThan(-1);
+    const blok = isi.slice(pembuka, kartu);
+    expect(blok).toContain("<Card");
+    expect(blok).not.toContain(") : null}");
     expect(isi).toContain("barisSalaman(p.pertemuan, kini)");
     expect(isi).toContain("barisAcaraBersama(a, kini)");
   });

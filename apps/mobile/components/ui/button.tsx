@@ -20,6 +20,12 @@ import Animated, {
   withSpring,
 } from 'react-native-reanimated';
 
+// Isi tombol membungkus pada ukuran huruf besar alih-alih terpotong oleh
+// tinggi tetap (review B1 M5, spec desain UI §3.7). maxWidth pada baris isi
+// membuat teks di dalamnya punya lebar untuk menyusut.
+const BARIS_ISI: ViewStyle = { flexDirection: 'row', alignItems: 'center', gap: 6, maxWidth: '100%' };
+const TEKS_MEMBUNGKUS: TextStyle = { flexShrink: 1, textAlign: 'center' };
+
 export type ButtonVariant =
   | 'default'
   | 'destructive'
@@ -94,10 +100,10 @@ export const Button = forwardRef<View, ButtonProps>(
       // Size variants
       switch (size) {
         case 'sm':
-          Object.assign(baseStyle, { height: HEIGHT, paddingHorizontal: 16 });
+          Object.assign(baseStyle, { minHeight: HEIGHT, paddingHorizontal: 16, paddingVertical: 8 });
           break;
         case 'lg':
-          Object.assign(baseStyle, { height: 54, paddingHorizontal: 36 });
+          Object.assign(baseStyle, { minHeight: 54, paddingHorizontal: 36, paddingVertical: 8 });
           break;
         case 'icon':
           Object.assign(baseStyle, {
@@ -107,7 +113,7 @@ export const Button = forwardRef<View, ButtonProps>(
           });
           break;
         default:
-          Object.assign(baseStyle, { height: HEIGHT, paddingHorizontal: 32 });
+          Object.assign(baseStyle, { minHeight: HEIGHT, paddingHorizontal: 32, paddingVertical: 8 });
       }
 
       // Variant styles
@@ -304,10 +310,7 @@ export const Button = forwardRef<View, ButtonProps>(
             alignSelf: 'stretch',
           }
         : flexValue !== null
-          ? {
-              flex: flexValue,
-              maxHeight: size === 'lg' ? 54 : HEIGHT,
-            }
+          ? { flex: flexValue }
           : {};
     };
 
@@ -352,18 +355,14 @@ export const Button = forwardRef<View, ButtonProps>(
               color={contentColor}
             />
           ) : typeof children === 'string' ? (
-            <View
-              style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}
-            >
+            <View style={BARIS_ISI}>
               {icon && (
                 <Icon name={icon} color={contentColor} size={iconSize} />
               )}
-              <Text style={[finalTextStyle, textStyle]}>{children}</Text>
+              <Text style={[finalTextStyle, TEKS_MEMBUNGKUS, textStyle]}>{children}</Text>
             </View>
           ) : (
-            <View
-              style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}
-            >
+            <View style={BARIS_ISI}>
               {icon && (
                 <Icon name={icon} color={contentColor} size={iconSize} />
               )}
@@ -391,9 +390,9 @@ export const Button = forwardRef<View, ButtonProps>(
             color={contentColor}
           />
         ) : typeof children === 'string' ? (
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+          <View style={BARIS_ISI}>
             {icon && <Icon name={icon} color={contentColor} size={iconSize} />}
-            <Text style={[finalTextStyle, textStyle]}>{children}</Text>
+            <Text style={[finalTextStyle, TEKS_MEMBUNGKUS, textStyle]}>{children}</Text>
           </View>
         ) : (
           children
