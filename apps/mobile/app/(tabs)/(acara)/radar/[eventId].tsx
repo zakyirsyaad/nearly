@@ -1,6 +1,14 @@
 import { useCallback, useState } from "react";
-import { Link, useFocusEffect, useLocalSearchParams } from "expo-router";
-import { ActivityIndicator, FlatList, StyleSheet, Text, View } from "react-native";
+import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
+import { ScrollView, StyleSheet, View } from "react-native";
+import { Radar as IkonRadar } from "lucide-react-native";
+import { KartuOrang } from "@/components/kartu-orang";
+import { KeadaanGalat, KeadaanKosong, KerangkaDaftar } from "@/components/keadaan";
+import { Lencana } from "@/components/lencana";
+import { TautanKecil } from "@/components/tautan-kecil";
+import { Text } from "@/components/ui/text";
+import { useColor } from "@/hooks/useColor";
+import { MAKS_SKALA_HURUF_KECIL, RADIUS } from "@/theme/globals";
 import { CONFIG } from "../../../../src/config";
 import type { NearlySigner } from "../../../../src/signer";
 import { useNearlySigner } from "../../../../src/dompet/konteks-dompet";
@@ -10,13 +18,21 @@ import { sesiPesan, type SesiPesan } from "../../../../src/pesan/sesi";
 import { daftarkanPush } from "../../../../src/pesan/push";
 import { getRadar, postDetak, type KartuRadarApi } from "../../../../src/radar/radar-api";
 import {
-  alamatSingkat, kalimatRadar, keadaanRadarDariDetak, keadaanRadarDariKode, lencanaKartuRadar,
-  namaKartuRadar, type KeadaanRadar,
+  kalimatRadar, keadaanRadarDariDetak, keadaanRadarDariKode, lencanaKartuRadar, type KeadaanRadar,
 } from "../../../../src/messages";
+import {
+  JUDUL_BELUM_DITEMUI, JUDUL_KONEKSI_DI_SINI, keteranganKartuRadar, pasanganTerlihatDiSini,
+  PIL_TERLIHAT, pisahKartuRadar, radarBisaDicobaLagi, TEKS_BUKA_PROFIL_SAYA, TEKS_HANDSHAKE_KARTU,
+  teksDiperbarui,
+} from "../../../../src/teks-radar";
+import { tierDariLabel } from "../../../../src/tier";
 
 /** Spec 4b+5 §8.2: detak setiap 60 detik, radar setiap 10 detik, hanya selama fokus. */
 const JEDA_DETAK_MS = 60_000;
 const JEDA_RADAR_MS = 10_000;
+
+/** Hasil radar terakhir yang berhasil, dengan jam HP saat diterima (spec desain UI §6.4). */
+type HasilRadar = { kartu: KartuRadarApi[]; jumlah: number; pada: Date };
 
 export default function RadarScreen() {
   const signer = useNearlySigner(CONFIG.verifyingContract);
@@ -29,8 +45,12 @@ export default function RadarScreen() {
 
 function RadarScreenIsi({ signer }: { signer: NearlySigner }) {
   const { eventId } = useLocalSearchParams<{ eventId: string }>();
-  const [kartu, setKartu] = useState<KartuRadarApi[] | null>(null);
+  const [radar, setRadar] = useState<HasilRadar | null>(null);
   const [keadaan, setKeadaan] = useState<KeadaanRadar | null>(null);
+  // "Try again" memasang ulang efek fokus: detak segera, lalu jadwal biasa
+  // (Ruling B2-12).
+  const [percobaan, setPercobaan] = useState(0);
+  const hijau = useColor("verified");
 
   useFocusEffect(useCallback(() => {
     // Variabel efek, bukan state: timer yang sudah berjalan harus membaca
@@ -45,7 +65,7 @@ function RadarScreenIsi({ signer }: { signer: NearlySigner }) {
       // berarti pemanggil memang tidak boleh melihat radar sekarang.
       if (k !== "server_tak_terjangkau") {
         hadir = false;
-        setKartu(null);
+        setRadar(null);
       }
     };
 
@@ -54,7 +74,7 @@ function RadarScreenIsi({ signer }: { signer: NearlySigner }) {
       try {
         const r = await getRadar(sesi, eventId);
         if (!aktif) return;
-        setKartu(r.kartu);
+        setRadar({ kartu: r.kartu, jumlah: r.jumlah, pada: new Date() });
         setKeadaan(r.kartu.length === 0 ? "kosong" : null);
       } catch (e) {
         if (!aktif) return;
@@ -95,45 +115,109 @@ function RadarScreenIsi({ signer }: { signer: NearlySigner }) {
     const tRadar = setInterval(() => { void ambilRadar(); }, JEDA_RADAR_MS);
     // Kehilangan fokus: kedua timer berhenti. Tidak ada detak dari latar belakang (§10.1).
     return () => { aktif = false; clearInterval(tDetak); clearInterval(tRadar); };
-  }, [eventId, signer]));
+  }, [eventId, signer, percobaan]));
 
-  if (kartu === null && keadaan === null) return <ActivityIndicator style={s.tengah} />;
+  if (radar === null && keadaan === null) {
+    return (
+      <View style={s.muat}>
+        <KerangkaDaftar />
+      </View>
+    );
+  }
+
+  const kini = new Date();
+  const { koneksi, belum } = pisahKartuRadar(radar ? radar.kartu : []);
 
   return (
-    <View style={s.root}>
-      {keadaan && <Text style={s.keadaan}>{kalimatRadar(keadaan)}</Text>}
-      {keadaan === "tersembunyi" && (
-        <Link href="/profil-saya" style={s.tautan}>Buka Profil saya</Link>
-      )}
-      {kartu && kartu.length > 0 && (
-        <FlatList
-          data={kartu}
-          keyExtractor={(k) => k.address}
-          renderItem={({ item: k }) => (
-            // Bukan peta, tanpa jarak, arah, atau jam detak (spec 4b+5 §3).
-            // Tidak ada tombol pesan: pesan tetap hanya lewat koneksi, dari profil.
-            <Link href={`/profile/${k.address}`} style={s.kartu}>
-              <Text style={s.nama}>{namaKartuRadar(k.displayName)}</Text>
-              {"\n"}
-              <Text style={s.alamat}>{alamatSingkat(k.address)} · {k.tierLabel}</Text>
-              {lencanaKartuRadar(k) ? (
-                <Text style={s.lencana}>{"\n"}{lencanaKartuRadar(k)}</Text>
-              ) : null}
-            </Link>
-          )}
-        />
-      )}
+    <ScrollView contentContainerStyle={s.root} contentInsetAdjustmentBehavior="automatic">
+      {radar ? (
+        <View style={s.kepala}>
+          {/* Radar hanya tampil bagi pemanggil yang Terlihat (gerbang spec 4b+5). */}
+          <View style={[s.pil, { borderColor: hijau }]}>
+            <Text variant="label" style={{ color: hijau }} maxFontSizeMultiplier={MAKS_SKALA_HURUF_KECIL}>
+              {PIL_TERLIHAT}
+            </Text>
+          </View>
+          {/* Nilai lebih keras dari labelnya (§7.1). */}
+          <View style={s.barisNilai}>
+            <Text variant="title">{pasanganTerlihatDiSini(radar.jumlah).angka}</Text>
+            <Text variant="caption" style={s.menyusut}>{pasanganTerlihatDiSini(radar.jumlah).kata}</Text>
+          </View>
+          <Text variant="caption">{teksDiperbarui(radar.pada, kini)}</Text>
+        </View>
+      ) : null}
+
+      {keadaan === "kosong" ? (
+        <KeadaanKosong Ikon={IkonRadar} kalimat={kalimatRadar("kosong")} />
+      ) : keadaan !== null && radarBisaDicobaLagi(keadaan) ? (
+        <KeadaanGalat kalimat={kalimatRadar(keadaan)} onCobaLagi={() => setPercobaan((n) => n + 1)} />
+      ) : keadaan !== null ? (
+        <Text variant="body">{kalimatRadar(keadaan)}</Text>
+      ) : null}
+
+      {keadaan === "tersembunyi" ? (
+        <TautanKecil label={TEKS_BUKA_PROFIL_SAYA} onPress={() => router.navigate("/profil-saya")} />
+      ) : null}
+
+      {koneksi.length > 0 ? <BagianRadar judul={JUDUL_KONEKSI_DI_SINI} kartu={koneksi} /> : null}
+      {belum.length > 0 ? <BagianRadar judul={JUDUL_BELUM_DITEMUI} kartu={belum} /> : null}
+    </ScrollView>
+  );
+}
+
+/** Satu bagian: label redup + jumlah kartu yang lebih keras (§7.1), lalu kartunya dalam urutan server. */
+function BagianRadar({ judul, kartu }: { judul: string; kartu: KartuRadarApi[] }) {
+  return (
+    <View style={s.bagian}>
+      <View style={s.barisNilai}>
+        <Text variant="caption" style={s.menyusut}>{judul}</Text>
+        <Text variant="body" style={s.tebal}>{String(kartu.length)}</Text>
+      </View>
+      {kartu.map((k) => <KartuRadar key={k.address} k={k} />)}
+    </View>
+  );
+}
+
+/**
+ * Bukan peta, tanpa jarak, arah, atau jam detak (spec 4b+5 §3). Tidak ada
+ * tombol pesan: pesan tetap hanya lewat koneksi, dari profil.
+ */
+function KartuRadar({ k }: { k: KartuRadarApi }) {
+  const saling = lencanaKartuRadar(k);
+  return (
+    <View style={s.kartu}>
+      <KartuOrang
+        nama={k.displayName}
+        alamat={k.address}
+        terverifikasi={k.pernahBertemu}
+        lencana={
+          k.pernahBertemu || saling ? (
+            <View style={s.lencana}>
+              {k.pernahBertemu ? <Lencana varian="ringkas" /> : null}
+              {saling ? <Lencana varian="teks" teks={saling} /> : null}
+            </View>
+          ) : undefined
+        }
+        keterangan={keteranganKartuRadar(k)}
+        tier={tierDariLabel(k.tierLabel)}
+        onPress={() => router.push(`/profile/${k.address}`)}
+      />
+      {!k.pernahBertemu ? (
+        <TautanKecil label={TEKS_HANDSHAKE_KARTU} onPress={() => router.navigate("/salaman")} />
+      ) : null}
     </View>
   );
 }
 
 const s = StyleSheet.create({
-  root: { flex: 1, padding: 16, gap: 12 },
-  tengah: { flex: 1 },
-  keadaan: { fontSize: 15, lineHeight: 22, opacity: 0.8 },
-  tautan: { fontSize: 15, fontWeight: "600", paddingVertical: 6 },
-  kartu: { paddingVertical: 12, borderBottomWidth: StyleSheet.hairlineWidth },
-  nama: { fontSize: 16, fontWeight: "600" },
-  alamat: { fontFamily: "Courier", fontSize: 12, opacity: 0.6 },
-  lencana: { fontSize: 13, fontWeight: "500" },
+  muat: { flex: 1, padding: 16 },
+  root: { padding: 16, paddingBottom: 32, gap: 24 },
+  kepala: { gap: 8 },
+  pil: { alignSelf: "flex-start", borderWidth: 1, borderRadius: RADIUS.lencana, paddingHorizontal: 8 },
+  barisNilai: { flexDirection: "row", alignItems: "baseline", gap: 8 },
+  menyusut: { flexShrink: 1 },
+  tebal: { fontWeight: "600" },
+  bagian: { gap: 12 },
+  kartu: { gap: 4 },
+  lencana: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
 });

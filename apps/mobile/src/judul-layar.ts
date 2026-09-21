@@ -119,4 +119,5 @@ export const LAYAR_TERMIGRASI: ReadonlySet<string> = new Set<string>([
   "(tabs)/(acara)/events/[id]",
   "(tabs)/(acara)/events/new",
   "(tabs)/(acara)/events/[id]/host-qr",
+  "(tabs)/(acara)/radar/[eventId]",
 ]);
