@@ -116,9 +116,9 @@ function RadarScreenIsi({ signer }: { signer: NearlySigner }) {
               <Text style={s.nama}>{namaKartuRadar(k.displayName)}</Text>
               {"\n"}
               <Text style={s.alamat}>{alamatSingkat(k.address)} · {k.tierLabel}</Text>
-              {lencanaKartuRadar(k).map((l) => (
-                <Text key={l} style={s.lencana}>{"\n"}{l}</Text>
-              ))}
+              {lencanaKartuRadar(k) ? (
+                <Text style={s.lencana}>{"\n"}{lencanaKartuRadar(k)}</Text>
+              ) : null}
             </Link>
           )}
         />

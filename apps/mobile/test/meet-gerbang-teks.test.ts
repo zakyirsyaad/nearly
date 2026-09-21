@@ -83,11 +83,16 @@ describe("teksPenandaHadir", () => {
   });
 
   it("nol sungguhan tetap nol", () => {
-    expect(teksPenandaHadir(0)).toBe("0 orang yang ingin bertemu kamu sudah RSVP.");
+    expect(teksPenandaHadir(0)).toBe("0 people who want to meet you have RSVP'd.");
   });
 
   it("angka biasa tampil apa adanya", () => {
-    expect(teksPenandaHadir(3)).toBe("3 orang yang ingin bertemu kamu sudah RSVP.");
+    expect(teksPenandaHadir(3)).toBe("3 people who want to meet you have RSVP'd.");
+  });
+
+  it("satu orang memakai bentuk tunggal", () => {
+    expect(teksPenandaHadir(1)).toBe("1 person who wants to meet you has RSVP'd.");
+    expect(teksKutandaiHadir(1)).toBe("1 person you both want to meet has RSVP'd.");
   });
 });
 
@@ -97,7 +102,7 @@ describe("teksKutandaiHadir", () => {
   });
 
   it("nol sungguhan tetap nol", () => {
-    expect(teksKutandaiHadir(0)).toBe("0 orang yang saling ingin bertemu denganmu sudah RSVP.");
+    expect(teksKutandaiHadir(0)).toBe("0 people you both want to meet have RSVP'd.");
   });
 
   /**
@@ -107,8 +112,8 @@ describe("teksKutandaiHadir", () => {
    */
   it("menyebut hubungan dua arah, bukan tanda sepihak", () => {
     const teks = teksKutandaiHadir(2);
-    expect(teks).toBe("2 orang yang saling ingin bertemu denganmu sudah RSVP.");
-    expect(teks).toContain("saling");
+    expect(teks).toBe("2 people you both want to meet have RSVP'd.");
+    expect(teks).toContain("both");
     expect(teks).not.toContain("kamu tandai");
   });
 });

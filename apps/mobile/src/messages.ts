@@ -1,5 +1,6 @@
 import { MAKS_ISI_PESAN } from "@nearly/shared";
 import { jamak } from "./jamak";
+import { LENCANA_SALING_INGIN_BERTEMU } from "./teks-akun";
 import { MAKS_BUKTI_LAPORAN, MIN_ALASAN_LAPORAN } from "./pesan/pesan-actions";
 import { MAKS_NAMA_TAMPILAN, panjangNamaTampilan, type Visibilitas } from "@nearly/shared";
 
@@ -204,7 +205,7 @@ export function tombolTandaLabel(
  */
 export function teksPenandaHadir(jumlah: number | undefined): string | null {
   if (jumlah === undefined) return null;
-  return `${jumlah} orang yang ingin bertemu kamu sudah RSVP.`;
+  return jamak(jumlah, "person who wants to meet you has RSVP'd.", "people who want to meet you have RSVP'd.");
 }
 
 /**
@@ -219,7 +220,7 @@ export function teksPenandaHadir(jumlah: number | undefined): string | null {
  */
 export function teksKutandaiHadir(jumlah: number | undefined): string | null {
   if (jumlah === undefined) return null;
-  return `${jumlah} orang yang saling ingin bertemu denganmu sudah RSVP.`;
+  return jamak(jumlah, "person you both want to meet has RSVP'd.", "people you both want to meet have RSVP'd.");
 }
 
 const BLOKIR_MESSAGES: Record<string, string> = {
@@ -310,16 +311,16 @@ export type KeadaanRadar =
   | "gagal";
 
 const KALIMAT_RADAR: Record<KeadaanRadar, string> = {
-  tersembunyi: "Kamu sedang Tersembunyi, jadi radar tidak bisa dibuka.",
-  di_luar_area: "Kamu terlihat berada di luar area acara.",
-  belum_check_in: "Check-in dulu untuk membuka radar.",
-  tidak_berlangsung: "Radar hanya aktif selama acara berlangsung.",
-  tidak_ditemukan: "Acara ini tidak ditemukan.",
-  kosong: "Belum ada orang lain yang terlihat di sini.",
-  izin_lokasi: "Radar butuh izin lokasi saat aplikasi dibuka.",
-  sesi_tidak_sah: "Sesi tidak sah. Tutup lalu buka lagi layar ini.",
+  tersembunyi: "You're Hidden, so the radar can't be opened.",
+  di_luar_area: "You appear to be outside the event area.",
+  belum_check_in: "Check in first to open the radar.",
+  tidak_berlangsung: "The radar is only active while the event is running.",
+  tidak_ditemukan: "This event wasn't found.",
+  kosong: "No one else is visible here yet.",
+  izin_lokasi: "The radar needs location access while the app is open.",
+  sesi_tidak_sah: "Your session isn't valid. Close this screen, then open it again.",
   server_tak_terjangkau: KALIMAT_SERVER_TAK_TERJANGKAU,
-  gagal: "Radar gagal dimuat. Coba lagi sebentar.",
+  gagal: "The radar failed to load. Try again in a moment.",
 };
 
 export function kalimatRadar(keadaan: KeadaanRadar): string {
@@ -356,14 +357,16 @@ export function keadaanRadarDariKode(code: string): KeadaanRadar | null {
   }
 }
 
+/**
+ * Lencana teks kartu radar (spec §6.4, Ruling B2-8). "Pernah bertemu" tidak
+ * lagi berupa teks: kartu koneksi memakai lencana ✓ ringkas, dan bagiannya
+ * ("Your connections here") sudah mengatakannya.
+ */
 export function lencanaKartuRadar(k: {
   pernahBertemu: boolean;
   salingInginBertemu: boolean;
-}): string[] {
-  const lencana: string[] = [];
-  if (k.salingInginBertemu) lencana.push("Saling ingin bertemu");
-  if (k.pernahBertemu) lencana.push("Pernah bertemu");
-  return lencana;
+}): string | null {
+  return k.salingInginBertemu ? LENCANA_SALING_INGIN_BERTEMU : null;
 }
 
 export function namaKartuRadar(displayName: string): string {
