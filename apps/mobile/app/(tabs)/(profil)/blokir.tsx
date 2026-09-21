@@ -42,6 +42,10 @@ function BlokirScreenIsi({ signer }: { signer: NearlySigner }) {
     const { blokir } = await getBlokir(await kueriBuktiBlokir(signer));
     setBaris(blokir);
     setGalatMuat(null);
+    // muat yang berhasil memensiunkan pesan aksi yang basi juga (perilaku
+    // sebelum B2): kalau reload sesudah cabut sempat gagal lalu berhasil di
+    // percobaan berikutnya, pesan lama itu tidak boleh terus menempel.
+    setPesan(null);
   }, [signer]);
 
   // Galat dari `muat` ditangani DI SINI, bukan di dalam `muat`: reload di

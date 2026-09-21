@@ -100,6 +100,12 @@ describe("Diblokir: muat ulang yang gagal tidak mengosongkan daftar (M1, M11)", 
     expect(muat).not.toContain("setBaris(");
   });
 
+  it("muat yang berhasil memensiunkan galat muat MAUPUN pesan aksi yang basi", () => {
+    const muat = potong(isi(), "const muat = useCallback(", "}, [signer]);");
+    expect(muat).toContain("setGalatMuat(null);");
+    expect(muat).toContain("setPesan(null);");
+  });
+
   it("muat pertama yang gagal tampil sebagai galat + Try again", () => {
     expect(isi()).toMatch(
       /if \(baris === null\) \{[\s\S]*?\{galatMuat \? \(\s*<KeadaanGalat kalimat=\{galatMuat\} onCobaLagi=\{\(\) => void muatDenganGalat\(\)\} \/>/,
