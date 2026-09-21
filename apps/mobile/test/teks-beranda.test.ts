@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   KOSONG_KONEKSI,
+  TEKS_GAGAL_MUAT_KONEKSI,
   LABEL_SALIN_ALAMAT,
   pasanganCheckIn,
   TEKS_AKSI_HANDSHAKE,
@@ -46,5 +47,10 @@ describe("teks Beranda", () => {
       "No connections yet. Connections can only be made by meeting in person.",
     );
     expect(TEKS_AKSI_HANDSHAKE).toBe("Handshake");
+  });
+
+  it("gagal memuat koneksi punya kalimatnya sendiri, bukan keadaan kosong (review B1 #I3)", () => {
+    expect(TEKS_GAGAL_MUAT_KONEKSI).toBe("Couldn't load your connections.");
+    expect(TEKS_GAGAL_MUAT_KONEKSI).not.toBe(KOSONG_KONEKSI);
   });
 });

@@ -39,5 +39,12 @@ export const TEKS_ALAMAT_DISALIN = "Address copied";
 export const KOSONG_KONEKSI =
   "No connections yet. Connections can only be made by meeting in person.";
 
+/**
+ * Gagal memuat daftar koneksi (review B1 #I3) — Beranda dan layar Koneksi.
+ * Spec §7.2: daftar kosong di samping galat BUKAN keadaan kosong; mengatakan
+ * "No connections yet" kepada orang yang punya 40 koneksi itu bohong.
+ */
+export const TEKS_GAGAL_MUAT_KONEKSI = "Couldn't load your connections.";
+
 /** Aksi keadaan kosong itu: membuka tab Handshake (§7.2). */
 export const TEKS_AKSI_HANDSHAKE = "Handshake";

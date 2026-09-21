@@ -7,7 +7,7 @@ import { Copy, Handshake } from "lucide-react-native";
 import type { Address } from "viem";
 import { isEventLive, lihatEventTypedData } from "@nearly/shared";
 import { KartuOrang } from "@/components/kartu-orang";
-import { KeadaanKosong, KerangkaDaftar } from "@/components/keadaan";
+import { KeadaanGalat, KeadaanKosong, KerangkaDaftar } from "@/components/keadaan";
 import { Lencana } from "@/components/lencana";
 import { TautanKecil } from "@/components/tautan-kecil";
 import { Card } from "@/components/ui/card";
@@ -28,7 +28,7 @@ import { bolehMuatFokus } from "../../../src/muat-fokus";
 import {
   JUDUL_FEED, JUDUL_RECENTLY_MET, KOSONG_KONEKSI, LABEL_SALIN_ALAMAT, pasanganCheckIn,
   TEKS_AKSI_HANDSHAKE, TEKS_ALAMAT_DISALIN, TEKS_BUKA_ACARA, TEKS_BUKA_DOMPET, TEKS_BUKA_RADAR,
-  TEKS_LIHAT_SEMUA, TEKS_LIVE, TEKS_SALIN, TEKS_SUDAH_CHECK_IN,
+  TEKS_GAGAL_MUAT_KONEKSI, TEKS_LIHAT_SEMUA, TEKS_LIVE, TEKS_SALIN, TEKS_SUDAH_CHECK_IN,
 } from "../../../src/teks-beranda";
 import { fetchTrust } from "../../../src/trust-api";
 import { sapaan, waktuRelatif } from "../../../src/waktu";
@@ -75,6 +75,7 @@ function HomeIsi({
   const [nama, setNama] = useState<string | null>(null);
   const [live, setLive] = useState<EventSummary[]>([]);
   const [koneksi, setKoneksi] = useState<KartuKoneksi[] | null>(null);
+  const [galatKoneksi, setGalatKoneksi] = useState(false);
   const [feed, setFeed] = useState<KartuFeed[] | null>(null);
   const kabar = useKabar();
 
@@ -138,6 +139,7 @@ function HomeIsi({
   }, [signerHadir]);
 
   const muatKoneksi = useCallback(async () => {
+    setGalatKoneksi(false);
     try {
       const { connections } = await req<{ connections?: { address: string; at: number }[] }>(
         `/connections/${signer.address}`,
@@ -155,7 +157,9 @@ function HomeIsi({
       }));
       setKoneksi(kartu);
     } catch {
-      setKoneksi([]);
+      // Daftar yang sudah tampil dibiarkan; galat hanya muncul bila belum ada
+      // apa pun untuk ditampilkan (§7.2).
+      setGalatKoneksi(true);
     }
   }, [signer.address]);
 
@@ -249,7 +253,11 @@ function HomeIsi({
             <TautanKecil label={TEKS_LIHAT_SEMUA} onPress={() => router.push("/connections")} />
           </View>
           {koneksi === null ? (
-            <KerangkaDaftar baris={MAKS_KONEKSI} />
+            galatKoneksi ? (
+              <KeadaanGalat kalimat={TEKS_GAGAL_MUAT_KONEKSI} onCobaLagi={() => void muatKoneksi()} />
+            ) : (
+              <KerangkaDaftar baris={MAKS_KONEKSI} />
+            )
           ) : koneksi.length === 0 ? (
             <KeadaanKosong
               Ikon={Handshake}

@@ -1,15 +1,15 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { router } from "expo-router";
 import { FlatList, Pressable, StyleSheet, View } from "react-native";
 import { Handshake } from "lucide-react-native";
-import { KeadaanKosong, KerangkaDaftar } from "@/components/keadaan";
+import { KeadaanGalat, KeadaanKosong, KerangkaDaftar } from "@/components/keadaan";
 import { Card } from "@/components/ui/card";
 import { Text } from "@/components/ui/text";
 import { CONFIG } from "../../../src/config";
 import { req } from "../../../src/http";
 import type { NearlySigner } from "../../../src/signer";
 import { useNearlySigner } from "../../../src/dompet/konteks-dompet";
-import { KOSONG_KONEKSI, TEKS_AKSI_HANDSHAKE } from "../../../src/teks-beranda";
+import { KOSONG_KONEKSI, TEKS_AKSI_HANDSHAKE, TEKS_GAGAL_MUAT_KONEKSI } from "../../../src/teks-beranda";
 import { waktuRelatif } from "../../../src/waktu";
 
 type Row = { address: string; txHash: string; at: number };
@@ -25,14 +25,28 @@ export default function Connections() {
 
 function ConnectionsIsi({ signer }: { signer: NearlySigner }) {
   const [rows, setRows] = useState<Row[] | null>(null);
+  const [galat, setGalat] = useState(false);
 
-  useEffect(() => {
-    req<{ connections?: Row[] }>(`/connections/${signer.address}`)
+  // Gagal memuat bukan "No connections yet" (review B1 #I3, spec §7.2).
+  const muat = useCallback(() => {
+    setGalat(false);
+    return req<{ connections?: Row[] }>(`/connections/${signer.address}`)
       .then((j) => setRows(j.connections ?? []))
-      .catch(() => setRows([]));
+      .catch(() => setGalat(true));
   }, [signer.address]);
 
+  useEffect(() => {
+    void muat();
+  }, [muat]);
+
   if (!rows) {
+    if (galat) {
+      return (
+        <View style={s.muat}>
+          <KeadaanGalat kalimat={TEKS_GAGAL_MUAT_KONEKSI} onCobaLagi={() => void muat()} />
+        </View>
+      );
+    }
     return (
       <View style={s.muat}>
         <KerangkaDaftar />
