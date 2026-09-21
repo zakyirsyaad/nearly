@@ -34,3 +34,35 @@ describe("gagal memuat koneksi bukan keadaan kosong (review B1 #I3, spec §7.2)"
     expect(isi).toMatch(/if \(!rows\) \{\s*if \(galat\)/);
   });
 });
+
+describe("tab Profil: gagal muat tidak membuka formulir, kepala segar saat fokus (review B1 #I4)", () => {
+  const isi = () => tanpaKomentar(baca("app/(tabs)/(profil)/profil-saya.tsx"));
+
+  it("formulir hanya terbuka setelah profil berhasil dimuat — bukan di finally", () => {
+    const muat = potong(isi(), "const muatProfil = useCallback(", "}, [signer]);");
+    // Kalau terbuka di finally, gagal muat menyisakan nilai bawaan
+    // (nama kosong, "terlihat"), dan satu Save membuat orang yang memilih
+    // Hidden tampil di radar tanpa pernah memilihnya.
+    expect(muat).not.toContain("finally");
+    expect(muat).toMatch(/setVisibilitas\(p\.visibilitas\);\s*setDimuat\(true\);/);
+    expect(muat).toContain("setGalatMuat(");
+  });
+
+  it("gagal muat menggantikan bagian nama dan visibilitas dengan galat + Try again", () => {
+    const x = isi();
+    expect(x).toContain("<KeadaanGalat kalimat={galatMuat} onCobaLagi={() => void muatProfil()} />");
+    const galatDulu = x.indexOf("galatMuat ? (");
+    expect(galatDulu).toBeGreaterThan(-1);
+    expect(galatDulu).toBeLessThan(x.indexOf("{LABEL_NAMA_TAMPILAN}"));
+  });
+
+  it("angka koneksi dan tier dimuat saat fokus, dibatasi bolehMuatFokus (spec §4.6)", () => {
+    const x = isi();
+    const fokus = potong(x, "useFocusEffect(useCallback(() => {", "}, [muatKepala]));");
+    expect(fokus).toContain("bolehMuatFokus(terakhir.current, kini)");
+    expect(fokus).toContain("void muatKepala();");
+    const kepala = potong(x, "const muatKepala = useCallback(", "}, [signer.address]);");
+    expect(kepala).toContain("connectionCount");
+    expect(kepala).toContain("fetchTrust(signer.address)");
+  });
+});
