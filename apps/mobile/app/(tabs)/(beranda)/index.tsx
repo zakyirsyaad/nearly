@@ -238,7 +238,7 @@ function HomeIsi({
             <Text variant="title">{e.title}</Text>
             {e.sudahCheckIn ? (
               <View style={s.barisKartu}>
-                <Text variant="caption">{TEKS_SUDAH_CHECK_IN}</Text>
+                <Text variant="caption" style={s.menyusut}>{TEKS_SUDAH_CHECK_IN}</Text>
                 <TautanKecil label={TEKS_BUKA_RADAR} onPress={() => router.push(`/radar/${e.eventId}`)} />
               </View>
             ) : (
@@ -249,7 +249,7 @@ function HomeIsi({
 
         <View style={s.bagian}>
           <View style={s.barisJudul}>
-            <Text variant="title">{JUDUL_RECENTLY_MET}</Text>
+            <Text variant="title" style={s.menyusut}>{JUDUL_RECENTLY_MET}</Text>
             <TautanKecil label={TEKS_LIHAT_SEMUA} onPress={() => router.push("/connections")} />
           </View>
           {koneksi === null ? (
@@ -283,7 +283,7 @@ function HomeIsi({
         {feed === null || feed.length > 0 ? (
           <View style={s.bagian}>
             <View style={s.barisJudul}>
-              <Text variant="title">{JUDUL_FEED}</Text>
+              <Text variant="title" style={s.menyusut}>{JUDUL_FEED}</Text>
               <TautanKecil label={TEKS_LIHAT_SEMUA} onPress={() => router.push("/feed")} />
             </View>
             {feed === null ? (
@@ -292,7 +292,7 @@ function HomeIsi({
               feed.map((p) => (
                 <Card key={p.id} style={s.kartu}>
                   <View style={s.barisKartu}>
-                    <Text variant="body" style={s.tebal}>{p.nama}</Text>
+                    <Text variant="body" style={[s.tebal, s.menyusut]}>{p.nama}</Text>
                     <Text variant="caption">{p.waktu}</Text>
                   </View>
                   <Text variant="body" numberOfLines={2}>{p.isi}</Text>
@@ -318,5 +318,8 @@ const s = StyleSheet.create({
   nilai: { flexDirection: "row", alignItems: "baseline", gap: 4 },
   bagian: { gap: 12 },
   barisJudul: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 8 },
+  // Teks panjang di baris label + tautan membungkus ke baris baru alih-alih
+  // mendorong tautannya keluar layar (review B1 #I5).
+  menyusut: { flexShrink: 1 },
   tebal: { fontWeight: "600" },
 });

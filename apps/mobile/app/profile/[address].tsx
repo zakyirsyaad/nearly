@@ -375,7 +375,7 @@ export default function ProfileScreen() {
         <Card style={s.kartu}>
           <Text variant="caption">{JUDUL_PERTEMUAN}</Text>
           <View style={s.barisNilai}>
-            <Text variant="body" style={s.tebal}>{barisSalaman(p.pertemuan, kini).judul}</Text>
+            <Text variant="body" style={[s.tebal, s.menyusut]}>{barisSalaman(p.pertemuan, kini).judul}</Text>
             <Text variant="caption">{barisSalaman(p.pertemuan, kini).tanggal}</Text>
           </View>
           {p.pertemuan.acaraBersama.map((a) => (
@@ -402,7 +402,7 @@ export default function ProfileScreen() {
             <Button variant="outline" onPress={() => setShowVouchPicker((v) => !v)}>{TEKS_VOUCH}</Button>
             {/* Server-lah satu-satunya yang benar-benar tahu sisa kuota;
                 angka yang bisa basi lebih buruk daripada tanpa angka. */}
-            <Text variant="caption">{TEKS_KUOTA_VOUCH}</Text>
+            <Text variant="caption" style={s.menyusut}>{TEKS_KUOTA_VOUCH}</Text>
           </View>
 
           {showVouchPicker ? (
@@ -454,7 +454,7 @@ export default function ProfileScreen() {
               {/* "Done" duduk DI ATAS isian, bukan di bawahnya: yang di bawah
                   akan tertutup keyboard, persis masalah yang mau diselesaikan. */}
               <View style={s.barisNilai}>
-                <Text variant="caption">{TEKS_LABEL_ALASAN}</Text>
+                <Text variant="caption" style={s.menyusut}>{TEKS_LABEL_ALASAN}</Text>
                 <Pressable onPress={() => Keyboard.dismiss()} hitSlop={12} accessibilityRole="button">
                   <Text variant="label" style={{ color: kuning }}>{TEKS_SELESAI}</Text>
                 </Pressable>
@@ -512,6 +512,9 @@ const s = StyleSheet.create({
   kartu: { gap: 8 },
   grupTrust: { gap: 8 },
   barisNilai: { flexDirection: "row", alignItems: "baseline", justifyContent: "space-between", gap: 8 },
+  // Teks panjang di baris label + nilai membungkus ke baris baru alih-alih
+  // mendorong saudaranya keluar kartu (review B1 #I5).
+  menyusut: { flexShrink: 1 },
   tag: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
   pil: {
     borderWidth: 1,

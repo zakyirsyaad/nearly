@@ -66,3 +66,25 @@ describe("tab Profil: gagal muat tidak membuka formulir, kepala segar saat fokus
     expect(kepala).toContain("fetchTrust(signer.address)");
   });
 });
+
+describe("teks panjang di baris label + nilai menyusut, tidak keluar kartu (review B1 #I5)", () => {
+  // Di React Native, Text di dalam baris flex tidak menyusut kecuali diberi
+  // flexShrink — anak pertama memakan lebar penuh dan saudaranya terdorong
+  // melewati tepi kartu (tanggal Meetings, "See all ›", "Open radar ›").
+  it("Profil orang: judul pertemuan, kuota vouch, dan label alasan", () => {
+    const isi = tanpaKomentar(baca("app/profile/[address].tsx"));
+    expect(isi).toContain("<Text variant=\"body\" style={[s.tebal, s.menyusut]}>{barisSalaman(p.pertemuan, kini).judul}</Text>");
+    expect(isi).toContain("<Text variant=\"caption\" style={s.menyusut}>{TEKS_KUOTA_VOUCH}</Text>");
+    expect(isi).toContain("<Text variant=\"caption\" style={s.menyusut}>{TEKS_LABEL_ALASAN}</Text>");
+    expect(isi).toMatch(/menyusut: \{ flexShrink: 1 \}/);
+  });
+
+  it("Beranda: sudah check-in, judul bagian, dan nama penulis feed", () => {
+    const isi = tanpaKomentar(baca("app/(tabs)/(beranda)/index.tsx"));
+    expect(isi).toContain("<Text variant=\"caption\" style={s.menyusut}>{TEKS_SUDAH_CHECK_IN}</Text>");
+    expect(isi).toContain("<Text variant=\"title\" style={s.menyusut}>{JUDUL_RECENTLY_MET}</Text>");
+    expect(isi).toContain("<Text variant=\"title\" style={s.menyusut}>{JUDUL_FEED}</Text>");
+    expect(isi).toContain("<Text variant=\"body\" style={[s.tebal, s.menyusut]}>{p.nama}</Text>");
+    expect(isi).toMatch(/menyusut: \{ flexShrink: 1 \}/);
+  });
+});
