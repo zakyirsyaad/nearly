@@ -1,8 +1,15 @@
-import { useCallback, useEffect, useState } from "react";
-import { Link, useLocalSearchParams } from "expo-router";
-import { ActivityIndicator, Button, StyleSheet, Text, View } from "react-native";
+import { useCallback, useState } from "react";
+import { router, useLocalSearchParams } from "expo-router";
+import { ScrollView, StyleSheet, View } from "react-native";
 import type { Hex } from "viem";
 import { isEventLive, lihatEventTypedData, rsvpTypedData } from "@nearly/shared";
+import { KeadaanGalat, KerangkaDaftar } from "@/components/keadaan";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { Text } from "@/components/ui/text";
+import { useColor } from "@/hooks/useColor";
+import { useMuatSaatFokus } from "@/hooks/useMuatSaatFokus";
+import { MAKS_SKALA_HURUF_KECIL } from "@/theme/globals";
 import { CONFIG } from "../../../../src/config";
 import type { NearlySigner } from "../../../../src/signer";
 import { useNearlySigner } from "../../../../src/dompet/konteks-dompet";
@@ -11,6 +18,13 @@ import { getEvent, postRsvp, type EventSummary } from "../../../../src/events-ap
 import {
   eventErrorMessage, teksKutandaiHadir, teksPenandaHadir,
 } from "../../../../src/messages";
+import {
+  labelRsvp, pasanganBelumHadir, pasanganRsvp, TEKS_BUKA_QR_HOST, TEKS_BUKA_RADAR_ACARA,
+  TEKS_CHECK_IN_SAAT_BERLANGSUNG, TEKS_GAGAL_MUAT_ACARA_INI, TEKS_PINDAI_QR_HOST, TEKS_RSVP_DULU,
+  TEKS_RSVP_GAGAL, TEKS_RSVP_TERCATAT,
+} from "../../../../src/teks-acara";
+import { pasanganCheckIn, TEKS_LIVE } from "../../../../src/teks-beranda";
+import { formatTanggalJam } from "../../../../src/waktu";
 
 export default function EventDetailScreen() {
   const signer = useNearlySigner(CONFIG.attendanceRegistry);
@@ -30,10 +44,15 @@ function EventDetailScreenIsi({ signer }: { signer: NearlySigner }) {
   // disuruh RSVP lagi hanya karena state lokal lupa.
   const [sudahRsvp, setSudahRsvp] = useState(false);
   const [sudahCheckIn, setSudahCheckIn] = useState(false);
+  // Galat MUAT terpisah dari pesan AKSI: tanpa ini layar yang gagal memuat
+  // menampilkan kerangka selamanya (spec §7.2).
+  const [galatMuat, setGalatMuat] = useState<string | null>(null);
   const [pesan, setPesan] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const hijau = useColor("verified");
 
   const load = useCallback(async () => {
+    setGalatMuat(null);
     try {
       // Bendera sudahRsvp/sudahCheckIn hanya keluar untuk pemanggil yang
       // MEMBUKTIKAN dirinya alamat itu — tanpa tanda tangan, `?who=` akan
@@ -55,12 +74,16 @@ function EventDetailScreenIsi({ signer }: { signer: NearlySigner }) {
       setEv(data);
       setSudahRsvp(data.sudahRsvp === true);
       setSudahCheckIn(data.sudahCheckIn === true);
+      return true;
     } catch (e) {
-      setPesan(e instanceof ApiError ? eventErrorMessage(e.code) : "Gagal memuat acara.");
+      setGalatMuat(e instanceof ApiError ? eventErrorMessage(e.code) : TEKS_GAGAL_MUAT_ACARA_INI);
+      return false;
     }
   }, [id, signer]);
 
-  useEffect(() => { void load(); }, [load]);
+  // Memuat saat fokus (spec §4.6): kembali dari check-in di tab Handshake
+  // langsung menampilkan "already checked in" (generasi data, Ruling B2-3).
+  useMuatSaatFokus(load);
 
   async function rsvp() {
     if (busy || !ev) return;
@@ -77,17 +100,27 @@ function EventDetailScreenIsi({ signer }: { signer: NearlySigner }) {
         eventId: ev.eventId, who: signer.address, expiresAt: expiresAt.toString(), sig,
       });
       setSudahRsvp(true);
-      setPesan("RSVP tercatat. Check-in di venue dengan memindai QR host.");
+      setPesan(TEKS_RSVP_TERCATAT);
       await load();
     } catch (e) {
       if (e instanceof ApiError && e.code === "already_rsvped") setSudahRsvp(true);
-      setPesan(e instanceof ApiError ? eventErrorMessage(e.code, e.reason) : "RSVP gagal.");
+      setPesan(e instanceof ApiError ? eventErrorMessage(e.code, e.reason) : TEKS_RSVP_GAGAL);
     } finally {
       setBusy(false);
     }
   }
 
-  if (!ev) return <View style={s.root}><ActivityIndicator /></View>;
+  if (!ev) {
+    return (
+      <View style={s.muat}>
+        {galatMuat ? (
+          <KeadaanGalat kalimat={galatMuat} onCobaLagi={() => void load()} />
+        ) : (
+          <KerangkaDaftar baris={2} />
+        )}
+      </View>
+    );
+  }
 
   const berlangsung = isEventLive(BigInt(ev.startsAt), BigInt(ev.endsAt), Date.now());
   const akuHost = ev.host.toLowerCase() === signer.address.toLowerCase();
@@ -98,69 +131,91 @@ function EventDetailScreenIsi({ signer }: { signer: NearlySigner }) {
   const alasanTakBisaCheckIn = sudahCheckIn
     ? eventErrorMessage("already_checked_in")
     : !sudahRsvp
-      ? "RSVP dulu untuk bisa check-in."
+      ? TEKS_RSVP_DULU
       : !berlangsung
-        ? "Check-in terbuka saat acara berlangsung."
+        ? TEKS_CHECK_IN_SAAT_BERLANGSUNG
         : null;
 
   const barisPenandaHadir = teksPenandaHadir(ev.penandaHadir);
   const barisKutandaiHadir = teksKutandaiHadir(ev.kutandaiHadir);
+  const kehadiran = [
+    pasanganRsvp(ev.rsvps ?? 0),
+    pasanganCheckIn(ev.checkins ?? 0),
+    pasanganBelumHadir(ev.rsvpBelumHadir ?? 0),
+  ];
 
   return (
-    <View style={s.root}>
-      <Text style={s.judul}>{ev.title}</Text>
-      {ev.venueLabel ? <Text style={s.meta}>{ev.venueLabel}</Text> : null}
-      <Text style={s.meta}>
-        {new Date(Number(ev.startsAt) * 1000).toLocaleString("id-ID")}
-      </Text>
-      <Text style={s.meta}>
-        {ev.rsvps ?? 0} RSVP · {ev.checkins ?? 0} hadir · {ev.rsvpBelumHadir ?? 0} belum hadir
-      </Text>
+    <ScrollView contentContainerStyle={s.root} contentInsetAdjustmentBehavior="automatic">
+      <View style={s.kepala}>
+        {berlangsung ? (
+          <Text variant="label" style={{ color: hijau }} maxFontSizeMultiplier={MAKS_SKALA_HURUF_KECIL}>
+            {TEKS_LIVE}
+          </Text>
+        ) : null}
+        <Text variant="title">{ev.title}</Text>
+        {ev.venueLabel ? <Text variant="caption">{ev.venueLabel}</Text> : null}
+        <Text variant="caption">{formatTanggalJam(new Date(Number(ev.startsAt) * 1000), new Date())}</Text>
+      </View>
 
-      {/*
-        `undefined` untuk keduanya adalah keadaan NORMAL, bukan nol — untuk
-        orang yang membuka tautan tanpa signer, dan untuk penandaHadir juga
-        pada acara yang belum melewati kedua ambang k-anonimitas (spec §4.3).
-        Gerbangnya dipindahkan ke fungsi murni di src/messages.ts supaya bisa
-        diuji tanpa merender apa pun (finding #7) — regresi "0" di sini
-        mengubah penyembunyian yang disengaja menjadi klaim yang bisa bohong.
-      */}
-      {barisPenandaHadir !== null ? (
-        <Text style={s.meta}>{barisPenandaHadir}</Text>
-      ) : null}
-      {barisKutandaiHadir !== null ? (
-        <Text style={s.meta}>{barisKutandaiHadir}</Text>
-      ) : null}
+      <Card style={s.kartu}>
+        {/* Nilai lebih keras dari labelnya (§7.1). */}
+        {kehadiran.map((p) => (
+          <View key={p.kata} style={s.barisNilai}>
+            <Text variant="body" style={s.tebal}>{p.angka}</Text>
+            <Text variant="caption" style={s.menyusut}>{p.kata}</Text>
+          </View>
+        ))}
+        {/*
+          `undefined` untuk keduanya adalah keadaan NORMAL, bukan nol — untuk
+          orang yang membuka tautan tanpa signer, dan untuk penandaHadir juga
+          pada acara yang belum melewati kedua ambang k-anonimitas (spec §4.3).
+          Gerbangnya di fungsi murni src/messages.ts supaya bisa diuji tanpa
+          merender apa pun — regresi "0" di sini mengubah penyembunyian yang
+          disengaja menjadi klaim yang bisa bohong.
+        */}
+        {barisPenandaHadir !== null ? <Text variant="caption">{barisPenandaHadir}</Text> : null}
+        {barisKutandaiHadir !== null ? <Text variant="caption">{barisKutandaiHadir}</Text> : null}
+      </Card>
 
-      {!sudahRsvp && (
-        <Button title={busy ? "Mengirim…" : "RSVP"} onPress={() => void rsvp()} disabled={busy} />
-      )}
+      <View style={s.aksi}>
+        {!sudahRsvp ? (
+          <Button loading={busy} disabled={busy} onPress={() => void rsvp()}>{labelRsvp(busy)}</Button>
+        ) : null}
 
-      {alasanTakBisaCheckIn
-        ? <Text style={s.nonaktif}>{alasanTakBisaCheckIn}</Text>
-        : <Link href="/salaman?mode=pindai" style={s.aksi}>Pindai QR host untuk check-in</Link>}
+        {alasanTakBisaCheckIn ? (
+          <Text variant="caption">{alasanTakBisaCheckIn}</Text>
+        ) : (
+          <Button variant="outline" onPress={() => router.navigate("/salaman?mode=pindai")}>
+            {TEKS_PINDAI_QR_HOST}
+          </Button>
+        )}
 
-      {/* Radar hanya untuk yang sudah check-in, selama acara berlangsung (spec 4b+5 §8.1). */}
-      {berlangsung && sudahCheckIn && (
-        <Link href={`/radar/${ev.eventId}`} style={s.aksi}>Buka radar</Link>
-      )}
+        {/* Radar hanya untuk yang sudah check-in, selama acara berlangsung (spec 4b+5 §8.1). */}
+        {berlangsung && sudahCheckIn ? (
+          <Button variant="outline" onPress={() => router.push(`/radar/${ev.eventId}`)}>
+            {TEKS_BUKA_RADAR_ACARA}
+          </Button>
+        ) : null}
 
-      {akuHost && (
-        <Link href={`/events/${ev.eventId}/host-qr`} style={s.aksi}>
-          Buka QR check-in (kamu host)
-        </Link>
-      )}
+        {akuHost ? (
+          <Button variant="outline" onPress={() => router.push(`/events/${ev.eventId}/host-qr`)}>
+            {TEKS_BUKA_QR_HOST}
+          </Button>
+        ) : null}
 
-      {pesan && <Text style={s.p}>{pesan}</Text>}
-    </View>
+        {pesan ? <Text variant="caption">{pesan}</Text> : null}
+      </View>
+    </ScrollView>
   );
 }
 
 const s = StyleSheet.create({
-  root: { flex: 1, padding: 16, gap: 10 },
-  judul: { fontSize: 22, fontWeight: "700" },
-  meta: { fontSize: 14, opacity: 0.75 },
-  aksi: { fontSize: 16, fontWeight: "600", paddingVertical: 10 },
-  nonaktif: { fontSize: 15, opacity: 0.45, paddingVertical: 10 },
-  p: { fontSize: 15, lineHeight: 22 },
+  root: { padding: 16, paddingBottom: 32, gap: 24 },
+  muat: { flex: 1, padding: 16 },
+  kepala: { gap: 4 },
+  kartu: { gap: 8 },
+  barisNilai: { flexDirection: "row", alignItems: "baseline", gap: 8 },
+  menyusut: { flexShrink: 1 },
+  tebal: { fontWeight: "600" },
+  aksi: { gap: 12 },
 });

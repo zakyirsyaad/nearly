@@ -151,6 +151,6 @@ describe("judul layar", () => {
       expect(opsiTampilan(k, new Set()), k).not.toHaveProperty("headerLargeTitle");
       expect(opsiTampilan(k, new Set([k])), k).toMatchObject({ headerLargeTitle: true });
     }
-    expect(opsiTampilan("(tabs)/(acara)/events/[id]")).toEqual({});
+    expect(opsiTampilan("(tabs)/(acara)/events/[id]", new Set())).toEqual({});
   });
 });

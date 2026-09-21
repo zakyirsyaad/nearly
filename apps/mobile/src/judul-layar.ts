@@ -114,4 +114,7 @@ export const LAYAR_TERMIGRASI: ReadonlySet<string> = new Set<string>([
   "(tabs)/(profil)/kecocokan",
   "(tabs)/(profil)/dompet",
   "(tabs)/(profil)/blokir",
+  // Rencana B2 kelompok (d) — Acara (spec §9 langkah 5d).
+  "(tabs)/(acara)/events/index",
+  "(tabs)/(acara)/events/[id]",
 ]);
