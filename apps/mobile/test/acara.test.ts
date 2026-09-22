@@ -64,6 +64,23 @@ describe("Detail acara (spec §7.1 pola detail)", () => {
     expect(muat).toContain("lihatEventTypedData(");
     expect(muat).not.toContain("rsvpTypedData(");
   });
+
+  it("m1: muat ulang gagal saat data sudah tampil tetap menunjukkan galat + Try again di atas, bukan disembunyikan", () => {
+    const x = detail();
+    // Cabang `ev` terisi (bukan cabang `!ev` yang sudah diuji tes lain):
+    // galat muncul di dalam ScrollView, di atas kartu, dengan data tetap ada di bawahnya.
+    expect(x).toMatch(
+      /<ScrollView contentContainerStyle=\{s\.root\} contentInsetAdjustmentBehavior="automatic">\s*\{galatMuat \? \(\s*<KeadaanGalat kalimat=\{galatMuat\} onCobaLagi=\{\(\) => void load\(\)\} \/>\s*\) : null\}/,
+    );
+  });
+
+  it("m2: RSVP berhasil menaikkan generasi data lewat tandaiDataBerubah() (Ruling B2-3), supaya daftar Acara tidak menampilkan angka basi", () => {
+    const x = detail();
+    const rsvpFn = x.slice(x.indexOf("async function rsvp()"), x.indexOf("if (!ev) {"));
+    expect(rsvpFn).toContain("await postRsvp(");
+    const setelahPost = rsvpFn.slice(rsvpFn.indexOf("await postRsvp("));
+    expect(setelahPost).toContain("tandaiDataBerubah();");
+  });
 });
 
 const buat = () => tanpaKomentar(baca("app/(tabs)/(acara)/events/new.tsx"));

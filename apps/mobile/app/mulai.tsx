@@ -107,6 +107,7 @@ export default function MulaiScreen() {
               keyboardType={Platform.OS === "android" ? "visible-password" : "default"}
               importantForAutofill="no"
               editable={!sibuk}
+              disabled={sibuk}
             />
             <Text variant="caption" style={{ color: kuning }}>{PERINGATAN_MNEMONIK_UTAMA}</Text>
             <Button
@@ -134,6 +135,7 @@ export default function MulaiScreen() {
               textContentType="none"
               importantForAutofill="no"
               editable={!sibuk}
+              disabled={sibuk}
             />
             <Text variant="caption" style={{ color: kuning }}>{PERINGATAN_KUNCI_DEV}</Text>
             <Button

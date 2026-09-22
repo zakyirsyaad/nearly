@@ -48,4 +48,11 @@ describe("Radar (spec §6.4, keputusan #10)", () => {
   it("Tersembunyi mengarah ke tab Profile lewat navigate lintas tab", () => {
     expect(radar()).toContain('router.navigate("/profil-saya")');
   });
+
+  it("m3: pembersih fokus mengosongkan kartu dan keadaan, supaya refocus menampilkan skeleton bukan kartu/pil basi", () => {
+    const x = radar();
+    expect(x).toContain(
+      "return () => { aktif = false; clearInterval(tDetak); clearInterval(tRadar); setRadar(null); setKeadaan(null); };",
+    );
+  });
 });

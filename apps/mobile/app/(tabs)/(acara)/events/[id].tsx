@@ -15,6 +15,7 @@ import type { NearlySigner } from "../../../../src/signer";
 import { useNearlySigner } from "../../../../src/dompet/konteks-dompet";
 import { ApiError } from "../../../../src/api";
 import { getEvent, postRsvp, type EventSummary } from "../../../../src/events-api";
+import { tandaiDataBerubah } from "../../../../src/muat-fokus";
 import {
   eventErrorMessage, teksKutandaiHadir, teksPenandaHadir,
 } from "../../../../src/messages";
@@ -99,6 +100,9 @@ function EventDetailScreenIsi({ signer }: { signer: NearlySigner }) {
       await postRsvp(ev.eventId, {
         eventId: ev.eventId, who: signer.address, expiresAt: expiresAt.toString(), sig,
       });
+      // Daftar Acara punya jeda 30 detik (§4.6); tanpa ini "N RSVPs" di sana
+      // tetap basi sampai jeda itu habis (review minor m2, Ruling B2-3).
+      tandaiDataBerubah();
       setSudahRsvp(true);
       setPesan(TEKS_RSVP_TERCATAT);
       await load();
@@ -146,6 +150,9 @@ function EventDetailScreenIsi({ signer }: { signer: NearlySigner }) {
 
   return (
     <ScrollView contentContainerStyle={s.root} contentInsetAdjustmentBehavior="automatic">
+      {galatMuat ? (
+        <KeadaanGalat kalimat={galatMuat} onCobaLagi={() => void load()} />
+      ) : null}
       <View style={s.kepala}>
         {berlangsung ? (
           <Text variant="label" style={{ color: hijau }} maxFontSizeMultiplier={MAKS_SKALA_HURUF_KECIL}>

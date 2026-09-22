@@ -39,4 +39,14 @@ describe("Mulai (spec §7.1, keputusan #11, #15)", () => {
     expect(salah).toEqual([]);
     expect(existsSync(join(MOBILE, "src/warna.ts"))).toBe(false);
   });
+
+  it("T14a: kedua isian dikunci SECARA VISUAL (disabled) saat sibuk, bukan cuma editable", () => {
+    const x = mulai();
+    const blokIsian = x.split("<Input").slice(1).map((b) => b.slice(0, b.indexOf("/>") + 2));
+    expect(blokIsian.length).toBe(2);
+    for (const isian of blokIsian) {
+      expect(isian).toContain("disabled={sibuk}");
+      expect(isian).toContain("editable={!sibuk}");
+    }
+  });
 });

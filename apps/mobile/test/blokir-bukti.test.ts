@@ -5,6 +5,7 @@ import { recoverBlokirSigner, recoverLihatBlokirSigner, recoverLihatKecocokanSig
 import { CONFIG } from "../src/config";
 import { kueriBuktiBlokir } from "../src/blokir-api";
 import { aksiBlokir } from "../src/blokir-actions";
+import { baca, tanpaKomentar } from "./support/berkas";
 
 const A = privateKeyToAccount(`0x${"a1".repeat(32)}` as Hex);
 const B = "0x000000000000000000000000000000000000beef" as Address;
@@ -70,5 +71,13 @@ describe("aksiBlokir", () => {
     }) as never;
     await aksiBlokir(signer as never, B, true);
     expect(dikirim.blokir).toBe(false);
+  });
+
+  it("m2: blokir/cabut blokir berhasil menaikkan generasi data lewat tandaiDataBerubah() (Ruling B2-3) — satu tempat untuk profil, daftar diblokir, percakapan dan lapor", () => {
+    const isi = tanpaKomentar(baca("src/blokir-actions.ts"));
+    const kirim = isi.indexOf('await postJson<{ ok: true }>("/blokir"');
+    expect(kirim).toBeGreaterThan(-1);
+    const setelahKirim = isi.slice(kirim);
+    expect(setelahKirim).toContain("tandaiDataBerubah();");
   });
 });

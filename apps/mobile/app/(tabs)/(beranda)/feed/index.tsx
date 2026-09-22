@@ -10,7 +10,7 @@ import { TautanKecil } from "@/components/tautan-kecil";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Text } from "@/components/ui/text";
-import { RADIUS } from "@/theme/globals";
+import { RADIUS, UKURAN } from "@/theme/globals";
 import { CONFIG } from "../../../../src/config";
 import type { NearlySigner } from "../../../../src/signer";
 import { useNearlySigner } from "../../../../src/dompet/konteks-dompet";
@@ -267,7 +267,13 @@ const s = StyleSheet.create({
   daftar: { padding: 16, paddingBottom: 32, gap: 12 },
   kepala: { gap: 12 },
   kartu: { gap: 8 },
-  penulis: { flexDirection: "row", flexWrap: "wrap", alignItems: "baseline", gap: 8 },
+  // minHeight target sentuh 48 (spec §3.7, review minor m9): tautan penulis
+  // sebelumnya setinggi teks saja. alignContent memusatkan baris saat ada
+  // ruang ekstra tanpa mengubah alignItems "baseline" antara nama dan alamat.
+  penulis: {
+    flexDirection: "row", flexWrap: "wrap", alignItems: "baseline", alignContent: "center",
+    gap: 8, minHeight: UKURAN.sentuh,
+  },
   tebal: { fontWeight: "600" },
   gambar: { width: "100%", height: 200, borderRadius: RADIUS.kartu },
   aksi: { flexDirection: "row", flexWrap: "wrap", columnGap: 16 },

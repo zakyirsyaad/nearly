@@ -30,6 +30,13 @@ describe("Feed (spec §7.1 pola daftar)", () => {
     expect(x).not.toContain("setPosts([])");
     expect(x).toContain('<KeadaanKosong');
   });
+
+  it("m9b: tautan penulis mencapai target sentuh 48 lewat UKURAN (review minor m9)", () => {
+    const x = feed();
+    expect(x).toContain('import { RADIUS, UKURAN } from "@/theme/globals";');
+    const blokPenulis = x.slice(x.indexOf("penulis: {"), x.indexOf("penulis: {") + 200);
+    expect(blokPenulis).toContain("minHeight: UKURAN.sentuh");
+  });
 });
 
 describe("Unggahan baru (spec §7.1 pola formulir)", () => {

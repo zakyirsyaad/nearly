@@ -113,8 +113,12 @@ function RadarScreenIsi({ signer }: { signer: NearlySigner }) {
     void kirimDetak();
     const tDetak = setInterval(() => { void kirimDetak(); }, JEDA_DETAK_MS);
     const tRadar = setInterval(() => { void ambilRadar(); }, JEDA_RADAR_MS);
-    // Kehilangan fokus: kedua timer berhenti. Tidak ada detak dari latar belakang (§10.1).
-    return () => { aktif = false; clearInterval(tDetak); clearInterval(tRadar); };
+    // Kehilangan fokus: kedua timer berhenti. Tidak ada detak dari latar
+    // belakang (§10.1). Kartu dan keadaan juga dikosongkan (review minor m3):
+    // tanpa ini, kartu dan pil "● Visible" lama masih tampil sesaat saat
+    // layar difokuskan ulang, walau keadaan sebenarnya sudah berubah (mis.
+    // pengguna beralih ke Hidden di tab Profile).
+    return () => { aktif = false; clearInterval(tDetak); clearInterval(tRadar); setRadar(null); setKeadaan(null); };
   }, [eventId, signer, percobaan]));
 
   if (radar === null && keadaan === null) {

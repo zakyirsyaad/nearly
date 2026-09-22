@@ -3,6 +3,7 @@ import { blokirTypedData } from "@nearly/shared";
 import { CONFIG } from "./config";
 import { postJson } from "./http";
 import type { PenandaSigner } from "./meet-api";
+import { tandaiDataBerubah } from "./muat-fokus";
 
 const UMUR_DETIK = 300;
 
@@ -27,4 +28,8 @@ export async function aksiBlokir(
   await postJson<{ ok: true }>("/blokir", {
     ...pesan, expiresAt: expiresAt.toString(), sig,
   });
+  // Satu tempat untuk semua pemanggil (profil, daftar diblokir, percakapan,
+  // lapor): tanpa ini pratinjau Feed di Beranda bisa menampilkan unggahan
+  // orang yang baru diblokir sampai 30 detik (review minor m2, Ruling B2-3).
+  tandaiDataBerubah();
 }
