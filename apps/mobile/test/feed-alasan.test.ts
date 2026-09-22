@@ -3,13 +3,11 @@ import { alasanMuncul } from "../src/messages";
 
 describe("alasanMuncul", () => {
   it("1 lompatan menyebut pertemuan langsung", () => {
-    expect(alasanMuncul(1, "Andi")).toContain("Andi");
-    expect(alasanMuncul(1, "Andi").toLowerCase()).toContain("bertemu");
+    expect(alasanMuncul(1, "Andi")).toBe("You've met Andi.");
   });
 
   it("2 lompatan menyebut perantara tanpa mengaku kamu bertemu dia", () => {
-    const pesan = alasanMuncul(2, "Andi");
-    expect(pesan.toLowerCase()).toContain("kenalan");
+    expect(alasanMuncul(2, "Andi")).toBe("Someone you know has met Andi.");
   });
 
   /**
@@ -18,17 +16,16 @@ describe("alasanMuncul", () => {
    * unggahannya sendiri berada di luar jaringannya sendiri.
    */
   it("unggahan sendiri disebut milikmu, bukan luar jaringan", () => {
-    const pesan = alasanMuncul(0, "Andi");
-    expect(pesan.toLowerCase()).toContain("unggahanmu");
-    expect(pesan.toLowerCase()).not.toContain("luar jaringan");
+    expect(alasanMuncul(0, "Andi")).toBe("Your post.");
   });
 
   it("luar jaringan dinyatakan apa adanya", () => {
-    expect(alasanMuncul(null, "Andi").toLowerCase()).toContain("luar jaringan");
+    expect(alasanMuncul(null, "Andi")).toBe("Outside your network.");
   });
 
   // Nama kosong wajar: profil tidak mewajibkan nama, alamat-lah identitasnya.
   it("tidak menghasilkan kalimat rusak saat nama kosong", () => {
+    expect(alasanMuncul(1, "  ")).toBe("You've met this person.");
     for (const hop of [0, 1, 2, null] as const) {
       const pesan = alasanMuncul(hop, "");
       expect(pesan.trim().length).toBeGreaterThan(5);

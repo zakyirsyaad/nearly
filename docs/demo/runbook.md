@@ -205,8 +205,8 @@ curl -s -D - -o /dev/null -H "Origin: https://<vercel-domain>" https://api.<doma
 2. Jalankan ulang Metro dengan cache bersih: `cd apps/mobile && npx expo start -c`.
 3. Dengan domain HTTPS, HP tidak lagi bergantung pada IP Wi-Fi Mac — HP dan laptop boleh di jaringan berbeda.
 4. **Hapus nilai `EXPO_PUBLIC_DEV_PRIVATE_KEY` dari `apps/mobile/.env`.** Aplikasi tidak lagi membacanya:
-   setiap HP membuat dompetnya sendiri di layar **Mulai** saat pertama dibuka. Untuk memakai identitas uji
-   lama di HP pengembang, pilih **Impor kunci privat (khusus pengembangan)** — tombol itu hanya ada saat
+   setiap HP membuat dompetnya sendiri di layar **Get started** saat pertama dibuka. Untuk memakai identitas uji
+   lama di HP pengembang, pilih **Import private key (development only)** — tombol itu hanya ada saat
    Metro berjalan dalam mode pengembangan.
 
 ---
@@ -215,13 +215,13 @@ curl -s -D - -o /dev/null -H "Origin: https://<vercel-domain>" https://api.<doma
 
 1. **Saldo relayer.** Isi tBNB dompet relayer dari faucet BSC testnet. Setiap salaman, check-in,
    dan perubahan tier mengirim transaksi.
-2. **CSV panitia & juri.** Setiap panitia dan juri membuka aplikasi di HP-nya sendiri: **Buat dompet baru**
-   (atau **Pakai dompet yang sudah ada (12 kata)** bila sudah punya), lalu layar **Dompet** →
-   **Lihat 12 kata pemulihan** → catat → **Sudah saya catat**, lalu **Bagikan alamat** dan kirim alamatnya
+2. **CSV panitia & juri.** Setiap panitia dan juri membuka aplikasi di HP-nya sendiri: **Create a new wallet**
+   (atau **Use an existing wallet** bila sudah punya 12 kata), lalu tab **Profile** › **Wallet** →
+   **Show 12-word recovery phrase** → catat → **I've written them down**, lalu **Share address** dan kirim alamatnya
    ke penyusun CSV. Tanpa 12 kata yang tercatat, HP hilang atau aplikasi terhapus berarti alamat seed itu
    hilang dan CSV harus diulang. Format `address,catatan,bobot` (lihat `docs/demo/seed-inti-contoh.csv`).
    Catatan tanpa koma. Bobot desimal biasa, > 0 dan ≤ 100 (`1`, `1.5`, `2`). Tempel alamat apa adanya
-   dari **Bagikan alamat** (atau BscScan): alamat huruf campur diperiksa checksum-nya, jadi salah ketik
+   dari **Share address** (atau BscScan): alamat huruf campur diperiksa checksum-nya, jadi salah ketik
    satu karakter ditolak.
 3. **Seed trusted core — uji coba dulu:**
 
@@ -254,13 +254,13 @@ sudo -u nearly node --env-file=/etc/nearly/api.env --import=tsx tools/seed-inti.
    > ```
    >
    > Hal yang sama berlaku untuk `tools/recompute.ts`.
-5. **Periksa hasil:** panitia bertier **Inti** di aplikasi; event `ScoreUpdated` terlihat di BscScan
+5. **Periksa hasil:** panitia bertier **Core** di aplikasi; event `ScoreUpdated` terlihat di BscScan
    testnet pada kontrak `TrustAttestor`.
-6. **Acara uji.** Buat acara lewat aplikasi dengan waktu mulai **sebelum sekarang** — pemilih acara
+6. **Acara uji.** Buat acara lewat aplikasi (tab **Events** › **Create event**) dengan waktu mulai **sebelum sekarang** — pemilih acara
    di `/live` hanya menampilkan acara yang sudah mulai (atau berakhir ≤ 7 hari lalu). Jendela waktunya
    **tidak boleh beririsan** dengan acara hackathon: salaman di irisan dua acara yang sama-sama
    dihadiri hanya tampil di layar acara ber-`event_id` terkecil (spec §4.3 syarat 3).
-7. **Check-in dan satu salaman** dengan dua HP di dalam venue uji.
+7. **Check-in dan satu salaman** dengan dua HP di dalam venue uji: host membuka tab **Events** › acara › **Open check-in QR (you're the host)**; tamu mengetuk **Scan the host's QR to check in** (atau tab **Handshake** › **Scan**). Salaman: satu HP di tab **Handshake** mode **Show QR**, yang lain mode **Scan** — pemindai melihat sheet **You met …**.
 8. **Laptop proyektor:** buka `https://<vercel-domain>/live?acara=<eventId>`, pastikan sisi baru
    menyala dalam ≤ 6 detik setelah salaman, lalu tekan **Fullscreen**.
 9. **Uji jaringan venue — DARI Wi-Fi venue, bukan dari rumah.** Kalau bisa, datang ke venue H-1;
@@ -290,7 +290,7 @@ sudo -u nearly node --env-file=/etc/nearly/api.env --import=tsx tools/seed-inti.
 
 1. Buat acara hackathon lewat aplikasi (waktu mulai sebelum pintu dibuka).
 2. Host menampilkan QR check-in di pintu. Peserta yang baru memasang aplikasi membuat dompet di layar
-   **Mulai** lebih dulu (beberapa detik "Menyiapkan dompet…"), baru memindai QR check-in.
+   **Get started** lebih dulu (beberapa detik "Setting up wallet…"), baru memindai QR check-in.
 3. Laptop proyektor: `https://<vercel-domain>/live?acara=<eventId>`, layar penuh.
 4. Sebelum pintu dibuka: ulangi uji jaringan venue (H-1 butir 9) dari laptop proyektor dan satu HP di
    Wi-Fi venue. Hotspot HP cadangan menyala dan siap dipakai.

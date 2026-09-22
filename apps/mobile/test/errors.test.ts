@@ -14,7 +14,7 @@ describe("pesanGagal", () => {
     "invalid_body",
   ];
 
-  it.each(kodeDikenal)("memetakan kode '%s' ke kalimat Indonesia yang tidak kosong", (kode) => {
+  it.each(kodeDikenal)("memetakan kode '%s' ke kalimat Inggris yang tidak kosong", (kode) => {
     const pesan = pesanGagal(kode);
     expect(pesan.length).toBeGreaterThan(0);
     // Kalimatnya bukan sekadar kode mentah yang dikembalikan apa adanya.

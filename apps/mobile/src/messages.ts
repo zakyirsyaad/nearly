@@ -1,4 +1,6 @@
 import { MAKS_ISI_PESAN } from "@nearly/shared";
+import { jamak } from "./jamak";
+import { LENCANA_SALING_INGIN_BERTEMU } from "./teks-akun";
 import { MAKS_BUKTI_LAPORAN, MIN_ALASAN_LAPORAN } from "./pesan/pesan-actions";
 import { MAKS_NAMA_TAMPILAN, panjangNamaTampilan, type Visibilitas } from "@nearly/shared";
 
@@ -9,7 +11,7 @@ import { MAKS_NAMA_TAMPILAN, panjangNamaTampilan, type Visibilitas } from "@near
  * jadi tiap layar tidak perlu mengarang versinya sendiri.
  */
 export const KALIMAT_SERVER_TAK_TERJANGKAU =
-  "Server Nearly tidak bisa dihubungi. Periksa koneksi internetmu, lalu coba lagi.";
+  "Nearly's server can't be reached. Check your internet connection, then try again.";
 
 /** Disebar ke setiap peta galat supaya tidak ada yang jatuh ke kalimat umum. */
 export const GALAT_JARINGAN: Record<string, string> = {
@@ -18,97 +20,97 @@ export const GALAT_JARINGAN: Record<string, string> = {
 
 const PESAN: Record<string, string> = {
   ...GALAT_JARINGAN,
-  expired: "QR-nya sudah kedaluwarsa. Minta QR baru, lalu pindai lagi.",
-  offer_not_found: "QR ini tidak dikenali. Minta dia membuka layar QR lagi.",
-  offer_consumed: "QR ini sudah dipakai. Minta QR baru.",
-  bad_offer_signature: "QR ini tidak sah. Minta dia membuka layar QR lagi.",
-  bad_accept_signature: "Tanda tanganmu tidak sah. Coba pindai ulang.",
-  nonce_used: "QR ini sudah pernah dipakai. Minta QR baru.",
-  already_connected: "Kalian sudah terkoneksi. Satu koneksi berlaku selamanya.",
-  quota_exceeded: "Kamu sudah mencapai batas koneksi hari ini. Lanjut besok.",
-  chain_error: "Jaringan sedang tersendat. Coba lagi sebentar.",
-  invalid_body: "Ada yang salah dengan permintaannya. Coba pindai ulang.",
+  expired: "That QR code has expired. Ask for a new one, then scan again.",
+  offer_not_found: "This QR code isn't recognized. Ask them to open their QR screen again.",
+  offer_consumed: "This QR code has already been used. Ask for a new one.",
+  bad_offer_signature: "This QR code isn't valid. Ask them to open their QR screen again.",
+  bad_accept_signature: "Your signature isn't valid. Try scanning again.",
+  nonce_used: "This QR code has been used before. Ask for a new one.",
+  already_connected: "You're already connected. One connection lasts forever.",
+  quota_exceeded: "You've reached today's connection limit. Continue tomorrow.",
+  chain_error: "The network is congested. Try again in a moment.",
+  invalid_body: "Something was wrong with the request. Try scanning again.",
 };
 
 export function handshakeErrorMessage(code: string, reason?: string): string {
   if (code === "not_colocated") {
     return reason === "time_too_far"
-      ? "Jaraknya oke, tapi selisih waktunya terlalu lama. Pindai ulang sekarang."
-      : "Kalian terlalu jauh. Handshake hanya berhasil kalau kalian benar-benar berdekatan.";
+      ? "You're close enough, but too much time has passed. Scan again now."
+      : "You're too far apart. A handshake only works when you're really next to each other.";
   }
-  return PESAN[code] ?? "Handshake gagal. Coba lagi.";
+  return PESAN[code] ?? "Handshake failed. Try again.";
 }
 
 const EVENT_MESSAGES: Record<string, string> = {
   ...GALAT_JARINGAN,
-  not_rsvped: "RSVP dulu untuk bisa check-in di acara ini.",
-  already_checked_in: "Kamu sudah check-in di acara ini.",
-  already_rsvped: "Kamu sudah RSVP di acara ini.",
-  event_not_live: "Check-in hanya bisa saat acara sedang berlangsung.",
-  event_over: "Acara ini sudah selesai.",
-  event_not_found: "Acara ini tidak ditemukan.",
-  event_exists: "Acara dengan id itu sudah ada.",
-  outside_geofence: "Kamu berada di luar lokasi acara. Check-in hanya bisa di venue.",
-  offer_not_found: "QR check-in ini tidak dikenali. Minta host menampilkannya lagi.",
-  offer_consumed: "QR check-in ini sudah terpakai. Minta host menampilkannya lagi.",
-  nonce_used: "QR check-in ini sudah pernah dipakai.",
-  not_host: "Hanya host acara yang bisa membuka check-in.",
-  expired: "QR-nya sudah kedaluwarsa. Minta host menampilkannya lagi.",
-  bad_signature: "Tanda tangan tidak cocok.",
-  chain_error: "Jaringan sedang bermasalah. Coba lagi sebentar lagi.",
-  invalid_body: "Ada isian yang belum benar.",
+  not_rsvped: "RSVP first to check in at this event.",
+  already_checked_in: "You've already checked in at this event.",
+  already_rsvped: "You've already RSVP'd to this event.",
+  event_not_live: "Check-in is only open while the event is running.",
+  event_over: "This event is over.",
+  event_not_found: "This event wasn't found.",
+  event_exists: "An event with that id already exists.",
+  outside_geofence: "You're outside the event's location. Check-in only works at the venue.",
+  offer_not_found: "This check-in QR code isn't recognized. Ask the host to show it again.",
+  offer_consumed: "This check-in QR code has already been used. Ask the host to show it again.",
+  nonce_used: "This check-in QR code has been used before.",
+  not_host: "Only the event host can open check-in.",
+  expired: "That QR code has expired. Ask the host to show it again.",
+  bad_signature: "The signature doesn't match.",
+  chain_error: "The network is having trouble. Try again in a moment.",
+  invalid_body: "Some of the details aren't right yet.",
 };
 
 export function eventErrorMessage(code: string, reason?: string): string {
   if (code === "not_colocated") {
     return reason === "time_too_far"
-      ? "Terlalu lama sejak QR ditampilkan. Minta host menampilkannya lagi."
-      : "Kamu terlalu jauh dari host. Dekati orang yang menampilkan QR.";
+      ? "Too much time has passed since the QR code was shown. Ask the host to show it again."
+      : "You're too far from the host. Move closer to the person showing the QR code.";
   }
-  return EVENT_MESSAGES[code] ?? "Gagal. Coba lagi.";
+  return EVENT_MESSAGES[code] ?? "Something went wrong. Try again.";
 }
 
 const FEED_MESSAGES: Record<string, string> = {
   ...GALAT_JARINGAN,
-  post_exists: "Unggahan dengan id itu sudah ada. Coba tulis ulang.",
-  post_not_found: "Unggahan ini sudah tidak ada.",
-  not_author: "Hanya penulisnya yang bisa mengubah unggahan ini.",
-  image_slot_taken: "Unggahan ini sudah punya gambar. Satu gambar per unggahan.",
-  image_too_large: "Gambarnya terlalu besar. Maksimal 2 MB.",
+  post_exists: "A post with that id already exists. Try writing it again.",
+  post_not_found: "This post no longer exists.",
+  not_author: "Only the author can change this post.",
+  image_slot_taken: "This post already has an image. One image per post.",
+  image_too_large: "The image is too large. 2 MB at most.",
   // Bukan salah penulisnya, dan mencoba ulang tidak akan menolong sampai
   // servernya dikonfigurasi — jadi kalimatnya tidak menyuruh coba lagi.
-  image_unavailable: "Lampiran gambar sedang tidak tersedia. Teksmu tetap terbit.",
-  bad_signature: "Tanda tangan tidak cocok. Coba lagi.",
-  expired: "Permintaannya sudah kedaluwarsa. Coba lagi.",
-  invalid_body: "Ada isian yang belum benar.",
+  image_unavailable: "Image attachments aren't available right now. Your text is still posted.",
+  bad_signature: "The signature doesn't match. Try again.",
+  expired: "This request has expired. Try again.",
+  invalid_body: "Some of the details aren't right yet.",
 };
 
 export function feedErrorMessage(code: string): string {
-  return FEED_MESSAGES[code] ?? "Gagal. Coba lagi sebentar.";
+  return FEED_MESSAGES[code] ?? "Something went wrong. Try again in a moment.";
 }
 
 const MEET_MESSAGES: Record<string, string> = {
   ...GALAT_JARINGAN,
-  expired: "Permintaannya sudah kedaluwarsa. Coba lagi.",
-  bad_signature: "Tanda tangan tidak cocok. Coba lagi.",
-  tandai_diri: "Kamu tidak bisa menandai dirimu sendiri.",
+  expired: "This request has expired. Try again.",
+  bad_signature: "The signature doesn't match. Try again.",
+  tandai_diri: "You can't mark yourself.",
   // Penandatanganan buktinya otomatis, jadi ini bukan salah pengguna — buktinya
   // hilang, kedaluwarsa, atau dibuat dari dompet yang berbeda dari yang
   // dipakai sekarang. Muat ulang layarnya memaksa bukti baru dibuat.
-  butuh_bukti: "Buktinya belum ada, sudah kedaluwarsa, atau dari dompet yang berbeda. Muat ulang layar ini untuk mencoba lagi.",
-  invalid_body: "Ada isian yang belum benar.",
-  invalid_address: "Alamatnya tidak valid. Coba lagi dari layar sebelumnya.",
+  butuh_bukti: "The proof is missing, expired, or from a different wallet. Reload this screen to try again.",
+  invalid_body: "Some of the details aren't right yet.",
+  invalid_address: "That address isn't valid. Try again from the previous screen.",
   // POST /meet mengembalikan ini (403) kalau penanda tangan dan target
   // punya hubungan blokir, arah mana pun. Kalimatnya sengaja netral: tidak
   // bilang siapa yang memblokir siapa, dan tidak bilang "saling memblokir"
   // (itu salah untuk blokir sepihak). Spec menerima bahwa orang yang
   // diblokir bisa MENYIMPULKAN adanya blokir dari sini — tapi tidak
   // memberitahunya secara eksplisit.
-  terblokir: "Kamu tidak bisa menandai orang ini.",
+  terblokir: "You can't mark this person.",
 };
 
 export function meetErrorMessage(code: string): string {
-  return MEET_MESSAGES[code] ?? "Gagal. Coba lagi sebentar.";
+  return MEET_MESSAGES[code] ?? "Something went wrong. Try again in a moment.";
 }
 
 /**
@@ -123,8 +125,8 @@ export function meetErrorMessage(code: string): string {
  */
 export function meetSuccessMessage(sudahDitandai: boolean): string {
   return sudahDitandai
-    ? "Ditandai. Kalau dia menandaimu balik, kalian akan saling tahu."
-    : "Dibatalkan. Dia tidak lagi tahu kamu menandainya.";
+    ? "Marked. If they mark you back, you'll both know."
+    : "Undone. They no longer know you marked them.";
 }
 
 /**
@@ -146,11 +148,11 @@ export function alasanMuncul(hop: 0 | 1 | 2 | null, displayName: string): string
   // 0 berarti unggahanmu sendiri. Tanpa cabang ini, unggahan sendiri tiba
   // dengan hop null dan kartunya memberi tahu penulisnya bahwa unggahannya
   // sendiri berada di luar jaringannya sendiri.
-  if (hop === 0) return "Unggahanmu.";
-  const nama = displayName.trim() || "orang ini";
-  if (hop === 1) return `Kamu pernah bertemu ${nama}.`;
-  if (hop === 2) return `Kenalanmu pernah bertemu ${nama}.`;
-  return "Di luar jaringanmu.";
+  if (hop === 0) return "Your post.";
+  const nama = displayName.trim() || "this person";
+  if (hop === 1) return `You've met ${nama}.`;
+  if (hop === 2) return `Someone you know has met ${nama}.`;
+  return "Outside your network.";
 }
 
 /**
@@ -167,7 +169,7 @@ export function alasanMuncul(hop: 0 | 1 | 2 | null, displayName: string): string
  */
 export function teksInginBertemuCount(jumlah: number | undefined): string | null {
   if (jumlah === undefined) return null;
-  return `${jumlah} orang ingin bertemu dia`;
+  return jamak(jumlah, "person wants to meet them", "people want to meet them");
 }
 
 /**
@@ -186,8 +188,8 @@ export function tombolTandaLabel(
 ): string | null {
   if (opsi.milikSendiri) return null;
   if (sudahKutandai === undefined) return null;
-  if (opsi.sibuk) return "Mengirim…";
-  return sudahKutandai ? "Batal ingin bertemu" : "Ingin bertemu";
+  if (opsi.sibuk) return "Sending…";
+  return sudahKutandai ? "Undo want to meet" : "Want to meet";
 }
 
 /**
@@ -203,7 +205,7 @@ export function tombolTandaLabel(
  */
 export function teksPenandaHadir(jumlah: number | undefined): string | null {
   if (jumlah === undefined) return null;
-  return `${jumlah} orang yang ingin bertemu kamu sudah RSVP.`;
+  return jamak(jumlah, "person who wants to meet you has RSVP'd.", "people who want to meet you have RSVP'd.");
 }
 
 /**
@@ -218,22 +220,23 @@ export function teksPenandaHadir(jumlah: number | undefined): string | null {
  */
 export function teksKutandaiHadir(jumlah: number | undefined): string | null {
   if (jumlah === undefined) return null;
-  return `${jumlah} orang yang saling ingin bertemu denganmu sudah RSVP.`;
+  // "Matches" = istilah Kecocokan di aplikasi (tanda dua arah), bukan sepihak.
+  return jamak(jumlah, "match has RSVP'd.", "matches have RSVP'd.");
 }
 
 const BLOKIR_MESSAGES: Record<string, string> = {
   ...GALAT_JARINGAN,
-  blokir_diri: "Kamu tidak bisa memblokir dirimu sendiri.",
-  bad_signature: "Tanda tangan tidak cocok. Coba lagi.",
-  expired: "Permintaannya sudah kedaluwarsa. Coba lagi.",
+  blokir_diri: "You can't block yourself.",
+  bad_signature: "The signature doesn't match. Try again.",
+  expired: "This request has expired. Try again.",
   // Sama seperti di layar kecocokan: bukan salah pengguna, dan yang menolong
   // adalah memuat ulang, bukan mengetuk tombol yang sama lagi.
-  butuh_bukti: "Buktinya belum ada, sudah kedaluwarsa, atau dari dompet yang berbeda. Muat ulang layar ini untuk mencoba lagi.",
-  invalid_body: "Ada isian yang belum benar.",
+  butuh_bukti: "The proof is missing, expired, or from a different wallet. Reload this screen to try again.",
+  invalid_body: "Some of the details aren't right yet.",
 };
 
 export function blokirErrorMessage(code: string): string {
-  return BLOKIR_MESSAGES[code] ?? "Gagal. Coba lagi sebentar.";
+  return BLOKIR_MESSAGES[code] ?? "Something went wrong. Try again in a moment.";
 }
 
 /**
@@ -242,35 +245,35 @@ export function blokirErrorMessage(code: string): string {
  * sudah dipakai `teksLencana` dan `tombolTandaLabel`.
  */
 export function blokirTombolLabel(sudahDiblokir: boolean, sibuk: boolean): string {
-  if (sibuk) return "Mengirim…";
-  return sudahDiblokir ? "Cabut blokir" : "Blokir orang ini";
+  if (sibuk) return "Sending…";
+  return sudahDiblokir ? "Unblock" : "Block this person";
 }
 
 const PESAN_MESSAGES: Record<string, string> = {
   ...GALAT_JARINGAN,
-  tidak_terhubung: "Pesan hanya bisa dikirim ke orang yang pernah kamu temui.",
+  tidak_terhubung: "Messages can only be sent to people you've met.",
   // Netral dengan sengaja, sama seperti `terblokir` di MEET_MESSAGES (Ruling R8
   // Fase 4a): benar untuk blokir satu arah, tidak mengatakan siapa memblokir.
-  terblokir: "Kamu tidak bisa berkirim pesan dengan orang ini.",
-  belum_siap: "Orang ini belum membuka pesan di Nearly. Coba lagi nanti.",
-  terlalu_cepat: "Terlalu banyak pesan dalam waktu singkat. Tunggu sebentar.",
-  terlalu_besar: "Pesannya terlalu panjang.",
-  pesan_diri: "Kamu tidak bisa mengirim pesan ke dirimu sendiri.",
-  butuh_autentikasi: "Sesi pesan tidak sah. Tutup lalu buka lagi layar ini.",
-  bukti_tidak_sah: "Bukti pesan tidak bisa diverifikasi. Muat ulang percakapan lalu coba lagi.",
-  lapor_diri: "Kamu tidak bisa melaporkan dirimu sendiri.",
-  expired: "Permintaannya sudah kedaluwarsa. Coba lagi.",
-  bad_signature: "Tanda tangan tidak cocok. Coba lagi.",
-  invalid_body: "Ada isian yang belum benar.",
+  terblokir: "You can't message this person.",
+  belum_siap: "This person hasn't opened messages in Nearly yet. Try again later.",
+  terlalu_cepat: "Too many messages in a short time. Wait a moment.",
+  terlalu_besar: "The message is too long.",
+  pesan_diri: "You can't send a message to yourself.",
+  butuh_autentikasi: "Your message session isn't valid. Close this screen, then open it again.",
+  bukti_tidak_sah: "The message evidence can't be verified. Reload the conversation, then try again.",
+  lapor_diri: "You can't report yourself.",
+  expired: "This request has expired. Try again.",
+  bad_signature: "The signature doesn't match. Try again.",
+  invalid_body: "Some of the details aren't right yet.",
 };
 
 export function pesanErrorMessage(code: string): string {
-  return PESAN_MESSAGES[code] ?? "Gagal. Coba lagi sebentar.";
+  return PESAN_MESSAGES[code] ?? "Something went wrong. Try again in a moment.";
 }
 
 /** Fungsi murni supaya layar percakapan tidak mengarang labelnya sendiri (Ruling R4). */
 export function labelKirimPesan(sibuk: boolean): string {
-  return sibuk ? "Mengirim…" : "Kirim";
+  return sibuk ? "Sending…" : "Send";
 }
 
 export function sisaKarakterPesan(isi: string): number {
@@ -288,11 +291,13 @@ export function sisaKarakterPesan(isi: string): number {
  */
 export function petunjukLaporan(jumlahDipilih: number, alasan: string): string | null {
   const kurang: string[] = [];
-  if (jumlahDipilih < 1) kurang.push("Pilih minimal 1 pesan sebagai bukti.");
-  if (jumlahDipilih > MAKS_BUKTI_LAPORAN) kurang.push(`Maksimal ${MAKS_BUKTI_LAPORAN} pesan sebagai bukti.`);
+  if (jumlahDipilih < 1) kurang.push("Select at least 1 message as evidence.");
+  if (jumlahDipilih > MAKS_BUKTI_LAPORAN) kurang.push(`At most ${MAKS_BUKTI_LAPORAN} messages as evidence.`);
   const panjang = alasan.trim().length;
-  if (panjang === 0) kurang.push(`Tulis alasan, minimal ${MIN_ALASAN_LAPORAN} karakter.`);
-  else if (panjang < MIN_ALASAN_LAPORAN) kurang.push(`Alasan kurang ${MIN_ALASAN_LAPORAN - panjang} karakter lagi.`);
+  if (panjang === 0) kurang.push(`Write a reason, at least ${MIN_ALASAN_LAPORAN} characters.`);
+  else if (panjang < MIN_ALASAN_LAPORAN) {
+    kurang.push(`The reason needs ${jamak(MIN_ALASAN_LAPORAN - panjang, "more character", "more characters")}.`);
+  }
   return kurang.length > 0 ? kurang.join(" ") : null;
 }
 
@@ -309,16 +314,16 @@ export type KeadaanRadar =
   | "gagal";
 
 const KALIMAT_RADAR: Record<KeadaanRadar, string> = {
-  tersembunyi: "Kamu sedang Tersembunyi, jadi radar tidak bisa dibuka.",
-  di_luar_area: "Kamu terlihat berada di luar area acara.",
-  belum_check_in: "Check-in dulu untuk membuka radar.",
-  tidak_berlangsung: "Radar hanya aktif selama acara berlangsung.",
-  tidak_ditemukan: "Acara ini tidak ditemukan.",
-  kosong: "Belum ada orang lain yang terlihat di sini.",
-  izin_lokasi: "Radar butuh izin lokasi saat aplikasi dibuka.",
-  sesi_tidak_sah: "Sesi tidak sah. Tutup lalu buka lagi layar ini.",
+  tersembunyi: "You're Hidden, so the radar can't be opened.",
+  di_luar_area: "You appear to be outside the event area.",
+  belum_check_in: "Check in first to open the radar.",
+  tidak_berlangsung: "The radar is only active while the event is running.",
+  tidak_ditemukan: "This event wasn't found.",
+  kosong: "No one else is visible here yet.",
+  izin_lokasi: "The radar needs location access while the app is open.",
+  sesi_tidak_sah: "Your session isn't valid. Close this screen, then open it again.",
   server_tak_terjangkau: KALIMAT_SERVER_TAK_TERJANGKAU,
-  gagal: "Radar gagal dimuat. Coba lagi sebentar.",
+  gagal: "The radar failed to load. Try again in a moment.",
 };
 
 export function kalimatRadar(keadaan: KeadaanRadar): string {
@@ -355,18 +360,20 @@ export function keadaanRadarDariKode(code: string): KeadaanRadar | null {
   }
 }
 
+/**
+ * Lencana teks kartu radar (spec §6.4, Ruling B2-8). "Pernah bertemu" tidak
+ * lagi berupa teks: kartu koneksi memakai lencana ✓ ringkas, dan bagiannya
+ * ("Your connections here") sudah mengatakannya.
+ */
 export function lencanaKartuRadar(k: {
   pernahBertemu: boolean;
   salingInginBertemu: boolean;
-}): string[] {
-  const lencana: string[] = [];
-  if (k.salingInginBertemu) lencana.push("Saling ingin bertemu");
-  if (k.pernahBertemu) lencana.push("Pernah bertemu");
-  return lencana;
+}): string | null {
+  return k.salingInginBertemu ? LENCANA_SALING_INGIN_BERTEMU : null;
 }
 
 export function namaKartuRadar(displayName: string): string {
-  return displayName.trim() || "Tanpa nama";
+  return displayName.trim() || "Unnamed";
 }
 
 export function alamatSingkat(address: string): string {
@@ -379,32 +386,43 @@ export function sisaKarakterNama(nama: string): number {
 
 export function kalimatVisibilitas(v: Visibilitas): string {
   return v === "terlihat"
-    ? "Orang lain di acara yang sama bisa melihatmu di radar, dan kamu bisa membuka radar."
-    : "Kamu tidak muncul di radar dan tidak memicu notifikasi kedekatan — tapi kamu juga tidak bisa membuka radar.";
+    ? "Other people at the same event can see you on the radar, and you can open the radar."
+    : "You don't show up on the radar and you don't trigger proximity notifications — but you can't open the radar either.";
 }
 
 export const KALIMAT_BATAS_TERSEMBUNYI =
-  "Tersembunyi tidak menyembunyikan salaman dan check-in: keduanya tetap tercatat publik on-chain.";
+  "Hidden doesn't hide handshakes and check-ins: both stay recorded publicly on-chain.";
 
 export function pesanNamaTidakSah(alasan: "terlalu_panjang" | "karakter_terlarang"): string {
   return alasan === "terlalu_panjang"
-    ? `Nama paling panjang ${MAKS_NAMA_TAMPILAN} karakter.`
-    : "Nama memuat karakter tak terlihat atau pengatur arah teks. Hapus karakter itu lalu coba lagi.";
+    ? `Names can be at most ${MAKS_NAMA_TAMPILAN} characters.`
+    : "Your name contains invisible or text-direction characters. Remove them, then try again.";
 }
 
 const PROFIL_MESSAGES: Record<string, string> = {
   ...GALAT_JARINGAN,
-  nama_tidak_sah: "Nama tidak sah. Periksa panjang dan karakternya.",
-  expired: "Permintaannya sudah kedaluwarsa. Coba lagi.",
-  bad_signature: "Tanda tangan tidak cocok. Coba lagi.",
-  butuh_autentikasi: "Sesi tidak sah. Tutup lalu buka lagi layar ini.",
-  invalid_body: "Ada isian yang belum benar.",
+  nama_tidak_sah: "That name isn't valid. Check its length and characters.",
+  expired: "This request has expired. Try again.",
+  bad_signature: "The signature doesn't match. Try again.",
+  butuh_autentikasi: "Your session isn't valid. Close this screen, then open it again.",
+  invalid_body: "Some of the details aren't right yet.",
 };
 
 export function profilErrorMessage(code: string): string {
-  return PROFIL_MESSAGES[code] ?? "Gagal. Coba lagi sebentar.";
+  return PROFIL_MESSAGES[code] ?? "Something went wrong. Try again in a moment.";
 }
 
 export function labelSimpanProfil(sibuk: boolean): string {
-  return sibuk ? "Menyimpan…" : "Simpan";
+  return sibuk ? "Saving…" : "Save";
+}
+
+/**
+ * Awalan judul, dipisah supaya sheet bisa merender alamat singkat dengan
+ * varian `mono` (spec §6.2 butir 3) tanpa memecah kalimatnya sendiri di JSX.
+ */
+export const AWALAN_SHEET_BERTEMU = "You met ";
+
+export function judulSheetBertemu(nama: string | null, alamat: string): string {
+  const n = nama?.trim() ?? "";
+  return `${AWALAN_SHEET_BERTEMU}${n || alamatSingkat(alamat)}`;
 }

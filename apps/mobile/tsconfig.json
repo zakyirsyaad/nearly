@@ -4,7 +4,9 @@
     "jsx": "react-jsx",
     "lib": ["ES2022", "DOM"],
     "types": ["node"],
-    "noEmit": true
+    "noEmit": true,
+    "baseUrl": ".",
+    "paths": { "@/*": ["./*"] }
   },
-  "include": ["src", "test", "app"]
+  "include": ["src", "test", "app", "components", "hooks", "theme"]
 }

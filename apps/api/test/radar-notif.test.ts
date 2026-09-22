@@ -13,11 +13,11 @@ const penerimaPush = (d: ReturnType<typeof duniaRadar>) =>
 const token = (o: Address) => `ExponentPushToken[${o.slice(-4)}]`;
 
 describe("teksNotifKedekatan", () => {
-  it("kalimat persis spec 4b+5 §6.4", () => {
-    expect(teksNotifKedekatan("saling_ingin_bertemu", "Budi")).toBe("Budi, yang saling ingin bertemu denganmu, ada di acara ini.");
-    expect(teksNotifKedekatan("saling_ingin_bertemu", "  ")).toBe("Seseorang yang saling ingin bertemu denganmu ada di acara ini.");
-    expect(teksNotifKedekatan("pernah_bertemu", "Budi")).toBe("Budi, yang pernah kamu temui, ada di acara ini.");
-    expect(teksNotifKedekatan("pernah_bertemu", "")).toBe("Seseorang yang pernah kamu temui ada di acara ini.");
+  it("kalimat persis spec desain UI §7.4 (makna spec 4b+5 §6.4)", () => {
+    expect(teksNotifKedekatan("saling_ingin_bertemu", "Budi")).toBe("Budi is at this event. You both want to meet.");
+    expect(teksNotifKedekatan("saling_ingin_bertemu", "  ")).toBe("Someone you both want to meet is at this event.");
+    expect(teksNotifKedekatan("pernah_bertemu", "Budi")).toBe("Budi, who you've met, is at this event.");
+    expect(teksNotifKedekatan("pernah_bertemu", "")).toBe("Someone you've met is at this event.");
   });
 });
 
@@ -27,8 +27,8 @@ describe("kirimNotifKedekatan — penerima", () => {
     d.hadirkan(S); d.hadirkan(R);
     await kirimNotifKedekatan(d.deps, { eventId: EVENT_RADAR, subjek: S });
     expect(d.push.kirim.mock.calls.map(([p]) => [p.tokens[0], p.badan])).toEqual([
-      [token(R), "Sari, yang pernah kamu temui, ada di acara ini."],
-      [token(S), "Rudi, yang pernah kamu temui, ada di acara ini."],
+      [token(R), "Sari, who you've met, is at this event."],
+      [token(S), "Rudi, who you've met, is at this event."],
     ]);
   });
 
@@ -39,8 +39,8 @@ describe("kirimNotifKedekatan — penerima", () => {
     d.hadirkan(S); d.hadirkan(R);
     await kirimNotifKedekatan(d.deps, { eventId: EVENT_RADAR, subjek: S });
     expect(d.push.kirim.mock.calls.map(([p]) => p.badan)).toEqual([
-      "Seseorang yang saling ingin bertemu denganmu ada di acara ini.",
-      "Seseorang yang saling ingin bertemu denganmu ada di acara ini.",
+      "Someone you both want to meet is at this event.",
+      "Someone you both want to meet is at this event.",
     ]);
   });
 

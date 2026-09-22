@@ -1,10 +1,13 @@
 import type { Address } from "viem";
 import type { PesanDeps } from "./ports";
 
-/** Spec 4c §7.2. Tidak pernah alamat, tidak pernah isi pesan. */
+/**
+ * Spec 4c §7.2, bahasa Inggris sejak spec desain UI §7.4. Tidak pernah alamat,
+ * tidak pernah isi pesan.
+ */
 export function teksPush(displayName: string): string {
   const nama = displayName.trim();
-  return nama ? `Pesan baru dari ${nama}` : "Pesan baru dari koneksimu";
+  return nama ? `New message from ${nama}` : "New message from a connection";
 }
 
 /**

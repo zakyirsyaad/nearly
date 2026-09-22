@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { feedErrorMessage, meetErrorMessage, meetSuccessMessage } from "../src/messages";
 
 describe("meetErrorMessage", () => {
-  it("menerjemahkan setiap kode gerbang meet ke bahasa Indonesia", () => {
+  it("menerjemahkan setiap kode gerbang meet ke kalimat Inggris", () => {
     for (const kode of ["expired", "bad_signature", "tandai_diri", "butuh_bukti", "invalid_body"]) {
       const pesan = meetErrorMessage(kode);
       expect(pesan).not.toContain("_");
@@ -23,7 +23,7 @@ describe("meetSuccessMessage", () => {
    */
   it("kalimat menandai sama persis dengan yang dipakai kartu feed", () => {
     expect(meetSuccessMessage(true)).toBe(
-      "Ditandai. Kalau dia menandaimu balik, kalian akan saling tahu.",
+      "Marked. If they mark you back, you'll both know.",
     );
   });
 
@@ -41,7 +41,7 @@ describe("meetErrorMessage: terblokir", () => {
   // mengetuk tombol yang sama lagi, padahal aksi itu tidak akan pernah
   // berhasil selama blokirnya masih ada.
   it("punya pesan sendiri, bukan kalimat cadangan", () => {
-    expect(meetErrorMessage("terblokir")).toBe("Kamu tidak bisa menandai orang ini.");
+    expect(meetErrorMessage("terblokir")).toBe("You can't mark this person.");
   });
 });
 
@@ -49,7 +49,7 @@ describe("feedErrorMessage: image_unavailable", () => {
   it("punya pesan sendiri, bukan kalimat cadangan", () => {
     const pesan = feedErrorMessage("image_unavailable");
     expect(pesan).not.toBe(feedErrorMessage("kode-yang-tidak-ada"));
-    expect(pesan).toContain("tidak tersedia");
+    expect(pesan).toContain("aren't available");
   });
 
   // Mencoba ulang tidak menolong sampai servernya dikonfigurasi; menyuruhnya

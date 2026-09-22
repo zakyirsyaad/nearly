@@ -1,9 +1,18 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { router, useLocalSearchParams } from "expo-router";
-import {
-  Button, Keyboard, Pressable, ScrollView, StyleSheet, Text, TextInput, View,
-} from "react-native";
+import { Keyboard, Pressable, ScrollView, StyleSheet, View } from "react-native";
 import type { Address } from "viem";
+import { Avatar } from "@/components/avatar";
+import { BatangTrust } from "@/components/batang-trust";
+import { KeadaanGalat, KerangkaDaftar } from "@/components/keadaan";
+import { Lencana } from "@/components/lencana";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Text } from "@/components/ui/text";
+import { useColor } from "@/hooks/useColor";
+import { useKabar } from "@/hooks/useKabar";
+import { RADIUS, UKURAN } from "@/theme/globals";
 import { CONFIG } from "../../src/config";
 import { pesanGagal } from "../../src/errors";
 import { ApiError, req } from "../../src/http";
@@ -11,12 +20,20 @@ import { aksiBlokir } from "../../src/blokir-actions";
 import { aksiTanda } from "../../src/meet-actions";
 import { kueriBuktiProfil } from "../../src/meet-api";
 import {
-  blokirErrorMessage, blokirTombolLabel,
-  meetErrorMessage, meetSuccessMessage, teksInginBertemuCount, tombolTandaLabel,
+  blokirErrorMessage, blokirTombolLabel, meetErrorMessage, meetSuccessMessage, namaKartuRadar,
+  teksInginBertemuCount, tombolTandaLabel,
 } from "../../src/messages";
-import { SUGGESTED_TAGS, tierView } from "../../src/tier";
+import {
+  barisAcaraBersama, barisSalaman, ekorLencanaPertemuan, JUDUL_ONCHAIN, JUDUL_PERTEMUAN,
+  JUDUL_TRUST, labelKirimLaporan, labelKirimVouch, pasanganKoneksi, pasanganTransaksi,
+  teksBlokirTersimpanGagalMuat, teksDijaminKenalan, teksGagalBlokir, TEKS_CATATAN_DIBLOKIR,
+  TEKS_GAGAL_MENANDAI, TEKS_GAGAL_MUAT_PROFIL, TEKS_KIRIM_PESAN, TEKS_KUOTA_VOUCH,
+  TEKS_LABEL_ALASAN, TEKS_LAPOR, TEKS_LAPORAN_DITERIMA, TEKS_PLACEHOLDER_ALASAN,
+  TEKS_SALING_INGIN_BERTEMU, TEKS_SELESAI, TEKS_TANDA_TERSIMPAN_GAGAL_MUAT, TEKS_VOUCH,
+  TEKS_VOUCH_TERKIRIM, type Pertemuan,
+} from "../../src/teks-profil";
+import { labelAksesTrust, SUGGESTED_TAGS, tierView } from "../../src/tier";
 import { fetchTrust, sendReport, sendVouch, type TrustResponse } from "../../src/trust-api";
-import { WARNA } from "../../src/warna";
 import { useNearlySigner } from "../../src/dompet/konteks-dompet";
 
 type Profile = {
@@ -27,7 +44,7 @@ type Profile = {
    * opsional: server menghilangkan kuncinya kalau store gagal menjawab,
    * justru supaya kegagalan itu tidak menyamar sebagai `0` (lihat GET
    * /profile/:address). Dirender lewat `teksInginBertemuCount`, bukan
-   * `?? 0` — "0 orang ingin bertemu dia" adalah klaim faktual tentang orang
+   * `?? 0` — "0 people want to meet them" adalah klaim faktual tentang orang
    * lain, dan mengarangnya dari store yang mati adalah bohong.
    */
   inginBertemuCount?: number;
@@ -49,11 +66,25 @@ type Profile = {
    * dibaca sebagai "belum diblokir".
    */
   sudahKublokir?: boolean;
+  /**
+   * Riwayat pertemuan (spec desain UI §8.1). `null` = pemanggil dan orang ini
+   * tidak terkoneksi, atau ini profil sendiri. Kunci ABSEN = store gagal;
+   * keduanya berarti tidak ada kartu Meetings dan tidak ada lencana.
+   */
+  pertemuan?: Pertemuan | null;
+  /** Penjamin yang juga koneksimu (spec §8.2). Absen = store gagal, bukan nol. */
+  dijaminKenalan?: number;
 };
 
 export default function ProfileScreen() {
   const { address } = useLocalSearchParams<{ address: string }>();
   const scrollRef = useRef<ScrollView>(null);
+
+  // Penjaga SINKRON ketukan ganda (review B1 M2): dua ketukan dalam satu
+  // frame sama-sama membaca `vouchBusy`/`reportBusy` lama dari closure yang
+  // sama, lalu vouch kedua gagal "already vouched" di bawah toast berhasil.
+  const vouchBerjalan = useRef(false);
+  const laporBerjalan = useRef(false);
 
   /**
    * Menggulirkan isian ke atas keyboard.
@@ -69,6 +100,9 @@ export default function ProfileScreen() {
   };
   const [p, setP] = useState<Profile | null>(null);
   const [trust, setTrust] = useState<TrustResponse | null>(null);
+  const kabar = useKabar();
+  const kuning = useColor("primary");
+  const garis = useColor("border");
 
   // Null sesaat setelah Ganti dompet; layar ini memang sudah menangani signer
   // null, jadi tidak perlu dipecah seperti layar lain (Ruling D4).
@@ -78,29 +112,22 @@ export default function ProfileScreen() {
 
   const [connected, setConnected] = useState<boolean | null>(null);
 
-  // Pesan sendiri, TERPISAH dari vouchMessage: tombol "Ingin bertemu" tampil
+  // Pesan sendiri, TERPISAH dari vouchMessage: tombol "Want to meet" tampil
   // untuk siapa pun yang bukti bacanya berhasil, terlepas dari `connected`
   // (dua orang bisa saling menandai lewat feed tanpa pernah terkoneksi).
-  // Kalau galatnya ditumpangkan ke vouchMessage, ia hanya dirender di dalam
-  // seksi Vouch yang digerbangi `connected` — untuk pasangan yang belum
-  // terkoneksi, pesan galatnya tidak akan pernah terlihat sama sekali.
   const [meetMessage, setMeetMessage] = useState<string | null>(null);
   // Sedang menandai/mencabut — dipakai untuk menolak ketukan kedua sebelum
-  // yang pertama selesai (finding #5) dan untuk memberi tahu pengguna bahwa
-  // ketukannya sudah terdaftar, bukan diam saja.
+  // yang pertama selesai dan untuk memberi tahu pengguna bahwa ketukannya
+  // sudah terdaftar, bukan diam saja.
   const [meetBusy, setMeetBusy] = useState(false);
 
   // Sama seperti meetMessage/meetBusy di atas, tapi untuk aksi blokir —
-  // TERPISAH supaya pesan blokir tidak menimpa pesan tanda atau sebaliknya
-  // saat keduanya sempat terjadi berdekatan.
+  // TERPISAH supaya pesan blokir tidak menimpa pesan tanda atau sebaliknya.
   const [blokirMessage, setBlokirMessage] = useState<string | null>(null);
   const [blokirBusy, setBlokirBusy] = useState(false);
 
   // Kegagalan MEMUAT profil (bukan kegagalan membuat bukti baca — itu
-  // ditangani secara terpisah di bawah dan tidak boleh menutup profil
-  // publik). Hanya diisi kalau permintaan profilnya sendiri gagal, supaya
-  // layar bisa menampilkan pesan dan tombol "Coba lagi" alih-alih macet di
-  // "Memuat…" selamanya (finding #1).
+  // ditangani secara terpisah di bawah dan tidak boleh menutup profil publik).
   const [loadError, setLoadError] = useState<string | null>(null);
 
   const [showVouchPicker, setShowVouchPicker] = useState(false);
@@ -117,13 +144,11 @@ export default function ProfileScreen() {
     setLoadError(null);
     // Bukti baca (LihatProfil) hanya disertakan kalau ada signer — tanpa
     // itu server tetap membalas dengan angka publiknya saja, dan bendera
-    // sudahKutandai/salingMenandai memang absen (bukan false).
+    // sudahKutandai/salingMenandai/pertemuan/dijaminKenalan memang absen.
     //
-    // Kegagalan MEMBUAT buktinya (mis. pengguna menolak permintaan tanda
-    // tangan di dompet sungguhan) ditangkap DI SINI, terpisah dari
-    // permintaan profilnya sendiri (finding #1) — endpoint ini publik, dan
-    // bukti hanya membuka bendera privat tambahan. Profil publik tidak
-    // boleh ikut gagal hanya karena tanda tangannya gagal.
+    // Kegagalan MEMBUAT buktinya ditangkap DI SINI, terpisah dari permintaan
+    // profilnya sendiri — endpoint ini publik, dan bukti hanya membuka
+    // bendera privat tambahan.
     let kueri = "";
     if (signer && address) {
       try {
@@ -131,12 +156,11 @@ export default function ProfileScreen() {
       } catch { /* lanjut sebagai pemanggil tanpa bukti, bukan gagal total */ }
     }
     try {
-      // `req` melempar ApiError kalau responsnya bukan 2xx (finding #3) —
-      // tanpa ini, badan galat dari server bisa lolos ke `setP` dan
-      // dirender seolah-olah itu profil sungguhan.
+      // `req` melempar ApiError kalau responsnya bukan 2xx — tanpa ini, badan
+      // galat dari server bisa lolos ke `setP` dan dirender seolah profil.
       setP(await req<Profile>(`/profile/${address}${kueri}`));
     } catch {
-      setLoadError("Profil gagal dimuat. Periksa koneksimu, lalu coba lagi.");
+      setLoadError(TEKS_GAGAL_MUAT_PROFIL);
     }
   }, [address, signer]);
 
@@ -164,75 +188,75 @@ export default function ProfileScreen() {
   }
 
   async function handleVouch() {
-    if (!signer || selectedTags.length === 0) return;
+    if (!signer || selectedTags.length === 0 || vouchBerjalan.current) return;
+    vouchBerjalan.current = true;
     setVouchBusy(true);
     setVouchMessage(null);
     try {
       await sendVouch(signer, address as Address, selectedTags);
       setSelectedTags([]);
       setShowVouchPicker(false);
-      setVouchMessage("Vouch terkirim.");
+      // Aksi penting → toast hijau + haptic (spec §7.2), bukan teks di layar.
+      kabar.berhasil(TEKS_VOUCH_TERKIRIM);
       // Muat ulang bukti — tier atau evidenceLine bisa langsung berubah.
       fetchTrust(address as Address).then(setTrust).catch(() => {});
     } catch (e) {
-      // Kode kegagalan mentah dari server tidak pernah tampil apa adanya —
-      // pesanGagal menerjemahkannya ke kalimat Indonesia yang bisa
-      // ditindaklanjuti (termasuk quota_exceeded, already_vouched, dll).
+      // Kode kegagalan mentah dari server tidak pernah tampil apa adanya.
       setVouchMessage(e instanceof Error ? pesanGagal(e.message) : pesanGagal(""));
     } finally {
+      vouchBerjalan.current = false;
       setVouchBusy(false);
     }
   }
 
   async function handleReport() {
-    if (!signer || !reportReason.trim()) return;
+    if (!signer || !reportReason.trim() || laporBerjalan.current) return;
+    laporBerjalan.current = true;
     setReportBusy(true);
     try {
       await sendReport(signer, address as Address, reportReason.trim());
       Keyboard.dismiss();
       setShowReportForm(false);
       setReportReason("");
-      // Kalimat ini bukan hiasan: ia mencegah pengguna mengira tombol Lapor
-      // adalah senjata yang menurunkan skor orang lain (spec induk §6).
-      setReportMessage(
-        "Laporan diterima. Laporan tidak menurunkan skor siapa pun — ia memicu peninjauan.",
-      );
+      setReportMessage(null);
+      // Kalimat ini bukan hiasan: ia mencegah pengguna mengira Report adalah
+      // senjata yang menurunkan skor orang lain (spec induk §6).
+      kabar.berhasil(TEKS_LAPORAN_DITERIMA);
     } catch (e) {
       setReportMessage(e instanceof Error ? pesanGagal(e.message) : pesanGagal(""));
     } finally {
+      laporBerjalan.current = false;
       setReportBusy(false);
     }
   }
 
   async function toggleTanda() {
     if (!signer || !address || meetBusy) return;
-    // Dibersihkan di AWAL, bukan setelah `aksiTanda` berhasil (finding #6) —
-    // kalau tidak, pesan galat percobaan sebelumnya nongkrong di layar
-    // sepanjang percobaan berikutnya, termasuk selama request ini berjalan.
+    // Dibersihkan di AWAL, bukan setelah `aksiTanda` berhasil — kalau tidak,
+    // pesan galat percobaan sebelumnya nongkrong di layar sepanjang percobaan
+    // berikutnya, termasuk selama request ini berjalan.
     setMeetMessage(null);
     setMeetBusy(true);
     const akanMencabut = !!p?.sudahKutandai;
     try {
       await aksiTanda(signer, address as Address, akanMencabut);
     } catch (e) {
-      setMeetMessage(e instanceof ApiError ? meetErrorMessage(e.code) : "Gagal menandai.");
+      setMeetMessage(e instanceof ApiError ? meetErrorMessage(e.code) : TEKS_GAGAL_MENANDAI);
       setMeetBusy(false);
       return;
     }
     // Tandanya SUDAH tersimpan di server pada titik ini. Kegagalan di bawah
-    // (memuat ulang) adalah kegagalan yang BERBEDA dari kegagalan menandai
-    // (finding #2) — memakai pesan "Gagal menandai." di sini akan
-    // membohongi pengguna tentang aksi yang justru berhasil.
+    // (memuat ulang) adalah kegagalan yang BERBEDA dari kegagalan menandai —
+    // memakai kalimat "gagal menandai" di sini akan membohongi pengguna
+    // tentang aksi yang justru berhasil.
     try {
       const kueri = `?${await kueriBuktiProfil(signer, address as Address)}`;
       setP(await req<Profile>(`/profile/${address}${kueri}`));
       // Kalimat "menandai"-nya SAMA PERSIS dengan yang diucapkan kartu feed
-      // untuk aksi yang sama (finding #7) — lihat meetSuccessMessage.
+      // untuk aksi yang sama — lihat meetSuccessMessage.
       setMeetMessage(meetSuccessMessage(!akanMencabut));
     } catch {
-      setMeetMessage(
-        "Tandanya tersimpan, tapi profil gagal dimuat ulang. Muat ulang layar ini untuk melihat angka terbaru.",
-      );
+      setMeetMessage(TEKS_TANDA_TERSIMPAN_GAGAL_MUAT);
     } finally {
       setMeetBusy(false);
     }
@@ -240,10 +264,7 @@ export default function ProfileScreen() {
 
   // Mengikuti pola toggleTanda persis: pesan dibersihkan di AWAL, ketukan
   // ganda ditolak lewat blokirBusy, dan kegagalan AKSI dipisahkan dari
-  // kegagalan MUAT ULANG sesudahnya — blokirnya sendiri sudah tersimpan di
-  // server begitu `aksiBlokir` selesai tanpa lempar, jadi kegagalan reload di
-  // bawah TIDAK BOLEH memakai kalimat "gagal memblokir"/"gagal mencabut",
-  // yang akan membohongi pengguna tentang aksi yang justru berhasil.
+  // kegagalan MUAT ULANG sesudahnya.
   async function toggleBlokir() {
     if (!signer || !address || blokirBusy) return;
     setBlokirMessage(null);
@@ -252,9 +273,7 @@ export default function ProfileScreen() {
     try {
       await aksiBlokir(signer, address as Address, akanMencabut);
     } catch (e) {
-      setBlokirMessage(e instanceof ApiError
-        ? blokirErrorMessage(e.code)
-        : (akanMencabut ? "Gagal mencabut blokir." : "Gagal memblokir."));
+      setBlokirMessage(e instanceof ApiError ? blokirErrorMessage(e.code) : teksGagalBlokir(akanMencabut));
       setBlokirBusy(false);
       return;
     }
@@ -262,23 +281,22 @@ export default function ProfileScreen() {
       const kueri = `?${await kueriBuktiProfil(signer, address as Address)}`;
       setP(await req<Profile>(`/profile/${address}${kueri}`));
     } catch {
-      setBlokirMessage(akanMencabut
-        ? "Blokir sudah dicabut, tapi profil gagal dimuat ulang. Muat ulang layar ini untuk melihat status terbaru."
-        : "Orang ini sudah diblokir, tapi profil gagal dimuat ulang. Muat ulang layar ini untuk melihat status terbaru.");
+      setBlokirMessage(teksBlokirTersimpanGagalMuat(akanMencabut));
     } finally {
       setBlokirBusy(false);
     }
   }
 
   if (!p) {
-    // `loadError` hanya terisi kalau permintaan profilnya sendiri gagal
-    // (bukan kalau hanya pembuatan buktinya yang gagal) — lihat `muatProfil`.
-    // Tanpa cabang ini, kegagalan jaringan/nyata membekukan layar di
-    // "Memuat…" selamanya, tanpa pesan dan tanpa jalan keluar (finding #1).
+    // `loadError` hanya terisi kalau permintaan profilnya sendiri gagal (bukan
+    // kalau hanya pembuatan buktinya yang gagal) — lihat `muatProfil`. Tanpa
+    // cabang ini, kegagalan jaringan membekukan layar di keadaan memuat
+    // selamanya, tanpa pesan dan tanpa jalan keluar.
     return (
-      <View style={[s.flex, s.root]}>
-        <Text>{loadError ?? "Memuat…"}</Text>
-        {loadError && <Button title="Coba lagi" onPress={() => void muatProfil()} />}
+      <View style={s.memuat}>
+        {loadError
+          ? <KeadaanGalat kalimat={loadError} onCobaLagi={() => void muatProfil()} />
+          : <KerangkaDaftar baris={4} />}
       </View>
     );
   }
@@ -287,219 +305,235 @@ export default function ProfileScreen() {
   const labelTombolTanda = tombolTandaLabel(
     p.sudahKutandai, { milikSendiri: isOwnProfile, sibuk: meetBusy },
   );
+  // Hanya untuk koneksi (spec 4c §4). Server tetap menegakkan gerbangnya
+  // sendiri — tombol ini kenyamanan, bukan pengaman.
+  const bolehKirimPesan = !!signer && !isOwnProfile && connected === true;
+  const adaBarisAksi = bolehKirimPesan || labelTombolTanda !== null;
+  const penjamin = teksDijaminKenalan(p.dijaminKenalan);
+  const kini = new Date();
 
   return (
     // Alasan laporan itu multiline, jadi tombol return menyisipkan baris baru
     // dan TIDAK menutup keyboard. iOS juga TIDAK mendukung inputAccessoryViewID
-    // pada TextInput multiline (bug RN yang masih terbuka), jadi batang menempel
-    // keyboard bukan pilihan. Yang menggantikannya tiga hal:
-    //   - automaticallyAdjustKeyboardInsets: konten menyusut, isian tidak tertutup
-    //   - gulirKeIsian(): isian dibawa ke tampilan saat form dibuka & difokuskan
-    //   - tombol "Selesai" DI ATAS isian, tempat yang tidak tertutup keyboard
+    // pada isian multiline, jadi batang menempel keyboard bukan pilihan. Yang
+    // menggantikannya tiga hal: automaticallyAdjustKeyboardInsets,
+    // gulirKeIsian(), dan tombol "Done" DI ATAS isian.
     <ScrollView
       ref={scrollRef}
       style={s.flex}
       contentContainerStyle={s.root}
       keyboardDismissMode="on-drag"
       keyboardShouldPersistTaps="handled"
-      // iOS menyesuaikan sendiri inset konten terhadap keyboard. Ini
-      // menggantikan KeyboardAvoidingView, yang butuh keyboardVerticalOffset
-      // setinggi header stack — angka yang harus ditebak dan gampang meleset.
       automaticallyAdjustKeyboardInsets
     >
-      {/* Nama boleh apa saja dan TIDAK unik. Alamat SELALU tampil di bawahnya —
-          nama bukan identitas, alamat-lah identitasnya (spec §9.2). */}
-      <Text style={s.name}>{p.displayName || "Tanpa nama"}</Text>
-      <Text style={s.addr} selectable>{p.ens ?? p.address}</Text>
-      {p.ens && <Text style={s.addr} selectable>{p.address}</Text>}
-
-      <View style={s.facts}>
-        <Text style={s.fact}>{p.connectionCount} koneksi</Text>
-        <Text style={s.fact}>{p.txCount} transaksi on-chain</Text>
+      <View style={s.kepala}>
+        <Avatar
+          nama={p.displayName || null}
+          alamat={p.address}
+          ukuran={UKURAN.avatarKepala}
+          cincin={p.pertemuan ? "verified" : "avatarAwal"}
+        />
+        {/* Nama boleh apa saja dan TIDAK unik. Alamat SELALU tampil di
+            bawahnya — nama bukan identitas, alamat-lah identitasnya (§9.2). */}
+        <Text variant="heading">{namaKartuRadar(p.displayName)}</Text>
+        <Text variant="mono" selectable>{p.ens ?? p.address}</Text>
+        {p.ens ? <Text variant="mono" selectable>{p.address}</Text> : null}
+        {p.pertemuan ? <Lencana varian="terverifikasi" ekor={ekorLencanaPertemuan(p.pertemuan)} /> : null}
       </View>
+
+      {/* #16A: aksi yang paling mungkin diambil terlihat tanpa menggulir. */}
+      {adaBarisAksi ? (
+        <View style={s.bagian}>
+          <View style={s.barisAksi}>
+            {bolehKirimPesan ? (
+              <Button style={s.tombolAksi} onPress={() => router.navigate(`/pesan/${address}`)}>
+                {TEKS_KIRIM_PESAN}
+              </Button>
+            ) : null}
+            {labelTombolTanda !== null ? (
+              <Button
+                variant="secondary"
+                style={s.tombolAksi}
+                disabled={meetBusy}
+                onPress={() => void toggleTanda()}
+              >
+                {labelTombolTanda}
+              </Button>
+            ) : null}
+          </View>
+          {teksInginBertemu !== null ? <Text variant="caption">{teksInginBertemu}</Text> : null}
+          {p.salingMenandai ? <Text variant="caption">{TEKS_SALING_INGIN_BERTEMU}</Text> : null}
+          {meetMessage ? <Text variant="caption">{meetMessage}</Text> : null}
+        </View>
+      ) : null}
 
       {/* Tier SELALU tampil bersama buktinya, tidak pernah sebagai angka
-          telanjang (spec induk §8). */}
-      {trust && (
-        <View style={s.tierBox}>
-          <Text style={s.tierLabel}>{tierView(trust.tier, trust.evidence).label}</Text>
-          <Text style={s.tierEvidence}>
-            {tierView(trust.tier, trust.evidence).evidenceLine}
-          </Text>
+          telanjang (spec induk §8); nilainya dominan atas labelnya (#16A). */}
+      {trust ? (
+        <Card style={s.kartu}>
+          <View accessible accessibilityLabel={labelAksesTrust(trust.tier)} style={s.grupTrust}>
+            <Text variant="caption">{JUDUL_TRUST}</Text>
+            <Text variant="title">{tierView(trust.tier, trust.evidence).label}</Text>
+            <BatangTrust tier={trust.tier} />
+          </View>
+          <Text variant="caption">{tierView(trust.tier, trust.evidence).evidenceLine}</Text>
+          {penjamin ? <Text variant="caption">{penjamin}</Text> : null}
+        </Card>
+      ) : null}
+
+      {p.pertemuan ? (
+        <Card style={s.kartu}>
+          <Text variant="caption">{JUDUL_PERTEMUAN}</Text>
+          <View style={s.barisNilai}>
+            <Text variant="body" style={[s.tebal, s.menyusut]}>{barisSalaman(p.pertemuan, kini).judul}</Text>
+            <Text variant="caption">{barisSalaman(p.pertemuan, kini).tanggal}</Text>
+          </View>
+          {p.pertemuan.acaraBersama.map((a) => (
+            <Text key={a.eventId} variant="caption">{barisAcaraBersama(a, kini)}</Text>
+          ))}
+        </Card>
+      ) : null}
+
+      <Card style={s.kartu}>
+        <Text variant="caption">{JUDUL_ONCHAIN}</Text>
+        <View style={s.barisNilai}>
+          <Text variant="title">{pasanganKoneksi(p.connectionCount).angka}</Text>
+          <Text variant="caption">{pasanganKoneksi(p.connectionCount).kata}</Text>
         </View>
-      )}
-
-      <View style={s.section}>
-        {/*
-          Kedua gerbang absen-lawan-nol di layar ini dipindahkan ke fungsi
-          murni di src/messages.ts dan diuji di sana (finding #7). Regresi
-          keduanya berkelas Critical — angka yang dikarang, dan tombol yang
-          menebak keadaan yang tidak diketahui — dan sebagai JSX sebaris
-          keduanya tidak bisa diuji tanpa harness render yang belum ada.
-        */}
-        {teksInginBertemu !== null ? (
-          <Text style={s.angka}>{teksInginBertemu}</Text>
-        ) : null}
-        {p.salingMenandai ? <Text style={s.saling}>Kalian saling ingin bertemu.</Text> : null}
-        {labelTombolTanda !== null ? (
-          <Button
-            title={labelTombolTanda}
-            disabled={meetBusy}
-            onPress={() => void toggleTanda()}
-          />
-        ) : null}
-        {meetMessage && <Text style={s.message}>{meetMessage}</Text>}
-      </View>
-
-      {/*
-        `sudahKublokir !== undefined`, BUKAN cek truthiness — absen berarti
-        "tidak diketahui" (bukti baca gagal/tidak dikirim), dan melonggarkannya
-        ke truthiness diam-diam membuat "tidak diketahui" jadi "belum
-        diblokir". Tombol tanda di atas TIDAK ikut disembunyikan oleh
-        `sudahKublokir` (R5): mencabut tanda yang sudah ada tetap boleh saat
-        terblokir, hanya MEMASANG tanda baru yang ditolak server.
-      */}
-      {p.sudahKublokir !== undefined && !isOwnProfile && (
-        <View style={s.section}>
-          <Button
-            title={blokirTombolLabel(p.sudahKublokir, blokirBusy)}
-            disabled={blokirBusy}
-            onPress={() => { void toggleBlokir(); }}
-          />
-          {p.sudahKublokir && (
-            <Text style={s.catatan}>
-              Kamu memblokir orang ini. Kalian tidak saling muncul di feed, dan tidak bisa saling menandai.
-            </Text>
-          )}
-          {blokirMessage && <Text style={s.pesan}>{blokirMessage}</Text>}
+        <View style={s.barisNilai}>
+          <Text variant="title">{pasanganTransaksi(p.txCount).angka}</Text>
+          <Text variant="caption">{pasanganTransaksi(p.txCount).kata}</Text>
         </View>
-      )}
+      </Card>
 
-      {signer && !isOwnProfile && connected && (
-        // Hanya untuk koneksi (spec 4c §4). Server tetap menegakkan gerbangnya
-        // sendiri — tombol ini kenyamanan, bukan pengaman.
-        <View style={s.section}>
-          <Button title="Kirim pesan" onPress={() => router.push(`/pesan/${address}`)} />
-        </View>
-      )}
-
-      {signer && !isOwnProfile && connected && (
-        <View style={s.section}>
-          <View style={s.row}>
-            <Pressable onPress={() => setShowVouchPicker((v) => !v)}>
-              <Text style={s.button}>Vouch</Text>
-            </Pressable>
+      {signer && !isOwnProfile && connected ? (
+        <View style={s.bagian}>
+          <View style={s.barisNilai}>
+            <Button variant="outline" onPress={() => setShowVouchPicker((v) => !v)}>{TEKS_VOUCH}</Button>
             {/* Server-lah satu-satunya yang benar-benar tahu sisa kuota;
-                menampilkan angka yang bisa basi (mis. setelah pindah ke profil
-                lain) lebih buruk daripada tidak menampilkan angka sama sekali. */}
-            <Text style={s.quota}>Maksimal 3 vouch per hari.</Text>
+                angka yang bisa basi lebih buruk daripada tanpa angka. */}
+            <Text variant="caption" style={s.menyusut}>{TEKS_KUOTA_VOUCH}</Text>
           </View>
 
-          {showVouchPicker && (
-            <View style={s.tagPicker}>
-              <View style={s.tags}>
-                {SUGGESTED_TAGS.map((tag) => (
-                  <Pressable key={tag} onPress={() => toggleTag(tag)}>
-                    <Text style={[s.tag, selectedTags.includes(tag) && s.tagSelected]}>
-                      {tag}
-                    </Text>
-                  </Pressable>
-                ))}
+          {showVouchPicker ? (
+            <View style={s.bagian}>
+              <View style={s.tag}>
+                {SUGGESTED_TAGS.map((tag) => {
+                  const dipilih = selectedTags.includes(tag);
+                  return (
+                    <Pressable
+                      key={tag}
+                      onPress={() => toggleTag(tag)}
+                      accessibilityRole="button"
+                      accessibilityState={{ selected: dipilih }}
+                      style={[s.pil, { borderColor: dipilih ? kuning : garis }]}
+                    >
+                      <Text variant="caption" style={dipilih ? { color: kuning } : undefined}>{tag}</Text>
+                    </Pressable>
+                  );
+                })}
               </View>
               <Button
-                title={vouchBusy ? "Mengirim…" : "Kirim Vouch"}
                 disabled={vouchBusy || selectedTags.length === 0}
+                loading={vouchBusy}
                 onPress={() => void handleVouch()}
-              />
+              >
+                {labelKirimVouch(vouchBusy)}
+              </Button>
             </View>
-          )}
+          ) : null}
 
-          {vouchMessage && <Text style={s.message}>{vouchMessage}</Text>}
+          {vouchMessage ? <Text variant="caption">{vouchMessage}</Text> : null}
         </View>
-      )}
+      ) : null}
 
-      {signer && !isOwnProfile && (
-        <View style={s.section}>
-          <Pressable
+      {signer && !isOwnProfile ? (
+        <View style={s.bagian}>
+          <Button
+            variant="outline"
             onPress={() => {
               setShowReportForm((v) => !v);
               gulirKeIsian();
             }}
           >
-            <Text style={s.button}>Lapor</Text>
-          </Pressable>
+            {TEKS_LAPOR}
+          </Button>
 
-          {showReportForm && (
-            <View style={s.reportForm}>
-              {/* "Selesai" duduk DI ATAS isian, bukan di bawahnya: yang di
-                  bawah akan tertutup keyboard, persis masalah yang mau
-                  diselesaikan. iOS juga mendapat batang menempel keyboard. */}
-              <View style={s.inputHeader}>
-                <Text style={s.inputLabel}>Alasan laporan</Text>
-                <Pressable onPress={() => Keyboard.dismiss()} hitSlop={12}>
-                  <Text style={s.done}>Selesai</Text>
+          {showReportForm ? (
+            <View style={s.bagian}>
+              {/* "Done" duduk DI ATAS isian, bukan di bawahnya: yang di bawah
+                  akan tertutup keyboard, persis masalah yang mau diselesaikan. */}
+              <View style={s.barisNilai}>
+                <Text variant="caption" style={s.menyusut}>{TEKS_LABEL_ALASAN}</Text>
+                <Pressable onPress={() => Keyboard.dismiss()} hitSlop={12} accessibilityRole="button" style={s.selesai}>
+                  <Text variant="label" style={{ color: kuning }}>{TEKS_SELESAI}</Text>
                 </Pressable>
               </View>
-              <TextInput
-                style={[s.input, { color: WARNA.teks }]}
-                placeholderTextColor={WARNA.placeholder}
-                placeholder="Ceritakan apa yang terjadi"
+              <Input
+                placeholder={TEKS_PLACEHOLDER_ALASAN}
                 value={reportReason}
                 onChangeText={setReportReason}
                 onFocus={gulirKeIsian}
-                multiline
+                type="textarea"
               />
               <Button
-                title={reportBusy ? "Mengirim…" : "Kirim Laporan"}
                 disabled={reportBusy || !reportReason.trim()}
+                loading={reportBusy}
                 onPress={() => void handleReport()}
-              />
+              >
+                {labelKirimLaporan(reportBusy)}
+              </Button>
             </View>
-          )}
+          ) : null}
 
-          {reportMessage && <Text style={s.message}>{reportMessage}</Text>}
+          {reportMessage ? <Text variant="caption">{reportMessage}</Text> : null}
         </View>
-      )}
-      </ScrollView>
+      ) : null}
+
+      {/*
+        `sudahKublokir !== undefined`, BUKAN cek truthiness — absen berarti
+        "tidak diketahui" (bukti baca gagal/tidak dikirim), dan melonggarkannya
+        ke truthiness diam-diam membuat "tidak diketahui" jadi "belum
+        diblokir". Tombol tanda di atas TIDAK ikut disembunyikan: mencabut
+        tanda yang sudah ada tetap boleh saat terblokir, hanya MEMASANG tanda
+        baru yang ditolak server.
+      */}
+      {p.sudahKublokir !== undefined && !isOwnProfile ? (
+        <View style={s.bagian}>
+          <Button variant="destructive" disabled={blokirBusy} onPress={() => { void toggleBlokir(); }}>
+            {blokirTombolLabel(p.sudahKublokir, blokirBusy)}
+          </Button>
+          {p.sudahKublokir ? <Text variant="caption">{TEKS_CATATAN_DIBLOKIR}</Text> : null}
+          {blokirMessage ? <Text variant="caption">{blokirMessage}</Text> : null}
+        </View>
+      ) : null}
+    </ScrollView>
   );
 }
 
 const s = StyleSheet.create({
   flex: { flex: 1 },
-  root: { padding: 24, paddingBottom: 48, gap: 8 },
-  inputHeader: {
-    flexDirection: "row", justifyContent: "space-between", alignItems: "center",
+  root: { padding: 16, paddingBottom: 32, gap: 24 },
+  memuat: { flex: 1, padding: 16 },
+  kepala: { alignItems: "center", gap: 8 },
+  bagian: { gap: 12 },
+  barisAksi: { flexDirection: "row", gap: 8 },
+  tombolAksi: { flex: 1 },
+  kartu: { gap: 8 },
+  grupTrust: { gap: 8 },
+  barisNilai: { flexDirection: "row", alignItems: "baseline", justifyContent: "space-between", gap: 8 },
+  // Teks panjang di baris label + nilai membungkus ke baris baru alih-alih
+  // mendorong saudaranya keluar kartu (review B1 #I5).
+  menyusut: { flexShrink: 1 },
+  // Target sentuh "Done" ≥ 48 tanpa membesarkan hurufnya (review B1 M6, §3.7).
+  selesai: { minHeight: UKURAN.sentuh, justifyContent: "center" },
+  tag: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
+  pil: {
+    borderWidth: 1,
+    borderRadius: RADIUS.lencana,
+    paddingHorizontal: 12,
+    minHeight: UKURAN.sentuh,
+    justifyContent: "center",
   },
-  inputLabel: { fontSize: 14, opacity: 0.7 },
-  done: { fontSize: 17, fontWeight: "600" },
-  name: { fontSize: 26, fontWeight: "700" },
-  addr: { fontFamily: "Courier", fontSize: 12, opacity: 0.6 },
-  facts: { marginTop: 20, gap: 6 },
-  fact: { fontSize: 16 },
-  tierBox: { marginTop: 20, gap: 4 },
-  tierLabel: { fontSize: 22, fontWeight: "700" },
-  tierEvidence: { fontSize: 14, opacity: 0.7 },
-  angka: { fontSize: 14, opacity: 0.7 },
-  saling: { fontSize: 14, paddingTop: 2 },
-  section: { marginTop: 20, gap: 10 },
-  row: { flexDirection: "row", alignItems: "center", gap: 12 },
-  button: {
-    fontSize: 16, fontWeight: "600", paddingVertical: 8, paddingHorizontal: 14,
-    borderWidth: 1, borderRadius: 8, overflow: "hidden",
-  },
-  quota: { fontSize: 13, opacity: 0.6 },
-  tagPicker: { gap: 10 },
-  tags: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
-  tag: {
-    fontSize: 14, paddingVertical: 6, paddingHorizontal: 12,
-    borderWidth: 1, borderRadius: 16, overflow: "hidden", opacity: 0.6,
-  },
-  tagSelected: { opacity: 1, fontWeight: "700" },
-  reportForm: { gap: 10 },
-  input: {
-    borderWidth: 1, borderRadius: 8, padding: 10, fontSize: 14, minHeight: 60,
-  },
-  message: { fontSize: 14, lineHeight: 20, opacity: 0.8 },
-  catatan: { fontSize: 13, opacity: 0.7, lineHeight: 19 },
-  pesan: { fontSize: 14, lineHeight: 20, opacity: 0.8 },
+  tebal: { fontWeight: "600" },
 });

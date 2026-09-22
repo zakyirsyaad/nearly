@@ -334,6 +334,8 @@ sudah memuat suka, lapor, dan "ingin bertemu"; menambah satu lagi membuatnya pen
 yang jarang.
 
 **Semua teks berbahasa Indonesia**, dalam register hangat orang-kedua yang dipakai layar lain.
+*Diamandemen 2026-09-18: aplikasi berbahasa Inggris (Block / Unblock), register orang-kedua yang sama — lihat spec
+desain UI (`2026-09-18-nearly-desain-ui-design.md`) §7.4.*
 
 ## 9. Yang Sengaja TIDAK Ada di Fase Ini
 

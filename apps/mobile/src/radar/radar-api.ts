@@ -16,6 +16,11 @@ export type KartuRadarApi = {
   tierLabel: string;
   pernahBertemu: boolean;
   salingInginBertemu: boolean;
+  /**
+   * Spec desain UI §8.3: hanya pada kartu `pernahBertemu === false`, hanya bila
+   * ≥ 1, dan ABSEN bila store server gagal. Angka saja — tidak pernah nama.
+   */
+  koneksiBersama?: number;
 };
 
 const UMUR_DETIK = 300;

@@ -9,6 +9,7 @@ import { getCurrentCell } from "../location";
 import { postCheckInOffer } from "../events-api";
 import { ApiError } from "../api";
 import { eventErrorMessage } from "../messages";
+import { kalimatGagalAcara, TEKS_GAGAL_SIAPKAN_QR_HOST } from "../teks-acara";
 
 /**
  * Cermin useRotatingQr Fase 1: tiap 30 detik ambil lokasi SENDIRI, tanda
@@ -47,9 +48,7 @@ export function useCheckInQr(signer: NearlySigner, eventId: Hex) {
       setError(
         e instanceof ApiError
           ? eventErrorMessage(e.code, e.reason)
-          : e instanceof Error
-            ? e.message
-            : "Gagal menyiapkan QR check-in.",
+          : kalimatGagalAcara(e, TEKS_GAGAL_SIAPKAN_QR_HOST),
       );
       // Penolakan 4xx (mis. not_host, event_not_found) tidak akan pernah
       // berubah kalau tawaran yang sama dikirim ulang 30 detik lagi — hentikan

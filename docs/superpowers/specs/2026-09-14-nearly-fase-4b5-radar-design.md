@@ -258,6 +258,11 @@ Yang **tidak pernah** ada di respons: `cell`, `seen_at`, jumlah detak, jarak, sk
 siapa saja yang disembunyikan oleh blokir. Tes route wajib memeriksa **nama kunci JSON**, bukan hanya
 nilainya (§11).
 
+*Diamandemen 2026-09-18 (spec desain UI `2026-09-18-nearly-desain-ui-design.md` §8.3):* kartu dengan
+`pernahBertemu === false` boleh membawa `koneksiBersama` — **angka** koneksi bersama, hanya bila ≥ 1,
+dihitung setelah saringan visibilitas dan blokir, tanpa nama atau alamat siapa pun; kartu koneksi tidak
+pernah membawanya. Daftar "yang tidak pernah ada" di atas tetap berlaku.
+
 ### 5.3 Pemanggil tanpa kunci sesi
 
 Kedua rute bergantung pada `kunci_pesan` pemanggil (R1). HP mendaftarkannya lewat `sesiPesan` sebelum

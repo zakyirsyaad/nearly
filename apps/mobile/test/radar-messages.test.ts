@@ -13,12 +13,12 @@ const SEMUA_KEADAAN: KeadaanRadar[] = [
 
 describe("kalimatRadar — keadaan layar → kalimat (spec 4b+5 §8.2)", () => {
   it("kalimat spec persis", () => {
-    expect(kalimatRadar("tersembunyi")).toBe("Kamu sedang Tersembunyi, jadi radar tidak bisa dibuka.");
-    expect(kalimatRadar("di_luar_area")).toBe("Kamu terlihat berada di luar area acara.");
-    expect(kalimatRadar("belum_check_in")).toBe("Check-in dulu untuk membuka radar.");
-    expect(kalimatRadar("tidak_berlangsung")).toBe("Radar hanya aktif selama acara berlangsung.");
-    expect(kalimatRadar("kosong")).toBe("Belum ada orang lain yang terlihat di sini.");
-    expect(kalimatRadar("izin_lokasi")).toBe("Radar butuh izin lokasi saat aplikasi dibuka.");
+    expect(kalimatRadar("tersembunyi")).toBe("You're Hidden, so the radar can't be opened.");
+    expect(kalimatRadar("di_luar_area")).toBe("You appear to be outside the event area.");
+    expect(kalimatRadar("belum_check_in")).toBe("Check in first to open the radar.");
+    expect(kalimatRadar("tidak_berlangsung")).toBe("The radar is only active while the event is running.");
+    expect(kalimatRadar("kosong")).toBe("No one else is visible here yet.");
+    expect(kalimatRadar("izin_lokasi")).toBe("The radar needs location access while the app is open.");
     expect(kalimatRadar("server_tak_terjangkau")).toBe(KALIMAT_SERVER_TAK_TERJANGKAU);
   });
 
@@ -68,13 +68,13 @@ describe("keadaanRadarDariKode", () => {
 
 describe("kartu radar", () => {
   it("lencana: saling dulu, lalu pernah bertemu; tanpa hubungan tanpa lencana", () => {
-    expect(lencanaKartuRadar({ pernahBertemu: true, salingInginBertemu: true })).toEqual(["Saling ingin bertemu", "Pernah bertemu"]);
-    expect(lencanaKartuRadar({ pernahBertemu: true, salingInginBertemu: false })).toEqual(["Pernah bertemu"]);
-    expect(lencanaKartuRadar({ pernahBertemu: false, salingInginBertemu: true })).toEqual(["Saling ingin bertemu"]);
-    expect(lencanaKartuRadar({ pernahBertemu: false, salingInginBertemu: false })).toEqual([]);
+    expect(lencanaKartuRadar({ pernahBertemu: true, salingInginBertemu: true })).toBe("You both want to meet");
+    expect(lencanaKartuRadar({ pernahBertemu: true, salingInginBertemu: false })).toBeNull();
+    expect(lencanaKartuRadar({ pernahBertemu: false, salingInginBertemu: true })).toBe("You both want to meet");
+    expect(lencanaKartuRadar({ pernahBertemu: false, salingInginBertemu: false })).toBeNull();
   });
-  it("nama kosong → Tanpa nama", () => {
-    expect(namaKartuRadar("  ")).toBe("Tanpa nama");
+  it("nama kosong → Unnamed", () => {
+    expect(namaKartuRadar("  ")).toBe("Unnamed");
     expect(namaKartuRadar(" Budi ")).toBe("Budi");
   });
   it("alamat singkat", () => {
@@ -98,18 +98,18 @@ describe("penghitung nama", () => {
 describe("profil", () => {
   it("setiap kode POST /profil punya kalimatnya sendiri", () => {
     for (const code of ["nama_tidak_sah", "expired", "bad_signature", "butuh_autentikasi", "invalid_body", "server_tak_terjangkau"]) {
-      expect(profilErrorMessage(code)).not.toBe("Gagal. Coba lagi sebentar.");
+      expect(profilErrorMessage(code)).not.toBe("Something went wrong. Try again in a moment.");
     }
   });
   it("kalimat visibilitas berbeda per mode dan menyebut timbal balik", () => {
-    expect(kalimatVisibilitas("tersembunyi")).toMatch(/tidak bisa membuka radar/);
+    expect(kalimatVisibilitas("tersembunyi")).toMatch(/can't open the radar/);
     expect(kalimatVisibilitas("terlihat")).not.toBe(kalimatVisibilitas("tersembunyi"));
   });
   it("batas Tersembunyi menyebut on-chain", () => {
     expect(KALIMAT_BATAS_TERSEMBUNYI).toMatch(/on-chain/);
   });
   it("label simpan", () => {
-    expect(labelSimpanProfil(false)).toBe("Simpan");
-    expect(labelSimpanProfil(true)).toBe("Menyimpan…");
+    expect(labelSimpanProfil(false)).toBe("Save");
+    expect(labelSimpanProfil(true)).toBe("Saving…");
   });
 });

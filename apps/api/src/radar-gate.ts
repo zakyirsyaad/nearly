@@ -1,6 +1,7 @@
 import type { Address, Hex } from "viem";
 import { isEventLive, isInsideGeofence } from "@nearly/shared";
 import { TIER_LABELS } from "@nearly/trust";
+import { buatCacheSingkat } from "./cache-singkat";
 import { kecocokanDari } from "./meet-rank";
 import type { EventRecord, RadarDeps } from "./ports";
 
@@ -42,7 +43,36 @@ export type KartuRadar = {
   tierLabel: string;
   pernahBertemu: boolean;
   salingInginBertemu: boolean;
+  /**
+   * Desain UI §8.3: HANYA kartu `pernahBertemu === false`, HANYA bila ≥ 1.
+   * Angka saja — tidak pernah daftar, nama, atau alamat koneksi bersama.
+   */
+  koneksiBersama?: number;
 };
+
+/** Radar dipanggil tiap 10 detik per penonton; angka basi sampai 60 detik diterima (§8.3). */
+export const UMUR_CACHE_KONEKSI_BERSAMA_MS = 60_000;
+
+export type PenghitungKoneksiBersama = (
+  aku: Address, kandidat: Address[], kecuali: readonly string[],
+) => Promise<Map<string, number>>;
+
+/**
+ * Penghitung ber-cache, dibuat SEKALI per radarRoutes (Ruling A17). Kunci:
+ * pemanggil + himpunan kandidat + himpunan blokir — perubahan blokir
+ * menghitung ulang seketika.
+ */
+export function buatPenghitungKoneksiBersama(deps: Pick<RadarDeps, "radar" | "nowMs">): PenghitungKoneksiBersama {
+  const cache = buatCacheSingkat<Map<string, number>>(deps.nowMs, UMUR_CACHE_KONEKSI_BERSAMA_MS);
+  return (aku, kandidat, kecuali) => {
+    const kunci = [
+      kecil(aku),
+      [...kandidat].map(kecil).sort().join(","),
+      [...kecuali].map(kecil).sort().join(","),
+    ].join("|");
+    return cache.ambil(kunci, () => deps.radar.hitungKoneksiBersama(aku, kandidat, kecuali));
+  };
+}
 
 export type ResponsRadar = { kartu: KartuRadar[]; jumlah: number };
 
@@ -127,6 +157,7 @@ const labelTier = (tier: number): string => TIER_LABELS[tier] ?? TIER_LABELS[0];
  */
 export async function lihatRadar(
   pemanggil: Address, eventIdMentah: Hex, deps: RadarDeps,
+  hitungBersama: PenghitungKoneksiBersama = (a, k, x) => deps.radar.hitungKoneksiBersama(a, k, x),
 ): Promise<RadarResult<ResponsRadar>> {
   const now = deps.nowMs();
   const eventId = kecil(eventIdMentah) as Hex;
@@ -149,9 +180,12 @@ export async function lihatRadar(
 
   // Visibilitas dari `profiles`, BUKAN dari baris kehadiran — pindah ke
   // Tersembunyi berlaku seketika walau barisnya masih ada. Blokir DUA arah.
-  const [visibilitas, terblokir] = await Promise.all([
+  // `blokirKu` (SATU arah: yang diblokir pemanggil) hanya untuk hitungan
+  // koneksi bersama di bawah — lihat komentarnya.
+  const [visibilitas, terblokir, blokirKu] = await Promise.all([
     deps.profilSaya.visibilitasBanyak(hadir),
     deps.blokir.himpunanUntuk(aku),
+    deps.blokir.diblokirOleh(aku),
   ]);
   const lolos = hadir.filter((a) => visibilitas.get(a) === "terlihat" && !terblokir.has(a));
   if (lolos.length === 0) return ok({ kartu: [], jumlah: 0 });
@@ -173,15 +207,33 @@ export async function lihatRadar(
     salingInginBertemu: saling.has(a),
   })).sort(urutkanKartuRadar).slice(0, MAKS_KARTU_RADAR);
 
+  // Koneksi bersama (desain UI §8.3): HANYA untuk kartu yang belum ditemui,
+  // dihitung SETELAH saringan visibilitas dan blokir di atas — orang
+  // Tersembunyi tidak pernah menjadi subjek hitungan. Yang dikecualikan dari
+  // hitungan hanya orang yang DIBLOKIR pemanggil (satu arah, keputusan pemilik
+  // 2026-09-18): graf koneksi publik, jadi mengecualikan orang yang memblokir
+  // pemanggil membuat angka yang turun satu menjadi oracle "siapa yang
+  // memblokirku" — alasan yang sama dengan `inginBertemuCount`. Gagal =
+  // kunci hilang di semua kartu, bukan angka karangan; radar tetap jalan.
+  const belumBertemu = baris.filter((b) => !b.pernahBertemu).map((b) => b.address);
+  const bersama = belumBertemu.length === 0
+    ? new Map<string, number>()
+    : await hitungBersama(aku, belumBertemu, blokirKu.map((b) => kecil(b.address))).catch(() => null);
+
   // Dibangun kunci demi kunci, BUKAN spread — medan tambahan di `baris`
   // (mis. `tier` mentah) tidak boleh ikut terkirim.
-  const kartu: KartuRadar[] = baris.map((b) => ({
-    address: b.address,
-    displayName: b.displayName,
-    tierLabel: labelTier(b.tier),
-    pernahBertemu: b.pernahBertemu,
-    salingInginBertemu: b.salingInginBertemu,
-  }));
+  const kartu: KartuRadar[] = baris.map((b) => {
+    const k: KartuRadar = {
+      address: b.address,
+      displayName: b.displayName,
+      tierLabel: labelTier(b.tier),
+      pernahBertemu: b.pernahBertemu,
+      salingInginBertemu: b.salingInginBertemu,
+    };
+    const n = b.pernahBertemu ? undefined : bersama?.get(b.address);
+    if (n !== undefined && n >= 1) k.koneksiBersama = n;
+    return k;
+  });
   // `jumlah` = kartu yang dikirim. Jumlah sebelum penyaringan akan membocorkan
   // berapa orang disembunyikan blokir atau visibilitas.
   return ok({ kartu, jumlah: kartu.length });

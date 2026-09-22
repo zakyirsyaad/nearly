@@ -164,11 +164,18 @@ function deps(over: { saveSnapshots?: ReturnType<typeof vi.fn> } = {}): TrustDep
       hitungNotifKedekatan: async () => 0,
       sisipNotifKedekatan: async () => true,
       sapuLokasi: async () => ({ kehadiran: 0, notifKedekatan: 0, offerSalaman: 0, offerCheckIn: 0 }),
+      hitungKoneksiBersama: async () => new Map<string, number>(),
     },
     profilSaya: {
       profilSaya: async () => ({ displayName: "", visibilitas: "terlihat" as const }),
       aturProfil: async () => {},
       visibilitasBanyak: async () => new Map(),
+    },
+    // Stub desain UI: createApp mendaftarkan profileRoutes dengan store ini.
+    pertemuan: {
+      koneksiPasangan: async () => null,
+      acaraCheckInBersama: async () => [],
+      penjaminAktif: async () => [],
     },
   };
 }

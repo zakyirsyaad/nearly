@@ -6,7 +6,7 @@ import { bacaRequestSesi, uraiJsonAman } from "../baca-request-sesi";
 import { pemanggilPesan } from "../pesan-auth";
 import { buatPenyapuLokasi } from "../penyapu-lokasi";
 import type { RadarDeps } from "../ports";
-import { detak, lihatRadar } from "../radar-gate";
+import { buatPenghitungKoneksiBersama, detak, lihatRadar } from "../radar-gate";
 import { kirimNotifKedekatan } from "../radar-notif";
 
 const BUTUH_AUTENTIKASI = { code: "butuh_autentikasi" } as const;
@@ -15,6 +15,8 @@ const EVENT_ID = /^0x[0-9a-fA-F]{64}$/;
 export function radarRoutes(deps: RadarDeps) {
   const r = new Hono();
   const penyapu = buatPenyapuLokasi({ radar: deps.radar, nowMs: deps.nowMs });
+  // Satu cache per proses untuk koneksi bersama (desain UI §8.3, Ruling A17).
+  const hitungBersama = buatPenghitungKoneksiBersama(deps);
 
   // Diautentikasi sesi Ed25519 Fase 4c (R1): polling tidak boleh memunculkan
   // popup dompet. Urutan spec 4b+5 §5.1: sesi → badan → acara → … .
@@ -49,7 +51,7 @@ export function radarRoutes(deps: RadarDeps) {
     if (!pemanggil) return c.json(BUTUH_AUTENTIKASI, 401);
     const eventId = c.req.param("eventId");
     if (!EVENT_ID.test(eventId)) return c.json({ code: "event_not_found", httpStatus: 404 }, 404);
-    const hasil = await lihatRadar(pemanggil, eventId.toLowerCase() as Hex, deps);
+    const hasil = await lihatRadar(pemanggil, eventId.toLowerCase() as Hex, deps, hitungBersama);
     if (!hasil.ok) return c.json(hasil.failure, hasil.failure.httpStatus);
     return c.json({ kartu: hasil.value.kartu, jumlah: hasil.value.jumlah });
   });

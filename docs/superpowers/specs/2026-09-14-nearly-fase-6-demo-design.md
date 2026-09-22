@@ -32,7 +32,7 @@ Diputuskan pemilik project saat brainstorming. Tidak dibuka ulang saat implement
 | 2 | Label simpul | **Nama tampilan + alamat singkat**, mis. `Budi · 0x12ab…cdef` (awalnya `Budi · 0x12ab…`; diubah 2026-09-17, lihat §6.3) |
 | 3 | Hosting API | **VPS** milik pemilik project |
 | 4 | Hosting web | **Vercel** |
-| 5 | Bahasa landing page | **Inggris** (aplikasi tetap berbahasa Indonesia) |
+| 5 | Bahasa landing page | **Inggris** (aplikasi tetap berbahasa Indonesia) — *Diamandemen 2026-09-18: aplikasi mobile berbahasa Inggris — lihat spec desain UI (`2026-09-18-nearly-desain-ui-design.md`) §7.4* |
 | 6 | Pengaturan nama tampilan | Dikerjakan di jalur **4b + 5**, bukan di sini. Selama nama kosong, simpul menampilkan alamat singkat saja |
 
 Keputusan teknis yang diambil saat menulis spec ini (bisa ditinjau di review spec):

@@ -8,17 +8,20 @@ export const BATAS_NOTIF_KEDEKATAN = 5;
 
 export type HubunganKedekatan = "saling_ingin_bertemu" | "pernah_bertemu";
 
-/** Spec 4b+5 §6.4. Tidak pernah alamat, judul atau lokasi acara, maupun sel. */
+/**
+ * Spec 4b+5 §6.4, bahasa Inggris sejak spec desain UI §7.4. Tidak pernah
+ * alamat, judul atau lokasi acara, maupun sel.
+ */
 export function teksNotifKedekatan(hubungan: HubunganKedekatan, displayName: string): string {
   const nama = displayName.trim();
   if (hubungan === "saling_ingin_bertemu") {
     return nama
-      ? `${nama}, yang saling ingin bertemu denganmu, ada di acara ini.`
-      : "Seseorang yang saling ingin bertemu denganmu ada di acara ini.";
+      ? `${nama} is at this event. You both want to meet.`
+      : "Someone you both want to meet is at this event.";
   }
   return nama
-    ? `${nama}, yang pernah kamu temui, ada di acara ini.`
-    : "Seseorang yang pernah kamu temui ada di acara ini.";
+    ? `${nama}, who you've met, is at this event.`
+    : "Someone you've met is at this event.";
 }
 
 type DepsNotif = Pick<RadarDeps, "radar" | "profilSaya" | "blokir" | "meet" | "pesan" | "push" | "nowMs">;

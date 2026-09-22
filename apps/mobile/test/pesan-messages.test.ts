@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { labelKirimPesan, pesanErrorMessage, petunjukLaporan, sisaKarakterPesan } from "../src/messages";
 import { laporanSiapDikirim } from "../src/pesan/pesan-actions";
 
-const FALLBACK = "Gagal. Coba lagi sebentar.";
+const FALLBACK = "Something went wrong. Try again in a moment.";
 
 describe("pesanErrorMessage", () => {
   it("setiap kode yang dikembalikan rute pesan punya kalimatnya sendiri", () => {
@@ -23,13 +23,14 @@ describe("pesanErrorMessage", () => {
   it("terblokir netral", () => {
     const teks = pesanErrorMessage("terblokir");
     expect(teks).not.toMatch(/saling|memblokirmu|kamu blokir/i);
+    expect(teks).not.toMatch(/blocked you|you blocked|each other/i);
   });
 });
 
 describe("labelKirimPesan dan sisaKarakterPesan", () => {
   it("label mengikuti keadaan sibuk", () => {
-    expect(labelKirimPesan(false)).toBe("Kirim");
-    expect(labelKirimPesan(true)).toBe("Mengirim…");
+    expect(labelKirimPesan(false)).toBe("Send");
+    expect(labelKirimPesan(true)).toBe("Sending…");
   });
 
   it("sisa karakter dari batas 2000", () => {
@@ -43,24 +44,26 @@ describe("labelKirimPesan dan sisaKarakterPesan", () => {
 // begitu mulai mengetik. Petunjuk harus selalu menyebut syarat yang kurang.
 describe("petunjukLaporan", () => {
   it("belum memilih bukti", () => {
-    expect(petunjukLaporan(0, "alasan yang cukup panjang")).toBe("Pilih minimal 1 pesan sebagai bukti.");
+    expect(petunjukLaporan(0, "alasan yang cukup panjang")).toBe("Select at least 1 message as evidence.");
   });
 
   it("alasan kosong menyebut batas minimalnya", () => {
-    expect(petunjukLaporan(1, "   ")).toBe("Tulis alasan, minimal 10 karakter.");
+    expect(petunjukLaporan(1, "   ")).toBe("Write a reason, at least 10 characters.");
   });
 
   it("alasan kurang menyebut sisa karakternya, tanpa menghitung spasi di tepi", () => {
-    expect(petunjukLaporan(1, "  spam  ")).toBe("Alasan kurang 6 karakter lagi.");
-    expect(petunjukLaporan(1, "123456789")).toBe("Alasan kurang 1 karakter lagi.");
+    expect(petunjukLaporan(1, "  spam  ")).toBe("The reason needs 6 more characters.");
+    expect(petunjukLaporan(1, "123456789")).toBe("The reason needs 1 more character.");
   });
 
   it("dua syarat yang kurang disebut keduanya", () => {
-    expect(petunjukLaporan(0, "")).toBe("Pilih minimal 1 pesan sebagai bukti. Tulis alasan, minimal 10 karakter.");
+    expect(petunjukLaporan(0, "")).toBe(
+      "Select at least 1 message as evidence. Write a reason, at least 10 characters.",
+    );
   });
 
   it("terlalu banyak bukti", () => {
-    expect(petunjukLaporan(6, "alasan yang cukup panjang")).toBe("Maksimal 5 pesan sebagai bukti.");
+    expect(petunjukLaporan(6, "alasan yang cukup panjang")).toBe("At most 5 messages as evidence.");
   });
 
   // Petunjuk dan tombol tidak boleh saling bertentangan: tombol mati tanpa

@@ -15,16 +15,16 @@ describe("perluPengingatCadangan", () => {
 describe("peringatanGantiDompet", () => {
   it("belum dicatat → peringatan paling keras, menyebut hilang selamanya", () => {
     const t = peringatanGantiDompet({ punyaMnemonik: true, sudahDicadangkan: false });
-    expect(t).toContain("BELUM");
-    expect(t).toContain("hilang selamanya");
+    expect(t).toContain("NOT");
+    expect(t).toContain("gone forever");
   });
 
   it("sudah dicatat → hanya lewat 12 kata pemulihan", () => {
-    expect(peringatanGantiDompet({ punyaMnemonik: true, sudahDicadangkan: true })).toContain("12 kata pemulihan");
+    expect(peringatanGantiDompet({ punyaMnemonik: true, sudahDicadangkan: true })).toContain("12-word recovery phrase");
   });
 
   it("tanpa mnemonik → menyebut kunci privat", () => {
-    expect(peringatanGantiDompet({ punyaMnemonik: false, sudahDicadangkan: true })).toContain("kunci privat");
+    expect(peringatanGantiDompet({ punyaMnemonik: false, sudahDicadangkan: true })).toContain("private key");
   });
 });
 
@@ -45,7 +45,7 @@ describe("pesanGalatDompet", () => {
   });
 
   it("galat lain (mis. Keychain) → kalimat umum, tanpa pesan mentah", () => {
-    expect(pesanGalatDompet(new Error("User interaction is not allowed"))).toBe("Dompet gagal disiapkan. Coba lagi.");
-    expect(pesanGalatDompet("bukan Error")).toBe("Dompet gagal disiapkan. Coba lagi.");
+    expect(pesanGalatDompet(new Error("User interaction is not allowed"))).toBe("Couldn't set up the wallet. Try again.");
+    expect(pesanGalatDompet("bukan Error")).toBe("Couldn't set up the wallet. Try again.");
   });
 });

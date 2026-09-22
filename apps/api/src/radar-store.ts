@@ -88,6 +88,59 @@ export function createRadarStore(db: SupabaseClient): RadarStore {
       return new Set((await Promise.all(kueri)).flat());
     },
 
+    async hitungKoneksiBersama(who, kandidat, kecuali) {
+      const w = kecil(who);
+      const unik = [...new Set(kandidat.map(kecil))].filter((k) => k !== w);
+      if (unik.length === 0) return new Map();
+      // Pemanggil, dan `kecuali` (orang yang DIBLOKIR pemanggil — satu arah,
+      // lihat radar-gate), tidak pernah dihitung sebagai koneksi bersama.
+      const buang = new Set([w, ...kecuali.map(kecil)]);
+
+      // Koneksi pemanggil, berhalaman penuh di kedua sisi urutan kanonik.
+      const [sisiA, sisiB] = await Promise.all([
+        fetchAllPages<{ addr_b: string }>(
+          (f, t) => db.from("connections").select("addr_b").eq("addr_a", w)
+            .order("addr_b", { ascending: true }).range(f, t) as never,
+          "baca koneksi pemanggil",
+        ),
+        fetchAllPages<{ addr_a: string }>(
+          (f, t) => db.from("connections").select("addr_a").eq("addr_b", w)
+            .order("addr_a", { ascending: true }).range(f, t) as never,
+          "baca koneksi pemanggil",
+        ),
+      ]);
+      const milikku = new Set(
+        [...sisiA.map((r) => kecil(r.addr_b)), ...sisiB.map((r) => kecil(r.addr_a))].filter((m) => !buang.has(m)),
+      );
+
+      const hasil = new Map<string, number>(unik.map((k) => [k, 0]));
+      if (milikku.size === 0) return hasil;
+
+      // Koneksi kandidat: satu kueri per kelompok per sisi, seperti terhubungDengan.
+      const kueri = potongKelompok(unik).flatMap((bagian) => ([
+        fetchAllPages<{ addr_a: string; addr_b: string }>(
+          (f, t) => db.from("connections").select("addr_a, addr_b").in("addr_a", bagian)
+            .order("id", { ascending: true }).range(f, t) as never,
+          "baca koneksi kandidat radar",
+        ),
+        fetchAllPages<{ addr_a: string; addr_b: string }>(
+          (f, t) => db.from("connections").select("addr_a, addr_b").in("addr_b", bagian)
+            .order("id", { ascending: true }).range(f, t) as never,
+          "baca koneksi kandidat radar",
+        ),
+      ]));
+      const terlihat = new Set<string>();
+      for (const r of (await Promise.all(kueri)).flat()) {
+        const a = kecil(r.addr_a);
+        const b = kecil(r.addr_b);
+        if (terlihat.has(`${a}|${b}`)) continue; // dua kandidat saling terhubung: baris muncul di dua kueri
+        terlihat.add(`${a}|${b}`);
+        if (hasil.has(a) && milikku.has(b)) hasil.set(a, (hasil.get(a) ?? 0) + 1);
+        if (hasil.has(b) && milikku.has(a)) hasil.set(b, (hasil.get(b) ?? 0) + 1);
+      }
+      return hasil;
+    },
+
     async hitungNotifKedekatan(eventId, penerima) {
       const { count, error } = await db.from("notif_kedekatan")
         .select("subjek", { count: "exact", head: true })

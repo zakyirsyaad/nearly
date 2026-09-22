@@ -8,7 +8,7 @@ describe("eventErrorMessage", () => {
 
   it("menjelaskan geofence dalam bahasa manusia", () => {
     const m = eventErrorMessage("outside_geofence");
-    expect(m).toMatch(/venue|lokasi/i);
+    expect(m).toMatch(/venue/i);
     expect(m).not.toContain("geofence");
   });
 

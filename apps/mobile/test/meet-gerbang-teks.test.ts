@@ -23,11 +23,15 @@ describe("teksInginBertemuCount", () => {
   });
 
   it("nol SUNGGUHAN tetap ditampilkan sebagai nol", () => {
-    expect(teksInginBertemuCount(0)).toBe("0 orang ingin bertemu dia");
+    expect(teksInginBertemuCount(0)).toBe("0 people want to meet them");
   });
 
   it("angka biasa tampil apa adanya", () => {
-    expect(teksInginBertemuCount(12)).toBe("12 orang ingin bertemu dia");
+    expect(teksInginBertemuCount(12)).toBe("12 people want to meet them");
+  });
+
+  it("satu orang memakai bentuk tunggal", () => {
+    expect(teksInginBertemuCount(1)).toBe("1 person wants to meet them");
   });
 });
 
@@ -45,11 +49,11 @@ describe("tombolTandaLabel", () => {
   });
 
   it("false berarti tombol menandai", () => {
-    expect(tombolTandaLabel(false, biasa)).toBe("Ingin bertemu");
+    expect(tombolTandaLabel(false, biasa)).toBe("Want to meet");
   });
 
   it("true berarti tombol mencabut", () => {
-    expect(tombolTandaLabel(true, biasa)).toBe("Batal ingin bertemu");
+    expect(tombolTandaLabel(true, biasa)).toBe("Undo want to meet");
   });
 
   it("profil sendiri tidak pernah punya tombol, walau bendera terbaca", () => {
@@ -58,8 +62,8 @@ describe("tombolTandaLabel", () => {
   });
 
   it("sibuk mengganti judulnya, bukan menghilangkan tombolnya", () => {
-    expect(tombolTandaLabel(false, { milikSendiri: false, sibuk: true })).toBe("Mengirim…");
-    expect(tombolTandaLabel(true, { milikSendiri: false, sibuk: true })).toBe("Mengirim…");
+    expect(tombolTandaLabel(false, { milikSendiri: false, sibuk: true })).toBe("Sending…");
+    expect(tombolTandaLabel(true, { milikSendiri: false, sibuk: true })).toBe("Sending…");
   });
 
   it("sibuk TIDAK memunculkan tombol untuk keadaan yang tidak diketahui", () => {
@@ -79,11 +83,16 @@ describe("teksPenandaHadir", () => {
   });
 
   it("nol sungguhan tetap nol", () => {
-    expect(teksPenandaHadir(0)).toBe("0 orang yang ingin bertemu kamu sudah RSVP.");
+    expect(teksPenandaHadir(0)).toBe("0 people who want to meet you have RSVP'd.");
   });
 
   it("angka biasa tampil apa adanya", () => {
-    expect(teksPenandaHadir(3)).toBe("3 orang yang ingin bertemu kamu sudah RSVP.");
+    expect(teksPenandaHadir(3)).toBe("3 people who want to meet you have RSVP'd.");
+  });
+
+  it("satu orang memakai bentuk tunggal", () => {
+    expect(teksPenandaHadir(1)).toBe("1 person who wants to meet you has RSVP'd.");
+    expect(teksKutandaiHadir(1)).toBe("1 match has RSVP'd.");
   });
 });
 
@@ -93,7 +102,7 @@ describe("teksKutandaiHadir", () => {
   });
 
   it("nol sungguhan tetap nol", () => {
-    expect(teksKutandaiHadir(0)).toBe("0 orang yang saling ingin bertemu denganmu sudah RSVP.");
+    expect(teksKutandaiHadir(0)).toBe("0 matches have RSVP'd.");
   });
 
   /**
@@ -103,8 +112,11 @@ describe("teksKutandaiHadir", () => {
    */
   it("menyebut hubungan dua arah, bukan tanda sepihak", () => {
     const teks = teksKutandaiHadir(2);
-    expect(teks).toBe("2 orang yang saling ingin bertemu denganmu sudah RSVP.");
-    expect(teks).toContain("saling");
-    expect(teks).not.toContain("kamu tandai");
+    // "Matches" = istilah Kecocokan (tanda dua arah) di aplikasi; kalimat
+    // lama "people you both want to meet" terbaca seperti orang ketiga
+    // (keputusan pemilik 2026-09-22, review akhir B2 m9a).
+    expect(teks).toBe("2 matches have RSVP'd.");
+    expect(teks).toContain("match");
+    expect(teks).not.toMatch(/you marked/i);
   });
 });
