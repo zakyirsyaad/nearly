@@ -41,6 +41,11 @@ describe("app.config.ts", () => {
     expect(plugin).toEqual(["expo-notifications", { icon: "./assets/notification-icon.png", color: "#f3ba2f" }]);
   });
 
+  it("APK hanya arm64-v8a (spec distribusi D14): ±3× lebih kecil dari APK universal", () => {
+    const plugin = (cfg.plugins ?? []).find((p) => Array.isArray(p) && p[0] === "expo-build-properties");
+    expect(plugin).toEqual(["expo-build-properties", { android: { buildArchs: ["arm64-v8a"] } }]);
+  });
+
   it("tanpa http:// atau IP LAN (spec distribusi D6)", () => {
     const teks = JSON.stringify(cfg);
     expect(teks).not.toContain("http://");
