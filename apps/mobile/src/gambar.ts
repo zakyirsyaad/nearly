@@ -26,4 +26,4 @@ export function mimeGambarDiterima(mimeType: string | null | undefined): MimeGam
 }
 
 export const PESAN_FORMAT_TIDAK_DIDUKUNG =
-  "Format gambar itu belum didukung. Pilih berkas JPEG atau PNG.";
+  "That image format isn't supported yet. Choose a JPEG or PNG file.";

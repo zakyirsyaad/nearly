@@ -1,11 +1,16 @@
 import { useCallback, useState } from "react";
-import { Link, useFocusEffect } from "expo-router";
-import {
-  ActivityIndicator, FlatList, Image, Pressable, StyleSheet, Text, View,
-} from "react-native";
+import { router, useFocusEffect } from "expo-router";
+import { FlatList, Image, Pressable, StyleSheet, View } from "react-native";
+import { FileText } from "lucide-react-native";
 import * as ImagePicker from "expo-image-picker";
 import { lampirGambarTypedData, likeTypedData } from "@nearly/shared";
 import type { Address } from "viem";
+import { KeadaanGalat, KeadaanKosong, KerangkaDaftar } from "@/components/keadaan";
+import { TautanKecil } from "@/components/tautan-kecil";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { Text } from "@/components/ui/text";
+import { RADIUS } from "@/theme/globals";
 import { CONFIG } from "../../../../src/config";
 import type { NearlySigner } from "../../../../src/signer";
 import { useNearlySigner } from "../../../../src/dompet/konteks-dompet";
@@ -19,8 +24,16 @@ import {
 import { aksiTanda } from "../../../../src/meet-actions";
 import { mimeGambarDiterima, PESAN_FORMAT_TIDAK_DIDUKUNG } from "../../../../src/gambar";
 import {
-  alasanMuncul, feedErrorMessage, meetErrorMessage, meetSuccessMessage,
+  alamatSingkat, alasanMuncul, feedErrorMessage, meetErrorMessage, meetSuccessMessage,
+  namaKartuRadar,
 } from "../../../../src/messages";
+import {
+  KOSONG_FEED, labelHapus, labelSuka, labelTandaFeed, TEKS_GAGAL_HAPUS_UNGGAHAN,
+  TEKS_GAGAL_LAPOR_UNGGAHAN, TEKS_GAGAL_MUAT_FEED, TEKS_GAGAL_SUKA, TEKS_GAGAL_UNGGAH_GAMBAR,
+  TEKS_GAMBAR_DIUNGGAH, TEKS_GAMBAR_GAGAL, TEKS_IZIN_GALERI, TEKS_PILIH_ULANG_GAMBAR,
+  TEKS_TULIS_SESUATU,
+} from "../../../../src/teks-feed";
+import { TEKS_GAGAL_MENANDAI, TEKS_LAPOR } from "../../../../src/teks-profil";
 
 export default function FeedScreen() {
   const signer = useNearlySigner(CONFIG.verifyingContract);
@@ -33,6 +46,9 @@ export default function FeedScreen() {
 
 function FeedScreenIsi({ signer }: { signer: NearlySigner }) {
   const [posts, setPosts] = useState<FeedPost[] | null>(null);
+  // Galat MUAT terpisah dari pesan AKSI: "Try again" memuat ulang feed, jadi
+  // ia tidak boleh muncul di bawah kegagalan menyukai atau menghapus.
+  const [galatMuat, setGalatMuat] = useState<string | null>(null);
   const [pesan, setPesan] = useState<string | null>(null);
   // Hapus tidak bisa dibatalkan, jadi butuh dua ketukan. Disimpan sebagai
   // postId, bukan boolean, supaya konfirmasi satu kartu tidak menyalakan
@@ -40,8 +56,7 @@ function FeedScreenIsi({ signer }: { signer: NearlySigner }) {
   const [konfirmasiHapus, setKonfirmasiHapus] = useState<string | null>(null);
   // postId yang sedang dalam proses ditandai, atau null. Dipakai untuk
   // mencegah dua ketukan beruntun mengirim dua permintaan tanda tangan
-  // sekaligus untuk kartu yang sama, dan untuk memberi tahu pengguna bahwa
-  // ketukannya sudah terdaftar (finding #5).
+  // sekaligus untuk kartu yang sama (finding #5).
   const [tandaiBusyId, setTandaiBusyId] = useState<string | null>(null);
 
   const muat = useCallback(async () => {
@@ -51,17 +66,17 @@ function FeedScreenIsi({ signer }: { signer: NearlySigner }) {
       // karena `muat` hanya punya satu pemicu di bawah.
       const { posts } = await getFeed(await kueriBuktiFeed(signer));
       setPosts(posts);
+      setGalatMuat(null);
       setPesan(null);
     } catch (e) {
-      setPosts([]);
-      setPesan(e instanceof ApiError ? feedErrorMessage(e.code) : "Feed gagal dimuat.");
+      // Unggahan yang sudah tampil DIPERTAHANKAN (Ruling B2-12).
+      setGalatMuat(e instanceof ApiError ? feedErrorMessage(e.code) : TEKS_GAGAL_MUAT_FEED);
     }
   }, [signer]);
 
   // useFocusEffect SENDIRIAN, bukan berpasangan dengan useEffect: ia sudah
   // menyala saat layar pertama kali fokus — yaitu saat mount — jadi useEffect
   // di sebelahnya cuma menggandakan `GET /feed` setiap kali layar dibuka.
-  // Pola yang benar sudah ada di events/index.tsx sejak Fase 3a.
   useFocusEffect(useCallback(() => { void muat(); }, [muat]));
 
   /**
@@ -91,30 +106,28 @@ function FeedScreenIsi({ signer }: { signer: NearlySigner }) {
       postId: p.postId, who: signer.address, suka: berikutnya,
       expiresAt: expiresAt.toString(), sig,
     });
-  }, "Gagal menyukai.");
+  }, TEKS_GAGAL_SUKA);
 
   const lapor = (p: FeedPost) => jalankan(
     () => laporUnggahan(signer, p.postId, CONFIG.verifyingContract),
-    "Gagal melaporkan unggahan.",
+    TEKS_GAGAL_LAPOR_UNGGAHAN,
   );
 
   const hapus = (p: FeedPost) => jalankan(
     () => hapusUnggahan(signer, p.postId, CONFIG.verifyingContract),
-    "Gagal menghapus unggahan.",
+    TEKS_GAGAL_HAPUS_UNGGAHAN,
   );
 
   /**
    * Coba unggah lagi setelah `image_status` jadi `failed`. Layar feed TIDAK
-   * memegang byte gambar aslinya — byte itu hanya pernah ada di layar tulis
-   * dan tidak pernah sampai ke Greenfield, justru karena unggahannya gagal.
-   * Jadi tombol ini meminta gambarnya dipilih ulang, bukan berpura-pura bisa
-   * mengulang sendiri. Server memang mengizinkan ini: attachImage menerima
-   * status `failed` (spec §9.1).
+   * memegang byte gambar aslinya — jadi tombol ini meminta gambarnya dipilih
+   * ulang, bukan berpura-pura bisa mengulang sendiri. Server mengizinkan ini:
+   * attachImage menerima status `failed` (spec §9.1).
    */
   const unggahUlang = (p: FeedPost) => jalankan(async () => {
     const izin = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!izin.granted) {
-      setPesan("Nearly butuh izin galeri untuk melampirkan gambar.");
+      setPesan(TEKS_IZIN_GALERI);
       return;
     }
     const hasil = await ImagePicker.launchImageLibraryAsync({
@@ -138,129 +151,124 @@ function FeedScreenIsi({ signer }: { signer: NearlySigner }) {
       postId: p.postId, author: signer.address, mime,
       expiresAt: expiresAt.toString(), sig, dataBase64: aset.base64,
     });
-  }, "Gagal mengunggah gambar.");
+  }, TEKS_GAGAL_UNGGAH_GAMBAR);
 
   async function tandai(p: FeedPost) {
     // Sudah ada permintaan untuk kartu ini yang belum selesai — abaikan
-    // ketukan berikutnya alih-alih mengirim tanda tangan kedua yang
-    // hasilnya bisa datang duluan atau belakangan tanpa urutan pasti.
+    // ketukan berikutnya alih-alih mengirim tanda tangan kedua.
     if (tandaiBusyId === p.postId) return;
     setTandaiBusyId(p.postId);
     try {
       // Layar feed tidak tahu apakah kamu sudah menandai orang ini — bendera
       // itu hanya keluar dengan bukti baca di layar profil. Jadi dari sini
-      // tombolnya SELALU menandai, tidak pernah mencabut. Mencabut dilakukan
-      // dari layar profil, tempat keadaannya diketahui.
+      // tombolnya SELALU menandai, tidak pernah mencabut.
       await aksiTanda(signer, p.author as Address, false);
       setPesan(meetSuccessMessage(true));
     } catch (e) {
-      setPesan(e instanceof ApiError ? meetErrorMessage(e.code) : "Gagal menandai.");
+      setPesan(e instanceof ApiError ? meetErrorMessage(e.code) : TEKS_GAGAL_MENANDAI);
     } finally {
       setTandaiBusyId(null);
     }
   }
 
-  if (posts === null) return <ActivityIndicator style={s.tengah} />;
+  if (posts === null) {
+    return (
+      <View style={s.muat}>
+        {galatMuat ? (
+          <KeadaanGalat kalimat={galatMuat} onCobaLagi={() => void muat()} />
+        ) : (
+          <KerangkaDaftar />
+        )}
+      </View>
+    );
+  }
+
+  const tulisBaru = () => router.push("/feed/new");
 
   return (
-    <View style={s.root}>
-      <Link href="/feed/new" style={s.tulis}>Tulis sesuatu</Link>
-      {pesan && <Text style={s.pesan}>{pesan}</Text>}
-      <FlatList
-        data={posts}
-        keyExtractor={(p) => p.postId}
-        ListEmptyComponent={<Text style={s.kosong}>Belum ada unggahan.</Text>}
-        renderItem={({ item: p }) => {
-          const milikku = bisaHapus(p.author, signer.address);
-          return (
-            <View style={s.kartu}>
-              <Link href={`/profile/${p.author}`} style={s.nama}>
-                {p.displayName.trim() || p.author}
-              </Link>
-              {/* Spec §10.3 — kartu harus menjelaskan kenapa ia muncul. */}
-              <Text style={s.alasan}>{alasanMuncul(p.hop, p.displayName)}</Text>
-              <Text style={s.isi}>{p.body}</Text>
-              {p.imageStatus === "ready" && p.imageUrl
-                ? <Image source={{ uri: p.imageUrl }} style={s.gambar} resizeMode="cover" />
-                : null}
-              {p.imageStatus === "pending"
-                ? <Text style={s.catatan}>Gambar sedang diunggah…</Text> : null}
-              {p.imageStatus === "failed"
-                ? <Text style={s.catatan}>Gambar gagal diunggah.</Text> : null}
+    <FlatList
+      contentContainerStyle={s.daftar}
+      contentInsetAdjustmentBehavior="automatic"
+      data={posts}
+      keyExtractor={(p) => p.postId}
+      ListHeaderComponent={
+        <View style={s.kepala}>
+          {/* Aksi utama di baris pertama (§7.1); keadaan kosong membawa aksinya sendiri. */}
+          {posts.length > 0 ? <Button onPress={tulisBaru}>{TEKS_TULIS_SESUATU}</Button> : null}
+          {galatMuat ? <KeadaanGalat kalimat={galatMuat} onCobaLagi={() => void muat()} /> : null}
+          {pesan ? <Text variant="caption">{pesan}</Text> : null}
+        </View>
+      }
+      ListEmptyComponent={
+        galatMuat ? null : (
+          <KeadaanKosong
+            Ikon={FileText}
+            kalimat={KOSONG_FEED}
+            aksi={{ label: TEKS_TULIS_SESUATU, onPress: tulisBaru }}
+          />
+        )
+      }
+      renderItem={({ item: p }) => {
+        const milikku = bisaHapus(p.author, signer.address);
+        return (
+          <Card style={s.kartu}>
+            <Pressable
+              onPress={() => router.push(`/profile/${p.author}`)}
+              accessibilityRole="button"
+              style={s.penulis}
+            >
+              <Text variant="body" style={s.tebal}>{namaKartuRadar(p.displayName)}</Text>
+              {/* Nama tidak pernah tanpa alamat (R4, anti-impersonasi). */}
+              <Text variant="mono">{alamatSingkat(p.author)}</Text>
+            </Pressable>
+            {/* Spec §10.3 — kartu harus menjelaskan kenapa ia muncul. */}
+            <Text variant="caption">{alasanMuncul(p.hop, p.displayName)}</Text>
+            <Text variant="body">{p.body}</Text>
+            {p.imageStatus === "ready" && p.imageUrl
+              ? <Image source={{ uri: p.imageUrl }} style={s.gambar} resizeMode="cover" />
+              : null}
+            {p.imageStatus === "pending" ? <Text variant="caption">{TEKS_GAMBAR_DIUNGGAH}</Text> : null}
+            {p.imageStatus === "failed" ? <Text variant="caption">{TEKS_GAMBAR_GAGAL}</Text> : null}
 
-              <View style={s.aksi}>
-                <Pressable onPress={() => void suka(p)} hitSlop={8}>
-                  <Text style={s.tombol}>{p.sudahSuka ? "♥" : "♡"} {p.likeCount}</Text>
-                </Pressable>
-
-                <Pressable onPress={() => void lapor(p)} hitSlop={8}>
-                  <Text style={s.tombol}>Lapor</Text>
-                </Pressable>
-
-                {/*
-                  Angka publiknya (inginBertemuCount) TIDAK ditampilkan di sini
-                  (spec §8) — hanya tombolnya. Kartu feed tidak tahu apakah
-                  penulisnya sudah kamu tandai (bendera itu butuh bukti baca,
-                  hanya tersedia di layar profil), jadi tombol ini SELALU
-                  menandai, tidak pernah mencabut.
-
-                  Disembunyikan untuk `milikku`: menandai diri sendiri hanya
-                  bisa gagal (server menolak dengan `tandai_diri`), jadi
-                  menawarkannya di sini adalah tombol yang menjanjikan aksi
-                  yang tidak bisa ia lakukan (finding #4) — kelas kebohongan
-                  yang sama yang ingin dihindari fase ini.
-                */}
-                {!milikku && (
-                  <Pressable
-                    onPress={() => void tandai(p)}
-                    hitSlop={8}
-                    disabled={tandaiBusyId === p.postId}
-                  >
-                    <Text style={s.tombol}>
-                      {tandaiBusyId === p.postId ? "Menandai…" : "Ingin bertemu"}
-                    </Text>
-                  </Pressable>
-                )}
-
-                {milikku && (
-                  <Pressable
-                    onPress={() => (konfirmasiHapus === p.postId
-                      ? void hapus(p)
-                      : setKonfirmasiHapus(p.postId))}
-                    hitSlop={8}
-                  >
-                    <Text style={s.tombol}>
-                      {konfirmasiHapus === p.postId ? "Yakin hapus?" : "Hapus"}
-                    </Text>
-                  </Pressable>
-                )}
-
-                {milikku && p.imageStatus === "failed" && (
-                  <Pressable onPress={() => void unggahUlang(p)} hitSlop={8}>
-                    <Text style={s.tombol}>Pilih ulang gambar</Text>
-                  </Pressable>
-                )}
-              </View>
+            <View style={s.aksi}>
+              <TautanKecil label={labelSuka(p.sudahSuka, p.likeCount)} onPress={() => void suka(p)} />
+              <TautanKecil label={TEKS_LAPOR} onPress={() => void lapor(p)} />
+              {/*
+                Angka publiknya (inginBertemuCount) TIDAK ditampilkan di sini
+                (spec §8) — hanya tombolnya. Disembunyikan untuk `milikku`:
+                menandai diri sendiri hanya bisa gagal (server menolak dengan
+                `tandai_diri`), jadi menawarkannya adalah tombol yang
+                menjanjikan aksi yang tidak bisa ia lakukan (finding #4).
+              */}
+              {!milikku ? (
+                <TautanKecil label={labelTandaFeed(tandaiBusyId === p.postId)} onPress={() => void tandai(p)} />
+              ) : null}
+              {milikku ? (
+                <TautanKecil
+                  label={labelHapus(konfirmasiHapus === p.postId)}
+                  onPress={() => (konfirmasiHapus === p.postId
+                    ? void hapus(p)
+                    : setKonfirmasiHapus(p.postId))}
+                />
+              ) : null}
+              {milikku && p.imageStatus === "failed" ? (
+                <TautanKecil label={TEKS_PILIH_ULANG_GAMBAR} onPress={() => void unggahUlang(p)} />
+              ) : null}
             </View>
-          );
-        }}
-      />
-    </View>
+          </Card>
+        );
+      }}
+    />
   );
 }
 
 const s = StyleSheet.create({
-  root: { flex: 1, padding: 16, gap: 12 },
-  tengah: { flex: 1 },
-  tulis: { fontSize: 17, paddingVertical: 8 },
-  pesan: { fontSize: 14, opacity: 0.8 },
-  kosong: { fontSize: 15, opacity: 0.6, paddingVertical: 24 },
-  kartu: { paddingVertical: 14, gap: 6, borderBottomWidth: StyleSheet.hairlineWidth },
-  nama: { fontSize: 15, fontWeight: "600" },
-  alasan: { fontSize: 12, opacity: 0.6 },
-  isi: { fontSize: 15, lineHeight: 21 },
-  gambar: { width: "100%", height: 200, borderRadius: 12 },
-  catatan: { fontSize: 12, opacity: 0.6, fontStyle: "italic" },
-  aksi: { flexDirection: "row", gap: 18, paddingTop: 4, flexWrap: "wrap" },
-  tombol: { fontSize: 15 },
+  muat: { flex: 1, padding: 16 },
+  daftar: { padding: 16, paddingBottom: 32, gap: 12 },
+  kepala: { gap: 12 },
+  kartu: { gap: 8 },
+  penulis: { flexDirection: "row", flexWrap: "wrap", alignItems: "baseline", gap: 8 },
+  tebal: { fontWeight: "600" },
+  gambar: { width: "100%", height: 200, borderRadius: RADIUS.kartu },
+  aksi: { flexDirection: "row", flexWrap: "wrap", columnGap: 16 },
 });

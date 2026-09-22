@@ -49,7 +49,7 @@ describe("feedErrorMessage: image_unavailable", () => {
   it("punya pesan sendiri, bukan kalimat cadangan", () => {
     const pesan = feedErrorMessage("image_unavailable");
     expect(pesan).not.toBe(feedErrorMessage("kode-yang-tidak-ada"));
-    expect(pesan).toContain("tidak tersedia");
+    expect(pesan).toContain("aren't available");
   });
 
   // Mencoba ulang tidak menolong sampai servernya dikonfigurasi; menyuruhnya

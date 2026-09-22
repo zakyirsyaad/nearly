@@ -72,21 +72,21 @@ export function eventErrorMessage(code: string, reason?: string): string {
 
 const FEED_MESSAGES: Record<string, string> = {
   ...GALAT_JARINGAN,
-  post_exists: "Unggahan dengan id itu sudah ada. Coba tulis ulang.",
-  post_not_found: "Unggahan ini sudah tidak ada.",
-  not_author: "Hanya penulisnya yang bisa mengubah unggahan ini.",
-  image_slot_taken: "Unggahan ini sudah punya gambar. Satu gambar per unggahan.",
-  image_too_large: "Gambarnya terlalu besar. Maksimal 2 MB.",
+  post_exists: "A post with that id already exists. Try writing it again.",
+  post_not_found: "This post no longer exists.",
+  not_author: "Only the author can change this post.",
+  image_slot_taken: "This post already has an image. One image per post.",
+  image_too_large: "The image is too large. 2 MB at most.",
   // Bukan salah penulisnya, dan mencoba ulang tidak akan menolong sampai
   // servernya dikonfigurasi — jadi kalimatnya tidak menyuruh coba lagi.
-  image_unavailable: "Lampiran gambar sedang tidak tersedia. Teksmu tetap terbit.",
-  bad_signature: "Tanda tangan tidak cocok. Coba lagi.",
-  expired: "Permintaannya sudah kedaluwarsa. Coba lagi.",
-  invalid_body: "Ada isian yang belum benar.",
+  image_unavailable: "Image attachments aren't available right now. Your text is still posted.",
+  bad_signature: "The signature doesn't match. Try again.",
+  expired: "This request has expired. Try again.",
+  invalid_body: "Some of the details aren't right yet.",
 };
 
 export function feedErrorMessage(code: string): string {
-  return FEED_MESSAGES[code] ?? "Gagal. Coba lagi sebentar.";
+  return FEED_MESSAGES[code] ?? "Something went wrong. Try again in a moment.";
 }
 
 const MEET_MESSAGES: Record<string, string> = {
@@ -148,11 +148,11 @@ export function alasanMuncul(hop: 0 | 1 | 2 | null, displayName: string): string
   // 0 berarti unggahanmu sendiri. Tanpa cabang ini, unggahan sendiri tiba
   // dengan hop null dan kartunya memberi tahu penulisnya bahwa unggahannya
   // sendiri berada di luar jaringannya sendiri.
-  if (hop === 0) return "Unggahanmu.";
-  const nama = displayName.trim() || "orang ini";
-  if (hop === 1) return `Kamu pernah bertemu ${nama}.`;
-  if (hop === 2) return `Kenalanmu pernah bertemu ${nama}.`;
-  return "Di luar jaringanmu.";
+  if (hop === 0) return "Your post.";
+  const nama = displayName.trim() || "this person";
+  if (hop === 1) return `You've met ${nama}.`;
+  if (hop === 2) return `Someone you know has met ${nama}.`;
+  return "Outside your network.";
 }
 
 /**
