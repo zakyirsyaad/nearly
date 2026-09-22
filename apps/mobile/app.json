@@ -37,6 +37,13 @@
       "expo-image-picker",
       "expo-secure-store",
       [
+        "expo-notifications",
+        {
+          "icon": "./assets/notification-icon.png",
+          "color": "#f3ba2f"
+        }
+      ],
+      [
         "expo-splash-screen",
         {
           "image": "./assets/splash-icon.png",

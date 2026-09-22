@@ -76,3 +76,23 @@ describe("Landing tidak mengklaim berlebihan", () => {
     expect(teks).toContain("verify every connection on-chain");
   });
 });
+
+describe("Landing — Get the app (spec distribusi D10)", () => {
+  const APK = "https://unduh.contoh.id/nearly.apk";
+
+  it("tombol unduh APK tampil bila tautan ada, beserta catatan iPhone", () => {
+    const html = renderToString(Landing({ apkUrl: APK }));
+    expect(html).toContain("Get the app");
+    expect(html).toContain(`href="${APK}"`);
+    expect(html).toContain("Download for Android");
+    expect(teksTerbaca(html)).toContain("iphone: coming soon");
+    expect(html.indexOf("Get the app")).toBeLessThan(html.indexOf("How it works"));
+  });
+
+  it("tidak dirender bila tautan kosong", () => {
+    const html = renderToString(Landing({ apkUrl: null }));
+    expect(html).not.toContain("Get the app");
+    expect(html).not.toContain("Download for Android");
+  });
+});
+

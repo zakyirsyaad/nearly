@@ -16,7 +16,7 @@ import { createBlokirStore } from "./blokir-store";
 import { createPesanStore } from "./pesan-store";
 import { createExpoPush } from "./push";
 import { createGrafStore } from "./graf-store";
-import { bacaPort, bacaWebOrigins } from "./server-env";
+import { bacaHost, bacaPort, bacaWebOrigins } from "./server-env";
 import { createRadarStore } from "./radar-store";
 import { createProfilSayaStore } from "./profil-store";
 import { createPertemuanStore } from "./pertemuan-store";
@@ -106,8 +106,9 @@ const app = createApp({
 });
 
 const port = bacaPort(process.env.PORT);
-serve({ fetch: app.fetch, port });
-console.log(`API Nearly berjalan di http://localhost:${port}`);
+const hostname = bacaHost(process.env.HOST);
+serve({ fetch: app.fetch, port, hostname });
+console.log(`API Nearly berjalan di http://${hostname ?? "localhost"}:${port}`);
 
 // Fase 4b + 5 (spec §4.5, R3): sapuan lokasi saat API mulai. Tanpa await dan
 // tidak pernah melempar; rute detak dan tools/sapu-lokasi.ts menyusul.

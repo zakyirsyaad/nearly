@@ -1,4 +1,5 @@
 import { CHAIN_ID, KONTRAK, tautanBscScan } from "../kontrak";
+import { tautanApk } from "../unduhan";
 
 /**
  * Landing page (spec 6 §6.4). Bahasa Inggris.
@@ -9,7 +10,7 @@ import { CHAIN_ID, KONTRAK, tautanBscScan } from "../kontrak";
  * pengguna, testimoni, logo mitra, atau analitik. Klaim baru tanpa rujukan
  * tidak boleh masuk.
  */
-export function Landing() {
+export function Landing({ apkUrl = tautanApk() }: { apkUrl?: string | null } = {}) {
   return (
     <main className="landing">
       {/* induk §2 (aturan inti), fase 6 §6.4 butir 1 */}
@@ -23,6 +24,21 @@ export function Landing() {
         </p>
         <a className="tombol-utama" href="/live">See the live graph</a>
       </section>
+
+      {/* distribusi D1 (Android dulu lewat APK, iPhone menyusul lewat TestFlight), D4, D10;
+          "stays on your phone" = spec dompet 2026-09-17 (dompet dibuat dan disimpan di HP) */}
+      {apkUrl && (
+        <section className="unduh">
+          <h2>Get the app</h2>
+          <a className="tombol-utama" href={apkUrl}>Download for Android (APK)</a>
+          <ol className="langkah-pasang">
+            <li>Open the downloaded file on your Android phone.</li>
+            <li>If Android asks, allow installing apps from this source.</li>
+            <li>Open Nearly and create your wallet. It stays on your phone.</li>
+          </ol>
+          <p className="catatan">iPhone: coming soon.</p>
+        </section>
+      )}
 
       {/* induk §7.1 (QR 30 detik, verifikasi ko-lokasi, on-chain lewat relayer), §9.4 (satu
           koneksi per pasangan); fase 6 §1 dan §6.4 butir 2 (BNB Smart Chain testnet) */}

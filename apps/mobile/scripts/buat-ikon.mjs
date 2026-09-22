@@ -24,8 +24,8 @@ function svg({ latar, warna, skala }) {
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${SISI}" height="${SISI}" viewBox="0 0 100 100">${kotak}<path transform="translate(${geser} ${geser}) scale(${skala})" d="${path}" fill="${warna}"/></svg>`;
 }
 
-function tulis(nama, isi) {
-  const png = new Resvg(isi, { fitTo: { mode: "width", value: SISI } }).render().asPng();
+function tulis(nama, isi, sisi = SISI) {
+  const png = new Resvg(isi, { fitTo: { mode: "width", value: sisi } }).render().asPng();
   writeFileSync(join(ASET, nama), png);
   console.log(`${nama}: ${png.length} bait`);
 }
@@ -38,3 +38,8 @@ tulis("icon.png", svg({ latar: KUNING, warna: GELAP, skala: 57 / 44 }));
 tulis("adaptive-icon.png", svg({ latar: null, warna: GELAP, skala: 0.9 }));
 // splash-icon.png: transparan, "n" kuning (imageWidth 120 di app.json).
 tulis("splash-icon.png", svg({ latar: null, warna: KUNING, skala: 1 }));
+
+// notification-icon.png: ikon kecil bilah status Android — sistem hanya memakai
+// kanal alfa, jadi "n" putih di atas transparan; warnanya diberi plugin
+// expo-notifications (app.json, "color"). 96×96 = xxxhdpi (spec distribusi D9).
+tulis("notification-icon.png", svg({ latar: null, warna: "#ffffff", skala: 1 }), 96);
