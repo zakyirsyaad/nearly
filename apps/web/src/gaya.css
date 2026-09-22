@@ -252,3 +252,14 @@ button {
   color: #05070d;
   font-weight: 600;
 }
+
+.unduh .langkah-pasang {
+  margin: 16px 0 0;
+  padding-left: 20px;
+}
+
+.unduh .catatan {
+  margin-top: 12px;
+  opacity: 0.7;
+}
+
