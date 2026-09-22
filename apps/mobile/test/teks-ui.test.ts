@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { hitSlopSampai, TARGET_SENTUH } from "../src/aksesibilitas";
 import { alamatSingkat, AWALAN_SHEET_BERTEMU, judulSheetBertemu } from "../src/messages";
-import { hurufAvatar, LENCANA_BERTEMU, LENCANA_RINGKAS, TEKS_COBA_LAGI } from "../src/teks-ui";
+import { hurufAvatar, LENCANA_BERTEMU, LENCANA_RINGKAS, teksSisaKarakter, TEKS_COBA_LAGI } from "../src/teks-ui";
 import { UKURAN } from "../theme/globals";
 
 const ALAMAT = `0x9bE5${"0".repeat(32)}6ffA`;
@@ -62,5 +62,12 @@ describe("hitSlopSampai (spec §3.7)", () => {
 
   it("tautan teks lebar tapi pendek hanya ditambah tingginya", () => {
     expect(hitSlopSampai(100, 20)).toEqual({ top: 14, bottom: 14, left: 0, right: 0 });
+  });
+});
+
+describe("teksSisaKarakter", () => {
+  it("tunggal dan jamak", () => {
+    expect(teksSisaKarakter(1)).toBe("1 character left");
+    expect(teksSisaKarakter(99)).toBe("99 characters left");
   });
 });

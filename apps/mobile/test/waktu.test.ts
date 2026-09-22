@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { formatJam, formatTanggal, formatTanggalJam, sapaan, waktuRelatif } from "../src/waktu";
+import { formatJam, formatTanggal, formatTanggalJam, hariSama, sapaan, waktuRelatif } from "../src/waktu";
 import { baca, tanpaKomentar } from "./support/berkas";
 
 /** Waktu LOKAL — sama dengan cara HP menampilkannya. */
@@ -74,6 +74,14 @@ describe("sapaan Beranda — batas 04:00, 12:00, 18:00 (spec §6.1)", () => {
     expect(sapaan(t(2026, 9, 18, 12, 0))).toBe("Good afternoon");
     expect(sapaan(t(2026, 9, 18, 17, 59))).toBe("Good afternoon");
     expect(sapaan(t(2026, 9, 18, 18, 0))).toBe("Good evening");
+  });
+});
+
+describe("hariSama", () => {
+  it("hari kalender lokal yang sama, bukan selisih 24 jam", () => {
+    expect(hariSama(new Date(2026, 8, 21, 0, 5), new Date(2026, 8, 21, 23, 55))).toBe(true);
+    expect(hariSama(new Date(2026, 8, 20, 23, 55), new Date(2026, 8, 21, 0, 5))).toBe(false);
+    expect(hariSama(new Date(2025, 8, 21, 10), new Date(2026, 8, 21, 10))).toBe(false);
   });
 });
 

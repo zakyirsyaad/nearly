@@ -55,3 +55,8 @@ export function sapaan(t: Date): "Good morning" | "Good afternoon" | "Good eveni
   if (jam >= 12 && jam < 18) return "Good afternoon";
   return "Good evening";
 }
+
+/** Hari kalender lokal yang sama (pemisah hari Percakapan, Ruling B2-11). */
+export function hariSama(a: Date, b: Date): boolean {
+  return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
+}

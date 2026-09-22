@@ -1,3 +1,5 @@
+import { jamak } from "./jamak";
+
 /**
  * Teks antarmuka BARU yang dipakai bersama (spec desain UI §7.3), berbahasa
  * Inggris (§7.4). Kalimat lama tetap di modul asalnya dan diterjemahkan oleh
@@ -23,4 +25,9 @@ export function hurufAvatar(nama: string | null, alamat: string): string {
   if (n) return (Array.from(n)[0] ?? "").toUpperCase();
   const sisa = /^0x/i.test(alamat) ? alamat.slice(2) : alamat;
   return (sisa[0] ?? "?").toUpperCase();
+}
+
+/** Penghitung isian panjang (Percakapan, Unggahan baru): terjemahan "N karakter tersisa". */
+export function teksSisaKarakter(n: number): string {
+  return jamak(n, "character left", "characters left");
 }

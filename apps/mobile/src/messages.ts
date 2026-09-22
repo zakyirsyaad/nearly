@@ -250,29 +250,29 @@ export function blokirTombolLabel(sudahDiblokir: boolean, sibuk: boolean): strin
 
 const PESAN_MESSAGES: Record<string, string> = {
   ...GALAT_JARINGAN,
-  tidak_terhubung: "Pesan hanya bisa dikirim ke orang yang pernah kamu temui.",
+  tidak_terhubung: "Messages can only be sent to people you've met.",
   // Netral dengan sengaja, sama seperti `terblokir` di MEET_MESSAGES (Ruling R8
   // Fase 4a): benar untuk blokir satu arah, tidak mengatakan siapa memblokir.
-  terblokir: "Kamu tidak bisa berkirim pesan dengan orang ini.",
-  belum_siap: "Orang ini belum membuka pesan di Nearly. Coba lagi nanti.",
-  terlalu_cepat: "Terlalu banyak pesan dalam waktu singkat. Tunggu sebentar.",
-  terlalu_besar: "Pesannya terlalu panjang.",
-  pesan_diri: "Kamu tidak bisa mengirim pesan ke dirimu sendiri.",
-  butuh_autentikasi: "Sesi pesan tidak sah. Tutup lalu buka lagi layar ini.",
-  bukti_tidak_sah: "Bukti pesan tidak bisa diverifikasi. Muat ulang percakapan lalu coba lagi.",
-  lapor_diri: "Kamu tidak bisa melaporkan dirimu sendiri.",
-  expired: "Permintaannya sudah kedaluwarsa. Coba lagi.",
-  bad_signature: "Tanda tangan tidak cocok. Coba lagi.",
-  invalid_body: "Ada isian yang belum benar.",
+  terblokir: "You can't message this person.",
+  belum_siap: "This person hasn't opened messages in Nearly yet. Try again later.",
+  terlalu_cepat: "Too many messages in a short time. Wait a moment.",
+  terlalu_besar: "The message is too long.",
+  pesan_diri: "You can't send a message to yourself.",
+  butuh_autentikasi: "Your message session isn't valid. Close this screen, then open it again.",
+  bukti_tidak_sah: "The message evidence can't be verified. Reload the conversation, then try again.",
+  lapor_diri: "You can't report yourself.",
+  expired: "This request has expired. Try again.",
+  bad_signature: "The signature doesn't match. Try again.",
+  invalid_body: "Some of the details aren't right yet.",
 };
 
 export function pesanErrorMessage(code: string): string {
-  return PESAN_MESSAGES[code] ?? "Gagal. Coba lagi sebentar.";
+  return PESAN_MESSAGES[code] ?? "Something went wrong. Try again in a moment.";
 }
 
 /** Fungsi murni supaya layar percakapan tidak mengarang labelnya sendiri (Ruling R4). */
 export function labelKirimPesan(sibuk: boolean): string {
-  return sibuk ? "Mengirim…" : "Kirim";
+  return sibuk ? "Sending…" : "Send";
 }
 
 export function sisaKarakterPesan(isi: string): number {
@@ -290,11 +290,13 @@ export function sisaKarakterPesan(isi: string): number {
  */
 export function petunjukLaporan(jumlahDipilih: number, alasan: string): string | null {
   const kurang: string[] = [];
-  if (jumlahDipilih < 1) kurang.push("Pilih minimal 1 pesan sebagai bukti.");
-  if (jumlahDipilih > MAKS_BUKTI_LAPORAN) kurang.push(`Maksimal ${MAKS_BUKTI_LAPORAN} pesan sebagai bukti.`);
+  if (jumlahDipilih < 1) kurang.push("Select at least 1 message as evidence.");
+  if (jumlahDipilih > MAKS_BUKTI_LAPORAN) kurang.push(`At most ${MAKS_BUKTI_LAPORAN} messages as evidence.`);
   const panjang = alasan.trim().length;
-  if (panjang === 0) kurang.push(`Tulis alasan, minimal ${MIN_ALASAN_LAPORAN} karakter.`);
-  else if (panjang < MIN_ALASAN_LAPORAN) kurang.push(`Alasan kurang ${MIN_ALASAN_LAPORAN - panjang} karakter lagi.`);
+  if (panjang === 0) kurang.push(`Write a reason, at least ${MIN_ALASAN_LAPORAN} characters.`);
+  else if (panjang < MIN_ALASAN_LAPORAN) {
+    kurang.push(`The reason needs ${jamak(MIN_ALASAN_LAPORAN - panjang, "more character", "more characters")}.`);
+  }
   return kurang.length > 0 ? kurang.join(" ") : null;
 }
 
