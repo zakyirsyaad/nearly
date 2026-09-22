@@ -133,20 +133,24 @@ describe("judul layar", () => {
     expect(opsiTampilan("mulai")).toEqual({ headerShown: false });
   });
 
-  it("layar akar tab selain Beranda berjudul besar; layar lain tanpa opsi tambahan (spec §4.7)", () => {
+  // Amandemen §4.7 (keputusan pemilik 2026-09-22): judul besar iOS tidak
+  // tergambar di iOS 26 untuk ScrollView di dalam tab (react-native-screens
+  // #3100, expo #40717) — header kosong. Semua layar memakai header biasa.
+  it("tidak ada layar yang memakai judul besar iOS; layar akar tab berheader biasa", () => {
+    for (const k of Object.keys(JUDUL_LAYAR)) {
+      expect(opsiTampilan(k), k).not.toHaveProperty("headerLargeTitle");
+    }
     for (const k of [
       "(tabs)/(acara)/events/index", "(tabs)/(salaman)/salaman", "(tabs)/(pesan)/pesan/index",
-      "(tabs)/(profil)/profil-saya",
+      "(tabs)/(profil)/profil-saya", "(tabs)/(acara)/events/[id]",
     ]) {
-      expect(opsiTampilan(k), k).toEqual({ headerLargeTitle: true });
+      expect(opsiTampilan(k), k).toEqual({});
     }
-    expect(opsiTampilan("(tabs)/(acara)/events/[id]")).toEqual({});
   });
 
-  // Judul besar iOS hanya memberi ruang yang benar bila isinya ScrollView/
-  // FlatList dengan contentInsetAdjustmentBehavior "automatic" — tanpa itu
-  // bagian atas layar tertutup (uji iPhone 2026-09-19).
-  it("setiap layar akar tab berjudul besar dibangun di wadah gulir yang menyesuaikan inset", () => {
+  // Isi layar akar tab tetap ScrollView/FlatList yang menyesuaikan inset
+  // (uji iPhone 2026-09-19), supaya isinya tidak tertutup header.
+  it("setiap layar akar tab dibangun di wadah gulir yang menyesuaikan inset", () => {
     for (const t of TAB_BAWAH.filter((t) => t.grup !== "(beranda)")) {
       const berkas = `app/(tabs)/${t.grup}/${t.layarAwal}.tsx`;
       expect(baca(berkas), berkas).toContain('contentInsetAdjustmentBehavior="automatic"');

@@ -152,8 +152,8 @@ export function ModePindai({ signerHadir, signerSalaman }: { signerHadir: Nearly
 
   return (
     <View style={s.root}>
-      {/* Persegi, bukan flex: isi layar berada di dalam ScrollView supaya
-          judul besar iOS memberi ruang yang benar (spec §4.7). */}
+      {/* Persegi, bukan flex: isi layar berada di dalam ScrollView, dan anak
+          `flex: 1` di dalam ScrollView tidak punya tinggi (Ruling B1-4). */}
       <View style={[s.jendela, { borderColor: garis }]}>
         <CameraView
           style={s.cam}

@@ -4,9 +4,9 @@ import { baca, tanpaKomentar } from "./support/berkas";
 const layar = () => tanpaKomentar(baca("app/(tabs)/(profil)/profil-saya.tsx"));
 
 describe("Profil (tab) baru (spec desain UI §7.1)", () => {
-  it("memakai judul besar iOS", async () => {
+  it("memakai header biasa, bukan judul besar iOS (amandemen §4.7, 2026-09-22)", async () => {
     const { opsiTampilan } = await import("../theme/navigasi");
-    expect(opsiTampilan("(tabs)/(profil)/profil-saya").headerLargeTitle).toBe(true);
+    expect(opsiTampilan("(tabs)/(profil)/profil-saya")).toEqual({});
   });
 
   it("isi berada di dalam ScrollView dengan penyesuaian inset otomatis (§4.7)", () => {

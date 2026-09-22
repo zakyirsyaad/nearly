@@ -457,6 +457,12 @@ Layar tab **tidak dilepas** saat berpindah tab (berbeda dengan Stack lama, yang 
 
 ### 4.7 Judul layar
 
+*Diamandemen 2026-09-22 (uji iPhone Rencana B2, keputusan pemilik):* **judul besar iOS tidak dipakai lagi.** Di iOS 26
+`headerLargeTitle` tidak tergambar untuk ScrollView di dalam tab — header kosong sampai layar digulir
+(react-native-screens #3100, expo #40717). Layar akar tab Events, Handshake, Messages, dan Profile memakai header biasa
+(judul kecil); isinya tetap ScrollView/FlatList dengan `contentInsetAdjustmentBehavior="automatic"`. Warna judul header
+ditulis eksplisit (`text`) supaya tidak mengikuti label sistem iOS. Paragraf di bawah dipertahankan sebagai riwayat.
+
 *Ditambahkan 2026-09-19 (uji iPhone Rencana A):* judul besar iOS (`headerLargeTitle`) di layar akar tab dan Beranda
 tanpa header hanya berlaku untuk layar di `LAYAR_TERMIGRASI`. Judul besar hanya memberi ruang yang benar bila isi
 layar berupa `ScrollView` dengan `contentInsetAdjustmentBehavior="automatic"` — layar lama bukan ScrollView dan

@@ -1,6 +1,5 @@
 import { Colors } from "./colors";
 import { FONT } from "./globals";
-import { TAB_BAWAH } from "../src/judul-layar";
 
 const warna = Colors.dark;
 
@@ -13,33 +12,25 @@ const warna = Colors.dark;
 export const OPSI_STACK = {
   headerStyle: { backgroundColor: warna.background },
   headerTintColor: warna.text,
-  // Warna judul EKSPLISIT: expo-router 57 tidak memakai headerTintColor untuk
-  // judul besar, dan warna label sistem iOS hitam saat iPhone bertampilan
-  // terang — judul besar tak terlihat di latar gelap (uji iPhone 2026-09-22).
+  // Warna judul EKSPLISIT, tidak bergantung pada label sistem iOS (hitam saat
+  // iPhone bertampilan terang). Tidak ada judul besar: iOS 26 tidak
+  // menggambarnya untuk ScrollView di dalam tab (amandemen §4.7, 2026-09-22).
   headerTitleStyle: { fontFamily: FONT.semibold, color: warna.text },
-  headerLargeStyle: { backgroundColor: warna.background },
-  headerLargeTitleStyle: { fontFamily: FONT.bold, color: warna.text },
   contentStyle: { backgroundColor: warna.background },
 };
 
 /** Tanpa header: Beranda (sapaan besar menggantikannya) dan Mulai (logo "n") — spec §4.7, §3.7. */
 const TANPA_HEADER: ReadonlySet<string> = new Set(["(tabs)/(beranda)/index", "mulai"]);
 
-/** Layar akar tab selain Beranda: header besar dengan judul di atas (spec §4.7). */
-const AKAR_TAB_JUDUL_BESAR: ReadonlySet<string> = new Set(
-  TAB_BAWAH.filter((t) => t.grup !== "(beranda)").map((t) => `(tabs)/${t.grup}/${t.layarAwal}`),
-);
-
-export type OpsiTampilan = { headerShown?: false; headerLargeTitle?: true };
+export type OpsiTampilan = { headerShown?: false };
 
 /**
- * Opsi tambahan per layar, berkunci kunci JUDUL_LAYAR. Judul besar iOS hanya
- * memberi ruang yang benar bila isi layarnya ScrollView/FlatList dengan
- * contentInsetAdjustmentBehavior "automatic" (dijaga test/judul-layar.test.ts).
+ * Opsi tambahan per layar, berkunci kunci JUDUL_LAYAR. Layar akar tab memakai
+ * header biasa, bukan judul besar iOS: di iOS 26 judul besar tidak tergambar
+ * untuk ScrollView di dalam tab — header kosong sampai digulir
+ * (react-native-screens #3100, expo #40717; keputusan pemilik 2026-09-22,
+ * amandemen spec §4.7).
  */
 export function opsiTampilan(kunci: string): OpsiTampilan {
-  return {
-    ...(TANPA_HEADER.has(kunci) ? { headerShown: false as const } : {}),
-    ...(AKAR_TAB_JUDUL_BESAR.has(kunci) ? { headerLargeTitle: true as const } : {}),
-  };
+  return TANPA_HEADER.has(kunci) ? { headerShown: false } : {};
 }
