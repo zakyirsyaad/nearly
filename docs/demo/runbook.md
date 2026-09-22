@@ -104,8 +104,7 @@ journalctl -u nearly-api -n 50 --no-pager      # kalau gagal: env apa yang kuran
 
 ### 1.5 Caddy dan DNS
 
-1. Di pengelola DNS domainmu: rekaman **A** `api.<domain>` → `<vps>`. Tunggu sampai
-   `dig +short api.<domain>` mengembalikan `<vps>`.
+1. Di pengelola DNS domainmu: rekaman **A** `api.<domain>` dan `unduh.<domain>` → `<vps>`. Tunggu sampai `dig +short api.<domain>` dan `dig +short unduh.<domain>` mengembalikan `<vps>`.
 2. Pasang Caddyfile dan beri tahu Caddy nama host-nya:
 
 ```bash
@@ -114,7 +113,8 @@ sudo systemctl edit caddy
 #   tambahkan di bagian yang dibuka editor:
 #   [Service]
 #   Environment=NEARLY_API_HOST=api.<domain>
-sudo NEARLY_API_HOST=api.<domain> caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile
+#   Environment=NEARLY_DOWNLOAD_HOST=unduh.<domain>
+sudo NEARLY_API_HOST=api.<domain> NEARLY_DOWNLOAD_HOST=unduh.<domain> caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile
 sudo systemctl restart caddy
 ```
 
@@ -173,6 +173,23 @@ sudo -u nearly corepack pnpm install --frozen-lockfile
 sudo systemctl restart nearly-api
 ```
 
+### 1.7 Unduhan APK (`unduh.<domain>`)
+
+Folder yang dilayani blok kedua Caddyfile (spec distribusi D4):
+
+```bash
+sudo mkdir -p /srv/nearly/unduh
+sudo chown "$USER" /srv/nearly/unduh      # pengguna SSH-mu yang mengunggah
+```
+
+Setiap APK baru (dari bagian 3.4) diunggah dari laptop dengan nama tetap:
+
+```bash
+scp ~/Downloads/<berkas-dari-eas>.apk <user>@<vps>:/srv/nearly/unduh/nearly.apk
+curl -sI https://unduh.<domain>/nearly.apk | grep -i "content-type\|content-length"
+# content-type: application/vnd.android.package-archive
+```
+
 ---
 
 ## 2. Vercel — Web
@@ -182,7 +199,7 @@ sudo systemctl restart nearly-api
 3. **Environment Variables:** `VITE_API_URL` = `https://api.<domain>` (Production dan Preview).
    `VITE_*` ikut terbundel ke browser — jangan pernah menaruh rahasia di sana. Nilai ini dibaca **saat
    build**: menambah atau mengubahnya setelah deploy butuh **Redeploy**. Build tanpa nilai ini
-   menampilkan **API not configured: set VITE_API_URL and redeploy** di `/live`.
+   menampilkan **API not configured: set VITE_API_URL and redeploy** di `/live`. `VITE_APK_URL` = `https://unduh.<domain>/nearly.apk` (Production) — tanpa nilai ini bagian **Get the app** di landing tidak tampil (spec distribusi D10). Isi setelah APK pertama diunggah (bagian 1.7), lalu Redeploy.
 4. Repo memakai `packageManager: pnpm@11.x`. Kalau build Vercel gagal karena versi pnpm, tambahkan
    env `ENABLE_EXPERIMENTAL_COREPACK` = `1` lalu deploy ulang.
 5. Setelah deploy: tambahkan `https://<vercel-domain>` (dan domain kustom web bila ada) ke
@@ -199,15 +216,71 @@ curl -s -D - -o /dev/null -H "Origin: https://<vercel-domain>" https://api.<doma
 
 ---
 
-## 3. Aplikasi mobile
+## 3. Aplikasi mobile — APK Android lewat EAS (spec distribusi)
 
-1. Di **`apps/mobile/.env`** (BUKAN `.env` di root repo): `EXPO_PUBLIC_API_URL=https://api.<domain>`.
-2. Jalankan ulang Metro dengan cache bersih: `cd apps/mobile && npx expo start -c`.
-3. Dengan domain HTTPS, HP tidak lagi bergantung pada IP Wi-Fi Mac — HP dan laptop boleh di jaringan berbeda.
-4. **Hapus nilai `EXPO_PUBLIC_DEV_PRIVATE_KEY` dari `apps/mobile/.env`.** Aplikasi tidak lagi membacanya:
-   setiap HP membuat dompetnya sendiri di layar **Get started** saat pertama dibuka. Untuk memakai identitas uji
-   lama di HP pengembang, pilih **Import private key (development only)** — tombol itu hanya ada saat
-   Metro berjalan dalam mode pengembangan.
+Peserta memasang **aplikasi sendiri**, bukan Expo Go. Semua perintah dari `apps/mobile`, di laptop
+pemilik, dengan `npx eas-cli@latest` (atau `npm i -g eas-cli`, lalu `eas login` sekali).
+
+### 3.1 Pengembangan lokal (tidak berubah)
+
+`apps/mobile/.env` (BUKAN `.env` root) hanya dibaca Metro di laptop. Untuk Expo Go dengan API
+produksi: `EXPO_PUBLIC_API_URL=https://api.<domain>`, lalu `npx expo start -c`. Build EAS **tidak**
+membaca berkas ini. Nilai `EXPO_PUBLIC_DEV_PRIVATE_KEY` di berkas itu boleh dihapus: setiap HP
+membuat dompetnya sendiri di layar **Get started**.
+
+### 3.2 Nilai env untuk build (sekali, lalu setiap kali berubah)
+
+Build dan update membaca EAS environment variables (spec distribusi D6):
+
+```bash
+eas env:create --environment preview --name EXPO_PUBLIC_API_URL --value https://api.<domain> --visibility plaintext
+eas env:create --environment preview --name EXPO_PUBLIC_CONNECTION_REGISTRY --value <alamat> --visibility plaintext
+eas env:create --environment preview --name EXPO_PUBLIC_VOUCH_REGISTRY --value <alamat> --visibility plaintext
+eas env:create --environment preview --name EXPO_PUBLIC_ATTENDANCE_REGISTRY --value <alamat> --visibility plaintext
+eas env:list --environment preview
+```
+
+Alamat kontrak = nilai yang sama dengan `/etc/nearly/api.env`. Tanpa keempatnya aplikasi berhenti
+saat dibuka (`src/config.ts`). `EXPO_PUBLIC_*` ikut terbundel ke aplikasi — jangan pernah menaruh
+rahasia di sana.
+
+### 3.3 Notifikasi push (Firebase, sekali)
+
+1. [console.firebase.google.com](https://console.firebase.google.com) → proyek baru (Analytics
+   boleh dimatikan) → **Add app → Android**, package `app.nearly.mobile` → unduh
+   `google-services.json`. Berkas ini tidak di-commit (`.gitignore`).
+2. Simpan sebagai EAS file variable (spec distribusi D7):
+   `eas env:create --environment preview --name GOOGLE_SERVICES_JSON --type file --value ./google-services.json --visibility secret`
+3. Firebase → **Project settings → Service accounts → Generate new private key** (JSON). Unggah:
+   `eas credentials -p android` → profil `preview` → **Google Service Account → Manage your Google
+   Service Account Key for Push Notifications (FCM V1)** → pilih berkas JSON tadi. Hapus berkas JSON
+   itu dari laptop setelah terunggah.
+
+### 3.4 Build APK
+
+```bash
+eas build -p android --profile preview
+```
+
+±15 menit di antrean gratis. Unduh APK dari tautan yang dicetak, lalu unggah ke VPS (bagian 1.7).
+`versionCode` naik otomatis, jadi APK baru terpasang di atas APK lama dan dompet di HP tetap ada.
+
+Uji penerimaan (spec distribusi §6): pasang dari landing di HP Android nyata → buat dompet →
+salaman dengan perangkat kedua → kirim pesan dari perangkat kedua saat aplikasi di latar belakang →
+notifikasi muncul, ketuk membuka Percakapan.
+
+### 3.5 Memperbarui tanpa build ulang (EAS Update)
+
+Perubahan yang hanya menyentuh JavaScript/TypeScript:
+
+```bash
+eas update --channel preview --environment preview --message "<ringkas perubahan>"
+```
+
+HP mengunduh pembaruan saat aplikasi dibuka, dan memakainya pada pembukaan berikutnya. Perubahan
+**native** (dependensi baru dengan kode native, plugin/izin di `app.json`, ikon) tidak bisa lewat
+update: naikkan `version` di `app.json` (mis. `0.2.0` → `0.3.0`), build ulang (3.4), unggah APK baru.
+`runtimeVersion` mengikuti `version`, jadi update untuk 0.3.0 tidak pernah sampai ke APK 0.2.0.
 
 ---
 
@@ -348,3 +421,21 @@ Pembuatan video di luar kode. Adegan:
    tetap mendekati nol.
 5. **Batas yang jujur (2:30–3:00).** Nearly membuktikan manusia hadir, bukan bahwa ia orang baik;
    sybil multi-perangkat dideteksi, belum dicegah.
+
+---
+
+## 8. iPhone — TestFlight (tahap 2, spec distribusi §7)
+
+Belum dijalankan. Prasyarat: **Apple Developer Program** ($99/tahun) atas nama pemilik. Tidak perlu
+Xcode: EAS membangun di cloud dan membuat sertifikat, profil provisioning, dan kunci APNs push.
+
+1. Env `production`: ulangi bagian 3.2 dengan `--environment production` (API dan alamat kontrak yang
+   sama). Push iOS lewat APNs tidak memakai `google-services.json`.
+2. `eas build -p ios --profile production` — pertama kali, login Apple ID dan biarkan EAS membuat
+   kredensial (termasuk kunci push).
+3. `eas submit -p ios --latest` — pilih/buat app di App Store Connect saat ditanya.
+4. App Store Connect → TestFlight → **External Testing** → grup baru → tambahkan build → isi
+   informasi uji → kirim ke **Beta App Review** (±1–2 hari, sekali per versi).
+5. Setelah disetujui: aktifkan **Public Link**, taruh di landing menggantikan "iPhone: coming soon".
+6. Pembaruan JS: `eas update --channel production --environment production --message "…"`.
+
