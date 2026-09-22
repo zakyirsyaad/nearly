@@ -108,6 +108,15 @@ describe("tema gelap navigasi (spec §3.2)", () => {
     expect(OPSI_STACK.headerTintColor).toBe(Colors.dark.text);
   });
 
+  // expo-router 57 mengambil warna judul besar HANYA dari
+  // headerLargeTitleStyle.color (tidak jatuh ke headerTintColor). Tanpa warna
+  // eksplisit iOS memakai label sistem — hitam saat iPhone bertampilan terang,
+  // sehingga judul "Profile" tak terlihat di latar gelap (uji iPhone 2026-09-22).
+  it("judul besar dan judul biasa berwarna token teks secara eksplisit", () => {
+    expect(OPSI_STACK.headerLargeTitleStyle.color).toBe(Colors.dark.text);
+    expect(OPSI_STACK.headerTitleStyle.color).toBe(Colors.dark.text);
+  });
+
   // Sejak Rencana B2 setiap layar bertampilan baru (Ruling B2-16): latar isi
   // gelap bawaan setiap Stack, bukan opsi per layar.
   it("setiap Stack memberi latar isi gelap; opsi per layar tidak mengulanginya", () => {

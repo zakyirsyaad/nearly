@@ -13,9 +13,12 @@ const warna = Colors.dark;
 export const OPSI_STACK = {
   headerStyle: { backgroundColor: warna.background },
   headerTintColor: warna.text,
-  headerTitleStyle: { fontFamily: FONT.semibold },
+  // Warna judul EKSPLISIT: expo-router 57 tidak memakai headerTintColor untuk
+  // judul besar, dan warna label sistem iOS hitam saat iPhone bertampilan
+  // terang — judul besar tak terlihat di latar gelap (uji iPhone 2026-09-22).
+  headerTitleStyle: { fontFamily: FONT.semibold, color: warna.text },
   headerLargeStyle: { backgroundColor: warna.background },
-  headerLargeTitleStyle: { fontFamily: FONT.bold },
+  headerLargeTitleStyle: { fontFamily: FONT.bold, color: warna.text },
   contentStyle: { backgroundColor: warna.background },
 };
 
