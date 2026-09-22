@@ -1,5 +1,4 @@
 import { describe, expect, it } from "vitest";
-import { LAYAR_TERMIGRASI } from "../src/judul-layar";
 import { baca, tanpaKomentar } from "./support/berkas";
 
 const beranda = () => tanpaKomentar(baca("app/(tabs)/(beranda)/index.tsx"));
@@ -7,8 +6,7 @@ const beranda = () => tanpaKomentar(baca("app/(tabs)/(beranda)/index.tsx"));
 // Tes baca-kode (tidak ada harness render RN), pola yang sama dengan
 // test/salaman.test.ts.
 describe("Beranda baru (spec desain UI §6.1)", () => {
-  it("terdaftar termigrasi, sehingga tanpa header dan berlatar gelap", async () => {
-    expect(LAYAR_TERMIGRASI.has("(tabs)/(beranda)/index")).toBe(true);
+  it("tanpa header dan berlatar gelap", async () => {
     const { opsiTampilan } = await import("../theme/navigasi");
     expect(opsiTampilan("(tabs)/(beranda)/index").headerShown).toBe(false);
   });

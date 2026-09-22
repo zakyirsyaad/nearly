@@ -1,14 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { LAYAR_TERMIGRASI } from "../src/judul-layar";
 import { baca, tanpaKomentar } from "./support/berkas";
 
 const profil = () => tanpaKomentar(baca("app/profile/[address].tsx"));
 
 describe("urutan Profil orang (keputusan #16A)", () => {
-  it("terdaftar termigrasi", () => {
-    expect(LAYAR_TERMIGRASI.has("profile/[address]")).toBe(true);
-  });
-
   it("baris aksi berada di bawah kepala dan SEBELUM kartu Trust", () => {
     const isi = profil().slice(profil().indexOf("return ("));
     const kepala = isi.indexOf("UKURAN.avatarKepala");

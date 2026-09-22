@@ -108,9 +108,13 @@ describe("tema gelap navigasi (spec §3.2)", () => {
     expect(OPSI_STACK.headerTintColor).toBe(Colors.dark.text);
   });
 
-  // Ruling A2: layar yang belum dimigrasi tetap berlatar terang.
-  it("latar isi gelap tidak diberikan ke layar yang belum dimigrasi", () => {
-    expect(opsiTampilan("mulai", new Set())).toEqual({});
+  // Sejak Rencana B2 setiap layar bertampilan baru (Ruling B2-16): latar isi
+  // gelap bawaan setiap Stack, bukan opsi per layar.
+  it("setiap Stack memberi latar isi gelap; opsi per layar tidak mengulanginya", () => {
+    expect(OPSI_STACK.contentStyle.backgroundColor).toBe(Colors.dark.background);
+    for (const k of ["mulai", "(tabs)/(acara)/events/[id]", "(tabs)/(pesan)/pesan/index"]) {
+      expect(opsiTampilan(k), k).not.toHaveProperty("contentStyle");
+    }
   });
 
   it("root layout tidak membaca skema warna OS; useColorScheme selalu gelap", () => {

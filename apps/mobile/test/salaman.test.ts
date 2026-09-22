@@ -113,9 +113,4 @@ describe("judul besar layar Handshake (spec §4.7, amandemen 2026-09-19)", () =>
     expect(isi).toContain('contentInsetAdjustmentBehavior="automatic"');
     expect(isi).toContain("<ScrollView");
   });
-
-  it("kuncinya terdaftar di LAYAR_TERMIGRASI", async () => {
-    const { LAYAR_TERMIGRASI } = await import("../src/judul-layar");
-    expect(LAYAR_TERMIGRASI.has("(tabs)/(salaman)/salaman")).toBe(true);
-  });
 });

@@ -2,7 +2,6 @@
 // yang dikumpulkan vitest).
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { join, relative, sep } from "node:path";
-import { LAYAR_TERMIGRASI } from "../../src/judul-layar";
 
 export const MOBILE = join(__dirname, "..", "..");
 
@@ -27,50 +26,31 @@ export function tanpaKomentar(isi: string): string {
 }
 
 /**
- * Komponen yang dipindah apa adanya dari app/ dan belum dimigrasi ke tampilan
- * baru (Ruling A4). Rencana B mengosongkan himpunan ini.
- */
-export const KOMPONEN_BELUM_DIMIGRASI: ReadonlySet<string> = new Set<string>([
-  // Kosong sejak Rencana B1 kelompok (a): kedua mode Salaman sudah dimigrasi.
-  // Konstantanya dipertahankan untuk komponen yang dipindah apa adanya di
-  // Rencana B2 (Pesan, Radar); B2 menghapusnya bila tidak terpakai.
-]);
-
-/**
  * Kode bertampilan baru selain salinan BNA: wajib token, skala jarak, dan
- * komponen teks BNA (spec desain UI §3.7, §10.1).
+ * komponen teks BNA (spec desain UI §3.7, §10.1). Sejak Rencana B2 mencakup
+ * SELURUH app/ (Ruling B2-16).
  */
 export function kodeTampilanBaru(): string[] {
   return [
-    ...semuaBerkas("components").filter(
-      (b) => !b.startsWith("components/ui/") && !KOMPONEN_BELUM_DIMIGRASI.has(b),
-    ),
+    ...semuaBerkas("components").filter((b) => !b.startsWith("components/ui/")),
     ...semuaBerkas("hooks"),
     ...semuaBerkas("theme"),
-    ...layoutApp(),
-    ...layarTermigrasi(),
+    ...semuaBerkas("app"),
   ];
 }
 
-/** Semua _layout.tsx di app/ — ditulis dengan komponen BNA sejak Rencana A. */
+/** Semua _layout.tsx di app/. */
 export function layoutApp(): string[] {
   return semuaBerkas("app").filter((b) => b.endsWith("/_layout.tsx"));
-}
-
-/** Berkas layar yang sudah dimigrasi Rencana B (kunci LAYAR_TERMIGRASI → berkas). */
-export function layarTermigrasi(): string[] {
-  return [...LAYAR_TERMIGRASI].map((k) => `app/${k}.tsx`);
 }
 
 /** Berkas yang dilarang memuat literal warna (spec §10.1). */
 export function berkasTanpaWarna(): string[] {
   return [
-    ...semuaBerkas("components").filter((b) => !KOMPONEN_BELUM_DIMIGRASI.has(b)),
+    ...semuaBerkas("components"),
     ...semuaBerkas("hooks"),
     ...semuaBerkas("theme").filter((b) => b !== "theme/colors.ts"),
-    // src/warna.ts dihapus Rencana B bersama <TextInput> lama terakhir (Ruling A3).
-    ...semuaBerkas("src").filter((b) => b !== "src/warna.ts"),
-    ...layoutApp(),
-    ...layarTermigrasi(),
+    ...semuaBerkas("src"),
+    ...semuaBerkas("app"),
   ];
 }

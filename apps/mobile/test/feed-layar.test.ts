@@ -1,13 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { LAYAR_TERMIGRASI } from "../src/judul-layar";
 import { baca, tanpaKomentar } from "./support/berkas";
 
 const feed = () => tanpaKomentar(baca("app/(tabs)/(beranda)/feed/index.tsx"));
 const tulis = () => tanpaKomentar(baca("app/(tabs)/(beranda)/feed/new.tsx"));
 
 describe("Feed (spec §7.1 pola daftar)", () => {
-  it("dimigrasi; FlatList", () => {
-    expect(LAYAR_TERMIGRASI.has("(tabs)/(beranda)/feed/index")).toBe(true);
+  it("FlatList", () => {
     expect(feed()).toContain('contentInsetAdjustmentBehavior="automatic"');
   });
 
@@ -35,8 +33,7 @@ describe("Feed (spec §7.1 pola daftar)", () => {
 });
 
 describe("Unggahan baru (spec §7.1 pola formulir)", () => {
-  it("dimigrasi; Input BNA, tanpa WARNA", () => {
-    expect(LAYAR_TERMIGRASI.has("(tabs)/(beranda)/feed/new")).toBe(true);
+  it("Input BNA, tanpa WARNA", () => {
     const x = tulis();
     expect(x).toContain("<Input");
     expect(x).not.toContain("WARNA");

@@ -1,14 +1,12 @@
 import { describe, expect, it } from "vitest";
 import { UKURAN } from "../theme/globals";
-import { LAYAR_TERMIGRASI } from "../src/judul-layar";
 import { baca, tanpaKomentar } from "./support/berkas";
 
 const daftar = () => tanpaKomentar(baca("app/(tabs)/(pesan)/pesan/index.tsx"));
 const obrolan = () => tanpaKomentar(baca("app/(tabs)/(pesan)/pesan/[address].tsx"));
 
 describe("daftar Pesan (spec §7.1 pola daftar, §4.7)", () => {
-  it("dimigrasi; FlatList judul besar", () => {
-    expect(LAYAR_TERMIGRASI.has("(tabs)/(pesan)/pesan/index")).toBe(true);
+  it("FlatList judul besar", () => {
     expect(daftar()).toContain('contentInsetAdjustmentBehavior="automatic"');
   });
 
@@ -34,10 +32,6 @@ describe("daftar Pesan (spec §7.1 pola daftar, §4.7)", () => {
 });
 
 describe("Percakapan (spec §6.5, R6)", () => {
-  it("dimigrasi", () => {
-    expect(LAYAR_TERMIGRASI.has("(tabs)/(pesan)/pesan/[address]")).toBe(true);
-  });
-
   it("kepala: avatar, nama dari satu GET /profile publik, alamat singkat, terenkripsi, menu ⋯ berlabel", () => {
     const x = obrolan();
     expect(x).toContain("req<{ displayName?: string }>(`/profile/${lawan}`)");
@@ -88,8 +82,7 @@ describe("Percakapan (spec §6.5, R6)", () => {
 const lapor = () => tanpaKomentar(baca("app/(tabs)/(pesan)/pesan/lapor/[address].tsx"));
 
 describe("Lapor pesan (spec §7.1 pola formulir)", () => {
-  it("dimigrasi; Input BNA, tanpa WARNA", () => {
-    expect(LAYAR_TERMIGRASI.has("(tabs)/(pesan)/pesan/lapor/[address]")).toBe(true);
+  it("Input BNA, tanpa WARNA", () => {
     const x = lapor();
     expect(x).toContain("<Input");
     expect(x).not.toContain("WARNA");

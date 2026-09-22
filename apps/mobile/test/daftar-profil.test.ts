@@ -1,15 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { LAYAR_TERMIGRASI } from "../src/judul-layar";
 import { baca, tanpaKomentar } from "./support/berkas";
 
 const koneksi = () => tanpaKomentar(baca("app/(tabs)/(profil)/connections.tsx"));
 const kecocokan = () => tanpaKomentar(baca("app/(tabs)/(profil)/kecocokan.tsx"));
 
 describe("layar Koneksi (spec §7.1 pola daftar)", () => {
-  it("terdaftar termigrasi", () => {
-    expect(LAYAR_TERMIGRASI.has("(tabs)/(profil)/connections")).toBe(true);
-  });
-
   it("daftar menyesuaikan inset supaya judul besar bekerja (§4.7)", () => {
     expect(koneksi()).toContain('contentInsetAdjustmentBehavior="automatic"');
   });
@@ -34,10 +29,6 @@ describe("layar Koneksi (spec §7.1 pola daftar)", () => {
 });
 
 describe("layar Kecocokan (spec §7.1, §7.2)", () => {
-  it("terdaftar termigrasi", () => {
-    expect(LAYAR_TERMIGRASI.has("(tabs)/(profil)/kecocokan")).toBe(true);
-  });
-
   it("kartu memakai KartuOrang dengan lencana dan tier", () => {
     const isi = kecocokan();
     expect(isi).toContain("<KartuOrang");

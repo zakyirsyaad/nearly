@@ -94,38 +94,3 @@ export function layarDalam(induk: string): [string, string][] {
     .filter(([kunci]) => kunci.startsWith(awalan))
     .map(([kunci, judul]): [string, string] => [kunci.slice(awalan.length), judul]);
 }
-
-/**
- * Kunci JUDUL_LAYAR yang layarnya sudah dimigrasi ke tampilan baru (Rencana B).
- * Hanya layar ini yang mendapat latar isi gelap dari Stack (Ruling A2), dan
- * hanya layar ini yang dijaga penjaga tampilan baru (test/support/berkas.ts).
- * Rencana A: kosong.
- */
-export const LAYAR_TERMIGRASI: ReadonlySet<string> = new Set<string>([
-  // Rencana B1 kelompok (a) — Handshake (spec §9 langkah 5a).
-  "(tabs)/(salaman)/salaman",
-  // Rencana B1 kelompok (b) — Beranda (spec §9 langkah 5b).
-  "(tabs)/(beranda)/index",
-  // Rencana B1 kelompok (c) — Profil orang (spec §9 langkah 5c).
-  "profile/[address]",
-  // Rencana B1 kelompok (d) — Profil sendiri (spec §9 langkah 5d).
-  "(tabs)/(profil)/profil-saya",
-  "(tabs)/(profil)/connections",
-  "(tabs)/(profil)/kecocokan",
-  "(tabs)/(profil)/dompet",
-  "(tabs)/(profil)/blokir",
-  // Rencana B2 kelompok (d) — Acara (spec §9 langkah 5d).
-  "(tabs)/(acara)/events/index",
-  "(tabs)/(acara)/events/[id]",
-  "(tabs)/(acara)/events/new",
-  "(tabs)/(acara)/events/[id]/host-qr",
-  "(tabs)/(acara)/radar/[eventId]",
-  // Rencana B2 kelompok (e) — Pesan (spec §9 langkah 5e).
-  "(tabs)/(pesan)/pesan/index",
-  "(tabs)/(pesan)/pesan/[address]",
-  "(tabs)/(pesan)/pesan/lapor/[address]",
-  // Rencana B2 kelompok (f) — layar sisa (spec §9 langkah 5f).
-  "(tabs)/(beranda)/feed/index",
-  "(tabs)/(beranda)/feed/new",
-  "mulai",
-]);

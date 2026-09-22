@@ -1,12 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { LAYAR_TERMIGRASI } from "../src/judul-layar";
 import { baca, tanpaKomentar } from "./support/berkas";
 
 const layar = () => tanpaKomentar(baca("app/(tabs)/(profil)/profil-saya.tsx"));
 
 describe("Profil (tab) baru (spec desain UI §7.1)", () => {
-  it("terdaftar termigrasi dan memakai judul besar iOS", async () => {
-    expect(LAYAR_TERMIGRASI.has("(tabs)/(profil)/profil-saya")).toBe(true);
+  it("memakai judul besar iOS", async () => {
     const { opsiTampilan } = await import("../theme/navigasi");
     expect(opsiTampilan("(tabs)/(profil)/profil-saya").headerLargeTitle).toBe(true);
   });

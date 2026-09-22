@@ -2,9 +2,10 @@ import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { join, relative, sep } from "node:path";
 import { describe, expect, it } from "vitest";
 import {
-  JUDUL_LAYAR, LAYAR_AKAR, LAYAR_TERMIGRASI, layarDalam, layarMenurutDompet, TAB_BAWAH,
+  JUDUL_LAYAR, LAYAR_AKAR, layarDalam, layarMenurutDompet, TAB_BAWAH,
 } from "../src/judul-layar";
 import { opsiTampilan } from "../theme/navigasi";
+import { baca } from "./support/berkas";
 
 const MOBILE = join(__dirname, "..");
 const APP = join(MOBILE, "app");
@@ -127,30 +128,28 @@ describe("judul layar", () => {
     expect(isi).not.toMatch(/title:\s*"/);
   });
 
-  it("LAYAR_TERMIGRASI hanya berisi kunci JUDUL_LAYAR", () => {
-    expect([...LAYAR_TERMIGRASI].filter((k) => !(k in JUDUL_LAYAR))).toEqual([]);
+  it("Beranda dan Mulai tanpa header — sapaan dan logo menggantikannya (spec §4.7, Ruling B2-17)", () => {
+    expect(opsiTampilan("(tabs)/(beranda)/index")).toEqual({ headerShown: false });
+    expect(opsiTampilan("mulai")).toEqual({ headerShown: false });
   });
 
-  it("Beranda lama tetap berheader; tanpa header hanya setelah dimigrasi (sapaan menggantikannya)", () => {
-    // Beranda lama tidak punya jarak aman dari status bar: tanpa header isinya
-    // naik ke area jam, dan ikon status bar terang hilang di latar terang.
-    const beranda = "(tabs)/(beranda)/index";
-    expect(opsiTampilan(beranda, new Set())).not.toHaveProperty("headerShown");
-    expect(opsiTampilan(beranda, new Set([beranda]))).toMatchObject({ headerShown: false });
-  });
-
-  it("layar akar tab selain Beranda berjudul besar HANYA setelah dimigrasi (spec §4.7)", () => {
-    // Judul besar iOS hanya memberi ruang yang benar bila isi layar ScrollView
-    // (contentInsetAdjustmentBehavior "automatic"). Layar lama bukan ScrollView:
-    // judul besar menutupi bagian atasnya — segmen Show QR/Scan hilang di uji
-    // iPhone 2026-09-19.
+  it("layar akar tab selain Beranda berjudul besar; layar lain tanpa opsi tambahan (spec §4.7)", () => {
     for (const k of [
       "(tabs)/(acara)/events/index", "(tabs)/(salaman)/salaman", "(tabs)/(pesan)/pesan/index",
       "(tabs)/(profil)/profil-saya",
     ]) {
-      expect(opsiTampilan(k, new Set()), k).not.toHaveProperty("headerLargeTitle");
-      expect(opsiTampilan(k, new Set([k])), k).toMatchObject({ headerLargeTitle: true });
+      expect(opsiTampilan(k), k).toEqual({ headerLargeTitle: true });
     }
-    expect(opsiTampilan("(tabs)/(acara)/events/[id]", new Set())).toEqual({});
+    expect(opsiTampilan("(tabs)/(acara)/events/[id]")).toEqual({});
+  });
+
+  // Judul besar iOS hanya memberi ruang yang benar bila isinya ScrollView/
+  // FlatList dengan contentInsetAdjustmentBehavior "automatic" — tanpa itu
+  // bagian atas layar tertutup (uji iPhone 2026-09-19).
+  it("setiap layar akar tab berjudul besar dibangun di wadah gulir yang menyesuaikan inset", () => {
+    for (const t of TAB_BAWAH.filter((t) => t.grup !== "(beranda)")) {
+      const berkas = `app/(tabs)/${t.grup}/${t.layarAwal}.tsx`;
+      expect(baca(berkas), berkas).toContain('contentInsetAdjustmentBehavior="automatic"');
+    }
   });
 });

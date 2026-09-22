@@ -1,13 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { LAYAR_TERMIGRASI } from "../src/judul-layar";
 import { baca, tanpaKomentar } from "./support/berkas";
 
 const daftar = () => tanpaKomentar(baca("app/(tabs)/(acara)/events/index.tsx"));
 const detail = () => tanpaKomentar(baca("app/(tabs)/(acara)/events/[id].tsx"));
 
 describe("daftar Acara (spec §7.1 pola daftar, §4.7)", () => {
-  it("dimigrasi dan dibangun di FlatList untuk judul besar", () => {
-    expect(LAYAR_TERMIGRASI.has("(tabs)/(acara)/events/index")).toBe(true);
+  it("dibangun di FlatList untuk judul besar", () => {
     expect(daftar()).toContain('contentInsetAdjustmentBehavior="automatic"');
   });
 
@@ -34,10 +32,6 @@ describe("daftar Acara (spec §7.1 pola daftar, §4.7)", () => {
 });
 
 describe("Detail acara (spec §7.1 pola detail)", () => {
-  it("dimigrasi", () => {
-    expect(LAYAR_TERMIGRASI.has("(tabs)/(acara)/events/[id]")).toBe(true);
-  });
-
   it("gagal muat → galat + Try again, bukan kerangka selamanya", () => {
     expect(detail()).toMatch(/if \(!ev\) \{[\s\S]*?galatMuat \? \(\s*<KeadaanGalat kalimat=\{galatMuat\} onCobaLagi=\{\(\) => void load\(\)\} \/>/);
   });
@@ -76,8 +70,7 @@ const buat = () => tanpaKomentar(baca("app/(tabs)/(acara)/events/new.tsx"));
 const qrHost = () => tanpaKomentar(baca("app/(tabs)/(acara)/events/[id]/host-qr.tsx"));
 
 describe("Buat acara (spec §7.1 pola formulir)", () => {
-  it("dimigrasi; label kecil di atas Input BNA", () => {
-    expect(LAYAR_TERMIGRASI.has("(tabs)/(acara)/events/new")).toBe(true);
+  it("label kecil di atas Input BNA", () => {
     const x = buat();
     expect(x).toContain('<Text variant="caption">{LABEL_NAMA_ACARA}</Text>');
     expect(x).toContain('<Text variant="caption">{LABEL_TEMPAT_ACARA}</Text>');
@@ -99,8 +92,7 @@ describe("Buat acara (spec §7.1 pola formulir)", () => {
 });
 
 describe("QR check-in host (spec §4.6, §7.1 pola detail)", () => {
-  it("dimigrasi; QR hanya dipasang saat layar fokus (review Rencana A #2)", () => {
-    expect(LAYAR_TERMIGRASI.has("(tabs)/(acara)/events/[id]/host-qr")).toBe(true);
+  it("QR hanya dipasang saat layar fokus (review Rencana A #2)", () => {
     const x = qrHost();
     expect(x).toContain("const fokus = useIsFocused();");
     expect(x).toContain("return fokus ? <QrCheckInAktif signer={signer} /> : null;");

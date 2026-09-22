@@ -1,15 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { LAYAR_TERMIGRASI } from "../src/judul-layar";
 import { baca, tanpaKomentar } from "./support/berkas";
 
 const dompet = () => tanpaKomentar(baca("app/(tabs)/(profil)/dompet.tsx"));
 const blokir = () => tanpaKomentar(baca("app/(tabs)/(profil)/blokir.tsx"));
 
 describe("layar Dompet (spec §7.1 pola detail)", () => {
-  it("terdaftar termigrasi", () => {
-    expect(LAYAR_TERMIGRASI.has("(tabs)/(profil)/dompet")).toBe(true);
-  });
-
   it("alamat tampil UTUH (R4) dan 12 kata hanya setelah konfirmasi", () => {
     const isi = dompet();
     expect(isi).toContain("{address}");
@@ -29,10 +24,6 @@ describe("layar Dompet (spec §7.1 pola detail)", () => {
 });
 
 describe("layar Diblokir (spec §7.1, §7.2)", () => {
-  it("terdaftar termigrasi", () => {
-    expect(LAYAR_TERMIGRASI.has("(tabs)/(profil)/blokir")).toBe(true);
-  });
-
   it("daftar kosong DI SAMPING galat tetap bukan keadaan kosong", () => {
     expect(blokir()).toContain("galatMuat ? null : (");
   });

@@ -2,7 +2,6 @@ import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { opsiTampilan } from "../theme/navigasi";
-import { LAYAR_TERMIGRASI } from "../src/judul-layar";
 import {
   KALIMAT_MULAI, TEKS_BUAT_DOMPET, TEKS_MENYIAPKAN_DOMPET, TEKS_PAKAI_DOMPET,
 } from "../src/teks-mulai";
@@ -18,8 +17,7 @@ describe("Mulai (spec §7.1, keputusan #11, #15)", () => {
     expect(TEKS_MENYIAPKAN_DOMPET).toBe("Setting up wallet…");
   });
 
-  it("dimigrasi; tanpa header, isi di dalam SafeAreaView (Ruling B2-17)", () => {
-    expect(LAYAR_TERMIGRASI.has("mulai")).toBe(true);
+  it("tanpa header, isi di dalam SafeAreaView (Ruling B2-17)", () => {
     expect(opsiTampilan("mulai")).toMatchObject({ headerShown: false });
     expect(mulai()).toContain("<SafeAreaView");
   });

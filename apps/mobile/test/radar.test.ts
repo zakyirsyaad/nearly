@@ -1,14 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { LAYAR_TERMIGRASI } from "../src/judul-layar";
 import { baca, tanpaKomentar } from "./support/berkas";
 
 const radar = () => tanpaKomentar(baca("app/(tabs)/(acara)/radar/[eventId].tsx"));
 
 describe("Radar (spec §6.4, keputusan #10)", () => {
-  it("dimigrasi", () => {
-    expect(LAYAR_TERMIGRASI.has("(tabs)/(acara)/radar/[eventId]")).toBe(true);
-  });
-
   it("siklus detak 60 dtk / radar 10 dtk hanya selama fokus tetap", () => {
     const x = radar();
     expect(x).toContain("const JEDA_DETAK_MS = 60_000;");
