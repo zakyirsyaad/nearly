@@ -311,6 +311,12 @@ eas build -p android --profile preview
 
 ±15 menit di antrean gratis. Unduh APK dari tautan yang dicetak, lalu unggah ke VPS (bagian 1.7).
 `versionCode` naik otomatis, jadi APK baru terpasang di atas APK lama dan dompet di HP tetap ada.
+APK hanya berisi `arm64-v8a` (spec distribusi D14, ±3× lebih kecil dari APK universal): HP Android
+32-bit lama dan emulator x86 tidak bisa memasangnya.
+
+APK besar lambat diunduh dari CDN EAS (±40 KB/s per koneksi). Lebih cepat bila VPS yang mengunduhnya
+langsung dalam potongan paralel: `~/unduh-apk.sh <url-artefak-eas> <ukuran-bait>` di VPS (ukuran dari
+`curl -sIL <url> | grep -i content-length`), lalu hasilnya terpasang di `/srv/nearly/unduh/nearly.apk`.
 
 Uji penerimaan (spec distribusi §6): pasang dari landing di HP Android nyata → buat dompet →
 salaman dengan perangkat kedua → kirim pesan dari perangkat kedua saat aplikasi di latar belakang →
