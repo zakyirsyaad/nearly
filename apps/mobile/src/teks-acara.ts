@@ -21,7 +21,7 @@ export function teksRsvp(n: number): string {
 
 /**
  * Baris waktu + tempat kartu acara: "Aug 12, 19:42 · Aula" — pengganti
- * toLocaleString("id-ID", …) (spec §7.4). `startsAt` = detik unix string.
+ * API locale bawaan (spec §7.4). `startsAt` = detik unix string.
  */
 export function metaAcara(a: { startsAt: string; venueLabel: string }, sekarang: Date): string {
   const waktu = formatTanggalJam(new Date(Number(a.startsAt) * 1000), sekarang);

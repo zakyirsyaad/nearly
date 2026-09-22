@@ -114,6 +114,6 @@ describe("teksKutandaiHadir", () => {
     const teks = teksKutandaiHadir(2);
     expect(teks).toBe("2 people you both want to meet have RSVP'd.");
     expect(teks).toContain("both");
-    expect(teks).not.toContain("kamu tandai");
+    expect(teks).not.toMatch(/you marked/i);
   });
 });

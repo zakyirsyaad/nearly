@@ -2,8 +2,9 @@ import { jamak } from "./jamak";
 
 /**
  * Tanggal dan jam berbahasa Inggris (spec desain UI §7.4). Fungsi murni TANPA
- * toLocaleString: hasil Intl di Hermes/Expo Go tidak dijamin sama antarperangkat,
- * dan tes harus deterministik. Semua memakai zona waktu lokal HP.
+ * API locale bawaan (`Intl`/`Date#toLocale*`): hasilnya di Hermes/Expo Go
+ * tidak dijamin sama antarperangkat, dan tes harus deterministik. Semua
+ * memakai zona waktu lokal HP.
  */
 const BULAN = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"] as const;
 const MENIT_MS = 60_000;
@@ -23,7 +24,7 @@ export function formatJam(t: Date): string {
   return `${duaDigit(t.getHours())}:${duaDigit(t.getMinutes())}`;
 }
 
-/** Tanggal + jam acara: "Aug 12, 19:42" — pengganti toLocaleString("id-ID", …). */
+/** Tanggal + jam acara: "Aug 12, 19:42" — pengganti API locale bawaan ("id-ID", …). */
 export function formatTanggalJam(t: Date, sekarang: Date): string {
   return `${formatTanggal(t, sekarang)}, ${formatJam(t)}`;
 }
