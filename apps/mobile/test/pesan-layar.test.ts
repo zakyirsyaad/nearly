@@ -84,3 +84,39 @@ describe("Percakapan (spec §6.5, R6)", () => {
     expect(x).not.toContain("WARNA");
   });
 });
+
+const lapor = () => tanpaKomentar(baca("app/(tabs)/(pesan)/pesan/lapor/[address].tsx"));
+
+describe("Lapor pesan (spec §7.1 pola formulir)", () => {
+  it("dimigrasi; Input BNA, tanpa WARNA", () => {
+    expect(LAYAR_TERMIGRASI.has("(tabs)/(pesan)/pesan/lapor/[address]")).toBe(true);
+    const x = lapor();
+    expect(x).toContain("<Input");
+    expect(x).not.toContain("WARNA");
+  });
+
+  it("hanya pesan MASUK yang terverifikasi yang bisa jadi bukti (spec 4c §8.2)", () => {
+    expect(lapor()).toContain('.filter((p): p is PesanSah => !p.dariAku && p.status === "sah")');
+  });
+
+  it("baris bukti adalah checkbox aksesibel setinggi target sentuh", () => {
+    const x = lapor();
+    expect(x).toContain('accessibilityRole="checkbox"');
+    expect(x).toContain("accessibilityState={{ checked: dipilihIni }}");
+    expect(x).toMatch(/baris: \{[^}]*minHeight: UKURAN\.sentuh/);
+  });
+
+  it("peringatan memakai gaya spanduk token; muat pertama gagal → galat + Try again", () => {
+    const x = lapor();
+    expect(x).toContain('useColor("spandukLatar")');
+    expect(x).toContain("{PERINGATAN_LAPOR_PESAN}");
+    expect(x).toContain("<KeadaanGalat kalimat={galat} onCobaLagi={() => setPercobaan((n) => n + 1)} />");
+    expect(x).not.toContain("setMasuk([])");
+  });
+
+  it("laporan terkirim tetap dialog (Ruling B2-7), dan kegagalan blokir tidak menyangkal laporannya", () => {
+    const x = lapor();
+    expect(x).toContain("Alert.alert(JUDUL_LAPORAN_TERKIRIM, ISI_LAPORAN_TERKIRIM,");
+    expect(x).toContain("teksLaporanTerkirimGagalBlokir(");
+  });
+});
