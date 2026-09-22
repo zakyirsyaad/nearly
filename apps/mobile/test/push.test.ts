@@ -6,11 +6,17 @@ import type { SesiPesan } from "../src/pesan/sesi";
 const mockGetPermissionsAsync = vi.fn();
 const mockRequestPermissionsAsync = vi.fn();
 const mockGetExpoPushTokenAsync = vi.fn();
+const mockSetNotificationChannelAsync = vi.fn();
+const platform = vi.hoisted(() => ({ OS: "ios" as "ios" | "android" }));
+
+vi.mock("react-native", () => ({ Platform: platform }));
 
 vi.mock("expo-notifications", () => ({
+  AndroidImportance: { HIGH: 4 },
   getPermissionsAsync: () => mockGetPermissionsAsync(),
   requestPermissionsAsync: () => mockRequestPermissionsAsync(),
   getExpoPushTokenAsync: (args: unknown) => mockGetExpoPushTokenAsync(args),
+  setNotificationChannelAsync: (id: string, opsi: unknown) => mockSetNotificationChannelAsync(id, opsi),
 }));
 
 vi.mock("expo-constants", () => ({
@@ -25,7 +31,7 @@ vi.mock("expo-constants", () => ({
   },
 }));
 
-import { daftarkanPush, lupakanPendaftaranPush } from "../src/pesan/push";
+import { daftarkanPush, KANAL_ANDROID, lupakanPendaftaranPush, NAMA_KANAL_ANDROID } from "../src/pesan/push";
 
 const aslinya = globalThis.fetch;
 
@@ -37,6 +43,7 @@ function buatSesi(who: Address): SesiPesan {
 describe("push", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    platform.OS = "ios";
     lupakanPendaftaranPush();
   });
 
@@ -97,5 +104,35 @@ describe("push", () => {
     await daftarkanPush(sesiB);
     expect(rekaman.length).toBe(2);
     expect(rekaman[1]!.url).toContain("/pesan/token-push");
+  });
+
+  it("Android: kanal 'default' dibuat SEBELUM izin diminta (Android 13, spec distribusi §4.2)", async () => {
+    platform.OS = "android";
+    mockSetNotificationChannelAsync.mockResolvedValue(null);
+    mockGetPermissionsAsync.mockResolvedValue({ granted: true });
+    mockGetExpoPushTokenAsync.mockResolvedValue({ data: "ExponentPushToken[android]" });
+    globalThis.fetch = vi.fn(async () => new Response(JSON.stringify({ ok: true }), { status: 200 })) as never;
+
+    await daftarkanPush(buatSesi("0x3333333333333333333333333333333333333333"));
+
+    expect(KANAL_ANDROID).toBe("default");
+    expect(NAMA_KANAL_ANDROID).toBe("Messages and Radar");
+    expect(mockSetNotificationChannelAsync).toHaveBeenCalledWith("default", {
+      name: "Messages and Radar",
+      importance: 4,
+    });
+    expect(mockSetNotificationChannelAsync.mock.invocationCallOrder[0]!).toBeLessThan(
+      mockGetPermissionsAsync.mock.invocationCallOrder[0]!,
+    );
+  });
+
+  it("iOS: tidak membuat kanal", async () => {
+    mockGetPermissionsAsync.mockResolvedValue({ granted: false });
+    mockRequestPermissionsAsync.mockResolvedValue({ granted: false });
+
+    await daftarkanPush(buatSesi("0x4444444444444444444444444444444444444444"));
+
+    expect(mockSetNotificationChannelAsync).not.toHaveBeenCalled();
+    expect(mockGetExpoPushTokenAsync).not.toHaveBeenCalled();
   });
 });
