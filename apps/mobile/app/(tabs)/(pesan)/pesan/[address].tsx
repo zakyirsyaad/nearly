@@ -171,7 +171,8 @@ function PercakapanScreenIsi({ signer }: { signer: NearlySigner }) {
 
   // Menu ⋯ (spec §6.5, Ruling B2-10): aksi yang sudah ada di layar ini, dialog bawaan.
   function bukaMenu() {
-    Alert.alert(nama ?? alamatSingkat(lawan), undefined, [
+    // Nama tidak pernah tanpa alamat (R4): alamat singkat jadi isi dialog.
+    Alert.alert(nama ?? alamatSingkat(lawan), nama ? alamatSingkat(lawan) : undefined, [
       { text: TEKS_LAPOR, onPress: () => router.push(`/pesan/lapor/${lawan}`) },
       { text: TEKS_BLOKIR, style: "destructive", onPress: blokir },
       { text: TEKS_BATAL, style: "cancel" },

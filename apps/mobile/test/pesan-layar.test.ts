@@ -46,6 +46,8 @@ describe("Percakapan (spec §6.5, R6)", () => {
     expect(menu).toContain("Alert.alert(");
     expect(menu).toContain("router.push(`/pesan/lapor/${lawan}`)");
     expect(menu).toContain("onPress: blokir");
+    // R4: nama di judul dialog selalu didampingi alamat singkat (review akhir B2 m4).
+    expect(menu).toContain("Alert.alert(nama ?? alamatSingkat(lawan), nama ? alamatSingkat(lawan) : undefined, [");
   });
 
   it("gelembung keluar primary di kanan, masuk card bergaris di kiri, sudut pengirim 4", () => {

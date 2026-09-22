@@ -85,6 +85,9 @@ function TulisScreenIsi({ signer }: { signer: NearlySigner }) {
 
       // Gambar dikirim SETELAH teks terbit, dan kegagalannya tidak membatalkan
       // unggahan (spec §8.2). Tanda tangannya tipe LampirGambar yang terpisah.
+      // Gambar yang gagal tidak membatalkan unggahan, tapi toast harus jujur
+      // tentangnya — pesan di layar ini hilang begitu pindah ke Feed (m5).
+      let gambarGagal = false;
       if (gambar) {
         try {
           const expGambar = BigInt(Math.floor(Date.now() / 1000) + 300);
@@ -97,11 +100,11 @@ function TulisScreenIsi({ signer }: { signer: NearlySigner }) {
             expiresAt: expGambar.toString(), sig: sigGambar, dataBase64: gambar.base64,
           });
         } catch {
-          setPesan(TEKS_TERBIT_GAMBAR_GAGAL);
+          gambarGagal = true;
         }
       }
       // Teksnya SUDAH terbit (Ruling B2-6).
-      kabar.berhasil(TEKS_UNGGAHAN_TERKIRIM);
+      kabar.berhasil(gambarGagal ? TEKS_TERBIT_GAMBAR_GAGAL : TEKS_UNGGAHAN_TERKIRIM);
       router.replace("/feed");
     } catch (e) {
       setPesan(e instanceof ApiError ? feedErrorMessage(e.code) : TEKS_GAGAL_UNGGAH);

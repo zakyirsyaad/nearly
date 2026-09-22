@@ -49,7 +49,10 @@ describe("Unggahan baru (spec §7.1 pola formulir)", () => {
 
   it("berhasil → toast + haptic lalu kembali ke feed; gambar dikirim SETELAH teks terbit (spec §8.2)", () => {
     const x = tulis();
-    expect(x).toMatch(/kabar\.berhasil\(TEKS_UNGGAHAN_TERKIRIM\);\s*router\.replace\("\/feed"\);/);
+    // Gambar gagal → toast memakai kalimat gambar-gagal yang sudah ada, bukan
+    // "Posted." (review akhir B2 m5, keputusan pemilik 2026-09-22).
+    expect(x).toMatch(/kabar\.berhasil\(gambarGagal \? TEKS_TERBIT_GAMBAR_GAGAL : TEKS_UNGGAHAN_TERKIRIM\);\s*router\.replace\("\/feed"\);/);
+    expect(x).not.toContain("setPesan(TEKS_TERBIT_GAMBAR_GAGAL)");
     expect(x.indexOf("await postPost(")).toBeLessThan(x.indexOf("await postImage("));
   });
 

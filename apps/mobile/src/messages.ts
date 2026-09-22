@@ -220,7 +220,8 @@ export function teksPenandaHadir(jumlah: number | undefined): string | null {
  */
 export function teksKutandaiHadir(jumlah: number | undefined): string | null {
   if (jumlah === undefined) return null;
-  return jamak(jumlah, "person you both want to meet has RSVP'd.", "people you both want to meet have RSVP'd.");
+  // "Matches" = istilah Kecocokan di aplikasi (tanda dua arah), bukan sepihak.
+  return jamak(jumlah, "match has RSVP'd.", "matches have RSVP'd.");
 }
 
 const BLOKIR_MESSAGES: Record<string, string> = {

@@ -92,7 +92,7 @@ describe("teksPenandaHadir", () => {
 
   it("satu orang memakai bentuk tunggal", () => {
     expect(teksPenandaHadir(1)).toBe("1 person who wants to meet you has RSVP'd.");
-    expect(teksKutandaiHadir(1)).toBe("1 person you both want to meet has RSVP'd.");
+    expect(teksKutandaiHadir(1)).toBe("1 match has RSVP'd.");
   });
 });
 
@@ -102,7 +102,7 @@ describe("teksKutandaiHadir", () => {
   });
 
   it("nol sungguhan tetap nol", () => {
-    expect(teksKutandaiHadir(0)).toBe("0 people you both want to meet have RSVP'd.");
+    expect(teksKutandaiHadir(0)).toBe("0 matches have RSVP'd.");
   });
 
   /**
@@ -112,8 +112,11 @@ describe("teksKutandaiHadir", () => {
    */
   it("menyebut hubungan dua arah, bukan tanda sepihak", () => {
     const teks = teksKutandaiHadir(2);
-    expect(teks).toBe("2 people you both want to meet have RSVP'd.");
-    expect(teks).toContain("both");
+    // "Matches" = istilah Kecocokan (tanda dua arah) di aplikasi; kalimat
+    // lama "people you both want to meet" terbaca seperti orang ketiga
+    // (keputusan pemilik 2026-09-22, review akhir B2 m9a).
+    expect(teks).toBe("2 matches have RSVP'd.");
+    expect(teks).toContain("match");
     expect(teks).not.toMatch(/you marked/i);
   });
 });
