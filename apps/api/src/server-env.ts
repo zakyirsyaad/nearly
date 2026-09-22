@@ -2,6 +2,7 @@
  * Pembacaan env server yang cukup rawan untuk diuji sendiri (spec 6 §4.6, §4.7).
  * Murni: menerima nilai mentah, tidak membaca `process.env` sendiri.
  */
+import { isIP } from "node:net";
 
 export const PORT_BAWAAN = 8787;
 
@@ -14,6 +15,21 @@ export function bacaPort(raw: string | undefined): number {
     throw new Error(`env PORT tidak sah: "${raw}" (harus bilangan bulat 1–65535)`);
   }
   return n;
+}
+
+/**
+ * Antarmuka tempat API mendengarkan (spec distribusi D13). Kosong atau tidak ada
+ * → undefined = semua antarmuka, supaya HP di Wi-Fi yang sama bisa menjangkau
+ * laptop saat pengembangan. Di VPS bersama nilainya 127.0.0.1: hanya nginx di
+ * mesin yang sama yang bisa memanggil API, tanpa bergantung pada firewall.
+ * Selain alamat IP → melempar (nama host seperti "localhost" bisa berarti ::1
+ * atau 127.0.0.1 tergantung sistem, jadi ditolak supaya tidak menebak).
+ */
+export function bacaHost(raw: string | undefined): string | undefined {
+  if (raw === undefined || raw.trim() === "") return undefined;
+  const t = raw.trim();
+  if (isIP(t) === 0) throw new Error(`env HOST tidak sah: "${raw}" (harus alamat IP, mis. 127.0.0.1)`);
+  return t;
 }
 
 /**

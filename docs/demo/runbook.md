@@ -86,6 +86,7 @@ Isi dengan baris `NAMA=nilai` untuk variabel berikut (nilainya dari `.env` lapto
 | `ADMIN_TOKEN` | ya | rahasia |
 | `WEB_ORIGINS` | ya untuk web | origin web dipisah koma, mis. `https://<vercel-domain>`; spasi dan garis miring penutup dibuang otomatis |
 | `PORT` | tidak | default `8787`; kalau diubah, ubah juga `deploy/Caddyfile` |
+| `HOST` | tidak | kosong = semua antarmuka; **`127.0.0.1` di VPS bersama** (bagian 1.5b) supaya API hanya bisa dipanggil dari nginx di mesin yang sama |
 | `GREENFIELD_RPC`, `GREENFIELD_CHAIN_ID`, `GREENFIELD_BUCKET`, `GREENFIELD_SP_ENDPOINT` | tidak | isi keempatnya atau kosongkan keempatnya |
 
 `WEB_ORIGINS` kosong berarti layar `/live` di Vercel TIDAK bisa membaca API (CORS mati). Itu
@@ -163,6 +164,52 @@ di Wi-Fi venue bisa keluar lewat SATU IP publik yang sama.
 curl -s https://api.<domain>/health           # {"ok":true}
 curl -s https://api.<domain>/graf/acara       # {"acara":[...]}
 ```
+
+### 1.5b VPS bersama — nginx sudah memegang port 80/443 (spec distribusi D13)
+
+Pakai bagian ini **sebagai ganti Caddy (1.5) dan firewall (1.1)** bila VPS sudah menjalankan nginx untuk
+proyek lain. Caddy tidak bisa berbagi port 80/443 dengan nginx, dan `ufw default deny` akan memutus
+port proyek lain. Perbedaannya dengan jalur standar:
+
+- **Node 24 terpisah** di `/opt/node24`, khusus untuk Nearly; `/usr/bin/node` milik proyek lain tidak
+  disentuh. Unit systemd memakai drop-in yang menunjuk ke biner itu.
+- **API hanya di `127.0.0.1`** (`HOST=127.0.0.1` di `/etc/nearly/api.env`), bukan firewall.
+- **nginx + certbot** yang sudah ada: dua situs baru dari `deploy/nginx/`, sertifikat lewat
+  `certbot --nginx`. Situs lain tidak diubah.
+- **Nama host tanpa membeli domain:** `api.nearly.<ip-dengan-strip>.sslip.io` dan
+  `unduh.nearly.<ip-dengan-strip>.sslip.io` langsung menunjuk ke IP itu. Pindah ke domain sendiri nanti:
+  ganti `server_name`, jalankan certbot lagi, lalu `eas update` dengan `EXPO_PUBLIC_API_URL` baru.
+
+```bash
+# Node 24 terpisah (versi LTS terbaru dari https://nodejs.org/dist/latest-v24.x/)
+cd /tmp && curl -fsSLO https://nodejs.org/dist/latest-v24.x/SHASUMS256.txt
+TAR=$(grep -o 'node-v24[^ ]*-linux-x64.tar.xz' SHASUMS256.txt)
+curl -fsSLO "https://nodejs.org/dist/latest-v24.x/$TAR" && grep " $TAR\$" SHASUMS256.txt | sha256sum -c -
+sudo mkdir -p /opt/node24 && sudo tar -xJf "$TAR" -C /opt/node24 --strip-components=1
+/opt/node24/bin/node -v                        # v24.x
+
+# 1.2 dijalankan dengan Node itu (bukan corepack sistem):
+sudo -u nearly env PATH=/opt/node24/bin:$PATH corepack pnpm install --frozen-lockfile
+
+# 1.4 dengan drop-in: ExecStart memakai /opt/node24
+sudo mkdir -p /etc/systemd/system/nearly-api.service.d
+printf '[Service]\nExecStart=\nExecStart=/opt/node24/bin/node --env-file=/etc/nearly/api.env --import=tsx src/index.ts\n' \
+  | sudo tee /etc/systemd/system/nearly-api.service.d/node24.conf
+
+# Situs nginx
+API=api.nearly.<ip-dengan-strip>.sslip.io
+UNDUH=unduh.nearly.<ip-dengan-strip>.sslip.io
+sed "s/__NEARLY_API_HOST__/$API/" /opt/nearly/deploy/nginx/nearly-api.conf | sudo tee /etc/nginx/sites-available/nearly-api
+sed "s/__NEARLY_DOWNLOAD_HOST__/$UNDUH/" /opt/nearly/deploy/nginx/nearly-unduh.conf | sudo tee /etc/nginx/sites-available/nearly-unduh
+sudo ln -s /etc/nginx/sites-available/nearly-api /etc/nginx/sites-available/nearly-unduh /etc/nginx/sites-enabled/
+sudo nginx -t && sudo systemctl reload nginx
+sudo certbot --nginx -d "$API" -d "$UNDUH" --redirect
+```
+
+`sudo nginx -t` harus lolos **sebelum** reload: satu kesalahan di situs baru ikut menjatuhkan situs
+proyek lain. Verifikasi dari laptop: `curl -s https://$API/health` → `{"ok":true}`, dan
+`curl -m 5 http://<vps>:8787/health` harus gagal. Kalau penyedia VPS punya security group di panel
+web, pastikan 8787 tidak dibuka di sana.
 
 ### 1.6 Memperbarui API
 
