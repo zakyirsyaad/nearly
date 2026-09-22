@@ -315,7 +315,7 @@ APK hanya berisi `arm64-v8a` (spec distribusi D14, ±3× lebih kecil dari APK un
 32-bit lama dan emulator x86 tidak bisa memasangnya.
 
 APK besar lambat diunduh dari CDN EAS (±40 KB/s per koneksi). Lebih cepat bila VPS yang mengunduhnya
-langsung dalam potongan paralel: `~/unduh-apk.sh <url-artefak-eas> <ukuran-bait>` di VPS (ukuran dari
+langsung dalam potongan paralel: `/opt/nearly/deploy/unduh-apk.sh <url-artefak-eas> <ukuran-bait>` di VPS (sebagai `ubuntu`, pemilik folder unduhan) (ukuran dari
 `curl -sIL <url> | grep -i content-length`), lalu hasilnya terpasang di `/srv/nearly/unduh/nearly.apk`.
 
 Uji penerimaan (spec distribusi §6): pasang dari landing di HP Android nyata → buat dompet →
