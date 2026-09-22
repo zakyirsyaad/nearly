@@ -1207,7 +1207,7 @@ Tes baru / diganti:
 
 1. **BNA UI belum terbukti di SDK 57 + pnpm monorepo + Expo Go.** Lima hal belum pasti di §3.6; spike §9 langkah 1
    memutuskan jalurnya. Hasil spike ditulis di sini. *Hasil spike repo (2026-09-18):* CLI, typecheck, dan bundel iOS
-   lolos (rincian §3.6); uji tampil di Expo Go menunggu pemilik (rencana A Task 1).
+   lolos (rincian §3.6); uji tampil di Expo Go menunggu pemilik (rencana A Task 1). *Hasil (2026-09-21):* jalur BNA dipakai sampai akhir Rencana B2; tidak ada komponen dari jalur cadangan.
 2. **Font dimuat async.** Splash tertahan sampai font siap; di jaringan Metro yang lambat splash bisa lebih lama dari
    sekarang. Font yang gagal dimuat jatuh ke font sistem tanpa galat — tampilan berbeda, aplikasi tetap jalan.
 3. **Ikon dan splash tidak terlihat di Expo Go.** Expo Go memakai ikonnya sendiri dan tidak menjamin splash kustom
@@ -1342,3 +1342,8 @@ langkah 6 hanya memeriksa bahwa catatannya masih ada.
    sesi `fcc`.
 3. Langkah 1 (spike) dilaporkan ke pemilik sebelum langkah 2 dimulai; pemilik menjalankan uji iPhone spike.
 4. Pemilik menjalankan uji iPhone §10.3 di akhir dan mengisi hasilnya.
+5. *Catatan eksekusi (2026-09-21).* Rencana A (fondasi), B1 (Handshake, Beranda, Profil), dan B2 (Acara,
+   Radar, Pesan, layar sisa, sapuan bahasa) tuntas di branch `desain-ui`. Keputusan rencana yang
+   menyentuh teks spec: "Event created." dan "Posted." sebagai teks toast baru (Ruling B2-6 rencana B2),
+   dan layar Mulai tanpa header (Ruling B2-17). Tombol "Copy address" di Dompet dan konfirmasi sebelum
+   Unblock tidak dikerjakan (Ruling B2-5) — menunggu keputusan pemilik.

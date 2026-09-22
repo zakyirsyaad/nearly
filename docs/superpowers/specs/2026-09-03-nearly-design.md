@@ -425,6 +425,12 @@ hanya menandatangani EIP-712 dan relayer yang membayar gas. Batas yang diakui �
 hapus aplikasi atau ganti HP berarti identitas hilang — di spec `2026-09-17-nearly-dompet-per-pengguna-design.md`
 §8. Menyambung dompet luar tetap mungkin kelak di development build, tetapi tidak direncanakan.
 
+**Amandemen (2026-09-18) — tampilan.** Aplikasi mobile selalu bertema gelap (palet B2), memakai Inter +
+JetBrains Mono, komponen BNA UI yang disalin ke `apps/mobile/components/ui/` (kode kita setelah disalin,
+diwarnai lewat token `apps/mobile/theme/colors.ts`), navigasi lima tab bawah — Home, Events, Handshake
+(tombol besar di tengah), Messages, Profile — dan berbahasa Inggris. Rincian di spec
+`2026-09-18-nearly-desain-ui-design.md`.
+
 ### 10.2 Backend off-chain
 
 Hono di Node. **Supabase**: Postgres + PostGIS (verifikasi ko-lokasi) + Realtime (radar event
@@ -584,6 +590,11 @@ Fase 5 tuntas: feed di 3b, "ingin bertemu" di 3c, notifikasi kedekatan di spec y
 terbundel (`EXPO_PUBLIC_DEV_PRIVATE_KEY`) tidak lagi dibaca aplikasi, sehingga setiap HP adalah orang
 yang berbeda dan graf demo bisa tumbuh.
 
+**Catatan (2026-09-18).** Desain ulang UI/UX aplikasi mobile (spec `2026-09-18-nearly-desain-ui-design.md`)
+berjalan setelah dompet per pengguna dan sebelum distribusi (APK, TestFlight): tema gelap, lima tab,
+bahasa Inggris, dan tiga data baru di API (riwayat pertemuan, penjamin yang kamu kenal, koneksi bersama
+di radar).
+
 ### 11.1 Pengurangan kedalaman yang disepakati
 
 Konsekuensi dari keputusan mempertahankan Event dan FYP sekaligus. Delapan pengurangan ini
@@ -628,7 +639,9 @@ didemokan sama sekali:
 - `packages/trust/src/slashing.ts` — gerbang laporan (pelapor ber-trust tinggi & tidak saling
   terhubung) + propagasi slash ke penjamin. **Titik paling rawan di seluruh sistem** — di
   sinilah brigading bisa masuk lagi kalau gerbangnya longgar.
-- `apps/mobile/src/handshake/` — QR bertanda tangan, rotasi, pemindai. Alur paling penting.
+- `apps/mobile/src/handshake/` — QR bertanda tangan, rotasi, pemindai. Alur paling penting. Layarnya
+  `apps/mobile/app/(tabs)/(salaman)/salaman.tsx` (satu layar dua mode) dengan mode di
+  `apps/mobile/components/salaman/` (spec desain UI §6.2).
 - `apps/api/src/routes/handshake.ts` — verifikasi ko-lokasi (query PostGIS) sebelum mencetak
   koneksi.
 - `apps/api/src/routes/checkin.ts` — verifikasi geofence sebelum mencetak Proof of Attendance.
