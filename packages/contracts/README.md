@@ -1,66 +1,28 @@
-## Foundry
+# Nearly contracts
 
-**Foundry is a blazing fast, portable and modular toolkit for Ethereum application development written in Rust.**
+Solidity 0.8.24, built and tested with [Foundry](https://book.getfoundry.sh/). Deployed on BNB Smart
+Chain testnet (chainId 97); addresses are in the [root README](../../README.md#contracts-bnb-smart-chain-testnet).
 
-Foundry consists of:
+| Contract | Role |
+|---|---|
+| `ConnectionRegistry` | Every verified in-person connection, one per pair, written by the relayer after the server checks co-location. |
+| `AttendanceRegistry` | Proof of attendance from check-ins made inside the venue during the event. |
+| `VouchRegistry` | Vouches and tags between people who have met — revocable, and slashable. |
+| `TrustAttestor` | Trust scores and tiers published by the attestor. |
+| `NearlyResolver` | Read interface for other dApps: trust and tier by address. |
 
-- **Forge**: Ethereum testing framework (like Truffle, Hardhat and DappTools).
-- **Cast**: Swiss army knife for interacting with EVM smart contracts, sending transactions and getting chain data.
-- **Anvil**: Local Ethereum node, akin to Ganache, Hardhat Network.
-- **Chisel**: Fast, utilitarian, and verbose solidity REPL.
+Users never send transactions themselves: they sign EIP-712 messages on the phone, and the API's
+relayer submits them.
 
-## Documentation
-
-https://book.getfoundry.sh/
-
-## Usage
-
-### Build
-
-```shell
-$ forge build
+```bash
+forge build
+forge test          # 70 tests
 ```
 
-### Test
+Deployment scripts are in `script/Deploy.s.sol` (`DeployPhase2` for VouchRegistry, TrustAttestor, and
+NearlyResolver; `DeployPhase3a` for AttendanceRegistry). They read `ATTESTOR_ADDRESS` and
+`CONNECTION_REGISTRY_ADDRESS` from the environment:
 
-```shell
-$ forge test
-```
-
-### Format
-
-```shell
-$ forge fmt
-```
-
-### Gas Snapshots
-
-```shell
-$ forge snapshot
-```
-
-### Anvil
-
-```shell
-$ anvil
-```
-
-### Deploy
-
-```shell
-$ forge script script/Counter.s.sol:CounterScript --rpc-url <your_rpc_url> --private-key <your_private_key>
-```
-
-### Cast
-
-```shell
-$ cast <subcommand>
-```
-
-### Help
-
-```shell
-$ forge --help
-$ anvil --help
-$ cast --help
+```bash
+forge script script/Deploy.s.sol:DeployPhase2 --rpc-url $RPC_URL --private-key <deployer-key> --broadcast
 ```
