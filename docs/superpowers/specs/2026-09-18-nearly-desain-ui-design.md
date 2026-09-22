@@ -1209,6 +1209,16 @@ Tes baru / diganti:
 13. Tautan kecil ("See all ›", "Copy", "Report", "Block", "Handshake ›" di radar) dan tombol kirim bisa diketuk tanpa
     harus tepat; isi tidak pernah berada di bawah notch/Dynamic Island.
 
+**Hasil uji iPhone (pemilik project, iOS 26, Expo Go):**
+
+- 2026-09-19 — Rencana A: lulus; menemukan `aria-selected` untuk tab aktif dan syarat ScrollView untuk judul besar
+  (amandemen §4.7).
+- 2026-09-20 — Rencana B1 (Handshake, Beranda, Profil): lulus di gerbang uji B1.
+- 2026-09-22 — Rencana B2 gerbang Task 9 (keamanan 12 kata M3, butir Minor B1, Acara, Radar): lulus.
+- 2026-09-22 — uji penuh butir 1–13 plus Pesan, Lapor, Feed, Mulai: lulus, setelah satu temuan diperbaiki —
+  judul besar iOS tidak tergambar di iOS 26 (header kosong sampai digulir), diselesaikan dengan header biasa
+  (amandemen §4.7, commit `c2ca7f9` dan `f23e58f`).
+
 ## 11. Batas yang Diakui
 
 1. **BNA UI belum terbukti di SDK 57 + pnpm monorepo + Expo Go.** Lima hal belum pasti di §3.6; spike §9 langkah 1
