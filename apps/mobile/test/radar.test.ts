@@ -49,10 +49,21 @@ describe("Radar (spec §6.4, keputusan #10)", () => {
     expect(radar()).toContain('router.navigate("/profil-saya")');
   });
 
-  it("m3: pembersih fokus mengosongkan kartu dan keadaan, supaya refocus menampilkan skeleton bukan kartu/pil basi", () => {
+  it("m3: efek detak TIDAK mengosongkan kartu/keadaan di pembersihnya — Try again (percobaan) tidak boleh membuang kartu server_tak_terjangkau", () => {
+    const x = radar();
+    // Pembersih efek detak persis seperti semula: tanpa setRadar/setKeadaan.
+    // Efek ini dipasang ulang oleh Try again lewat `percobaan`, jadi kalau
+    // pembersihnya membuang kartu, setiap Try again akan membuang kartu yang
+    // sengaja dipertahankan saat server_tak_terjangkau.
+    expect(x).toContain(
+      "return () => { aktif = false; clearInterval(tDetak); clearInterval(tRadar); };",
+    );
+  });
+
+  it("m3: efek fokus TERPISAH (deps kosong) mengosongkan kartu dan keadaan hanya saat blur/unmount, supaya refocus menampilkan skeleton bukan kartu/pil basi", () => {
     const x = radar();
     expect(x).toContain(
-      "return () => { aktif = false; clearInterval(tDetak); clearInterval(tRadar); setRadar(null); setKeadaan(null); };",
+      "useFocusEffect(useCallback(() => () => { setRadar(null); setKeadaan(null); }, []));",
     );
   });
 });
