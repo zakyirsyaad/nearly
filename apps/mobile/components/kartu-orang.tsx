@@ -13,6 +13,8 @@ export type PropsKartuOrang = {
   terverifikasi: boolean;
   lencana?: ReactNode;
   keterangan?: string;
+  /** Batas baris keterangan untuk teks ringkasan (pratinjau pesan, spec §3.7). */
+  barisKeterangan?: number;
   tier?: number;
   onPress?: () => void;
 };
@@ -23,7 +25,7 @@ export type PropsKartuOrang = {
  * dihilangkan (anti-impersonasi), lencana, keterangan redup, batang trust
  * opsional.
  */
-export function KartuOrang({ nama, alamat, terverifikasi, lencana, keterangan, tier, onPress }: PropsKartuOrang) {
+export function KartuOrang({ nama, alamat, terverifikasi, lencana, keterangan, barisKeterangan, tier, onPress }: PropsKartuOrang) {
   const latar = useColor("card");
   const garis = useColor("border");
   const gaya = [s.kartu, { backgroundColor: latar, borderColor: garis }];
@@ -42,7 +44,7 @@ export function KartuOrang({ nama, alamat, terverifikasi, lencana, keterangan, t
           <Text variant="mono">{alamatSingkat(alamat)}</Text>
         </View>
         {lencana}
-        {keterangan ? <Text variant="caption">{keterangan}</Text> : null}
+        {keterangan ? <Text variant="caption" numberOfLines={barisKeterangan}>{keterangan}</Text> : null}
         {tier !== undefined ? <BatangTrust tier={tier} kecil /> : null}
       </View>
     </View>

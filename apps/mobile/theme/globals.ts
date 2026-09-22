@@ -64,6 +64,7 @@ export const UKURAN = {
   avatarSheet: 56,
   avatarKepala: 64,
   qr: 260,
+  tombolKirim: 40,
   batangTrust: 6,
   batangTrustKecil: 5,
   celahRuas: 2,

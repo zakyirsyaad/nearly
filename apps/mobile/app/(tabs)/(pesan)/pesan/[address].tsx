@@ -1,15 +1,21 @@
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
-import {
-  ActivityIndicator, Alert, Button, FlatList, StyleSheet, Text, TextInput, View,
-} from "react-native";
+import { Alert, FlatList, Pressable, StyleSheet, View } from "react-native";
+import { ArrowUp, Ellipsis } from "lucide-react-native";
 import type { Address } from "viem";
 import { MAKS_ISI_PESAN } from "@nearly/shared";
+import { Avatar } from "@/components/avatar";
+import { KeadaanGalat, KerangkaDaftar } from "@/components/keadaan";
+import { Input } from "@/components/ui/input";
+import { Text } from "@/components/ui/text";
+import { useColor } from "@/hooks/useColor";
+import { RADIUS, UKURAN } from "@/theme/globals";
+import { hitSlopSampai } from "../../../../src/aksesibilitas";
 import { CONFIG } from "../../../../src/config";
 import type { NearlySigner } from "../../../../src/signer";
 import { useNearlySigner } from "../../../../src/dompet/konteks-dompet";
 import { HindariKeyboard } from "../../../../src/hindari-keyboard";
-import { ApiError } from "../../../../src/http";
+import { ApiError, req } from "../../../../src/http";
 import { aksiBlokir } from "../../../../src/blokir-actions";
 import { sesiPesan } from "../../../../src/pesan/sesi";
 import { getRiwayat, postDibaca } from "../../../../src/pesan/pesan-api";
@@ -18,9 +24,17 @@ import {
   bukaBaris, bukaBertahap, kirimPesan, kunciLawan, type PesanTerbuka,
 } from "../../../../src/pesan/pesan-actions";
 import {
-  blokirErrorMessage, labelKirimPesan, pesanErrorMessage, sisaKarakterPesan,
+  alamatSingkat, blokirErrorMessage, labelKirimPesan, pesanErrorMessage, sisaKarakterPesan,
 } from "../../../../src/messages";
-import { WARNA } from "../../../../src/warna";
+import { TEKS_BATAL } from "../../../../src/teks-akun";
+import { TEKS_LAPOR, teksGagalBlokir } from "../../../../src/teks-profil";
+import {
+  ISI_DIALOG_BLOKIR, JUDUL_DIALOG_BLOKIR, LABEL_OPSI_LAIN, perluPemisahHari, PLACEHOLDER_PESAN,
+  TEKS_BLOKIR, TEKS_GAGAL_KIRIM_PESAN, TEKS_GAGAL_MUAT_PERCAKAPAN, TEKS_PESAN_TIDAK_TERVERIFIKASI,
+  TEKS_TERENKRIPSI,
+} from "../../../../src/teks-pesan";
+import { teksSisaKarakter } from "../../../../src/teks-ui";
+import { formatTanggal } from "../../../../src/waktu";
 
 // Memberi event loop kesempatan memproses event keyboard dan sentuhan.
 const jedaUi = () => new Promise<void>((r) => { setTimeout(r, 0); });
@@ -41,6 +55,8 @@ function PercakapanScreenIsi({ signer }: { signer: NearlySigner }) {
   const [isi, setIsi] = useState("");
   const [sibuk, setSibuk] = useState(false);
   const [galat, setGalat] = useState<string | null>(null);
+  const [nama, setNama] = useState<string | null>(null);
+  const [percobaan, setPercobaan] = useState(0);
   const ditandaiSampai = useRef(0);
   const layarAktif = useRef(false);
   const { muatUlangLencana } = useLencana();
@@ -49,6 +65,23 @@ function PercakapanScreenIsi({ signer }: { signer: NearlySigner }) {
   // setiap polling akan menyusutkan daftar ke bagian awal lalu menumbuhkannya
   // lagi — berkedip tiap 4 detik.
   const tahap = useRef<"belum" | "berjalan" | "selesai">("belum");
+  const kuning = useColor("primary");
+  const teksDiKuning = useColor("primaryForeground");
+  const latarKartu = useColor("card");
+  const garis = useColor("border");
+  const merah = useColor("destructive");
+  const redup = useColor("textMuted");
+
+  // Nama lawan untuk kepala (spec §6.5, Ruling B2-9): SATU GET /profile publik,
+  // pola yang sama dengan sheet salaman (R14). Gagal atau kosong → kepala
+  // hanya alamat singkat, tanpa pesan galat.
+  useEffect(() => {
+    let aktif = true;
+    req<{ displayName?: string }>(`/profile/${lawan}`)
+      .then((p) => { if (aktif) setNama(p.displayName?.trim() || null); })
+      .catch(() => {});
+    return () => { aktif = false; };
+  }, [lawan]);
 
   const muat = useCallback(async () => {
     const sesi = await sesiPesan(signer);
@@ -90,15 +123,17 @@ function PercakapanScreenIsi({ signer }: { signer: NearlySigner }) {
     layarAktif.current = true;
     const jalankan = () => muat().catch((e: unknown) => {
       if (!aktif) return;
-      setDaftar((d) => d ?? []);
-      setGalat(e instanceof ApiError ? pesanErrorMessage(e.code) : "Percakapan gagal dimuat.");
+      // Muat pertama yang gagal meninggalkan `daftar` null → galat + Try again;
+      // sesudahnya pesan yang sudah tampil dipertahankan (Ruling B2-12).
+      setGalat(e instanceof ApiError ? pesanErrorMessage(e.code) : TEKS_GAGAL_MUAT_PERCAKAPAN);
     });
     void jalankan();
     // Polling hanya selama layar aktif (spec 4c §9): pembersih di bawah
     // menghentikannya saat layar kehilangan fokus.
     const t = setInterval(() => { void jalankan(); }, 4_000);
     return () => { aktif = false; layarAktif.current = false; clearInterval(t); };
-  }, [muat]));
+    // `percobaan` memasang ulang efek ini dari tombol Try again.
+  }, [muat, percobaan]));
 
   async function kirim() {
     if (sibuk || isi.trim().length === 0) return;
@@ -107,7 +142,7 @@ function PercakapanScreenIsi({ signer }: { signer: NearlySigner }) {
     try {
       await kirimPesan(await sesiPesan(signer), lawan, isi);
     } catch (e) {
-      setGalat(e instanceof ApiError ? pesanErrorMessage(e.code) : "Pesan gagal dikirim.");
+      setGalat(e instanceof ApiError ? pesanErrorMessage(e.code) : TEKS_GAGAL_KIRIM_PESAN);
       setSibuk(false);
       return;
     }
@@ -119,90 +154,170 @@ function PercakapanScreenIsi({ signer }: { signer: NearlySigner }) {
   }
 
   function blokir() {
-    Alert.alert(
-      "Blokir orang ini?",
-      "Laporkan dulu kalau perlu — setelah diblokir, pesannya tidak bisa dipilih lagi sampai blokir dicabut.",
-      [
-        { text: "Batal", style: "cancel" },
-        {
-          text: "Blokir",
-          style: "destructive",
-          onPress: () => {
-            aksiBlokir(signer, lawan, false)
-              .then(() => router.replace("/pesan"))
-              .catch((e: unknown) => setGalat(
-                e instanceof ApiError ? blokirErrorMessage(e.code) : "Gagal memblokir."));
-          },
+    Alert.alert(JUDUL_DIALOG_BLOKIR, ISI_DIALOG_BLOKIR, [
+      { text: TEKS_BATAL, style: "cancel" },
+      {
+        text: TEKS_BLOKIR,
+        style: "destructive",
+        onPress: () => {
+          aksiBlokir(signer, lawan, false)
+            .then(() => router.replace("/pesan"))
+            .catch((e: unknown) => setGalat(
+              e instanceof ApiError ? blokirErrorMessage(e.code) : teksGagalBlokir(false)));
         },
-      ],
-    );
+      },
+    ]);
+  }
+
+  // Menu ⋯ (spec §6.5, Ruling B2-10): aksi yang sudah ada di layar ini, dialog bawaan.
+  function bukaMenu() {
+    Alert.alert(nama ?? alamatSingkat(lawan), undefined, [
+      { text: TEKS_LAPOR, onPress: () => router.push(`/pesan/lapor/${lawan}`) },
+      { text: TEKS_BLOKIR, style: "destructive", onPress: blokir },
+      { text: TEKS_BATAL, style: "cancel" },
+    ]);
   }
 
   const sisa = sisaKarakterPesan(isi);
+  const bisaKirim = !sibuk && isi.trim().length > 0 && sisa >= 0;
 
-  if (daftar === null) return <ActivityIndicator style={s.tengah} />;
+  if (daftar === null) {
+    return (
+      <View style={s.muat}>
+        {galat ? (
+          <KeadaanGalat kalimat={galat} onCobaLagi={() => setPercobaan((n) => n + 1)} />
+        ) : (
+          <KerangkaDaftar />
+        )}
+      </View>
+    );
+  }
+
+  const kini = new Date();
 
   return (
     <HindariKeyboard>
       <View style={s.root}>
-        <Text style={s.alamat}>{lawan}</Text>
-        <View style={s.aksi}>
-          <Button title="Lapor" onPress={() => router.push(`/pesan/lapor/${lawan}`)} />
-          <Button title="Blokir" color="#b00" onPress={blokir} />
+        <View style={s.kepala}>
+          <Avatar nama={nama} alamat={lawan} ukuran={UKURAN.avatarKartu} cincin="verified" />
+          <View style={s.kepalaTeks}>
+            {nama ? <Text variant="body" style={s.tebal}>{nama}</Text> : null}
+            {/* Nama tidak pernah tanpa alamat (R4, anti-impersonasi). */}
+            <Text variant="mono">{alamatSingkat(lawan)}</Text>
+            <Text variant="caption">{TEKS_TERENKRIPSI}</Text>
+          </View>
+          <Pressable
+            onPress={bukaMenu}
+            accessibilityRole="button"
+            accessibilityLabel={LABEL_OPSI_LAIN}
+            style={s.tombolMenu}
+          >
+            <Ellipsis color={redup} size={24} />
+          </Pressable>
         </View>
-        {galat && <Text style={s.galat}>{galat}</Text>}
+
+        {galat ? <Text variant="caption" style={{ color: merah }}>{galat}</Text> : null}
+
         <FlatList
           inverted
           style={s.daftar}
+          contentContainerStyle={s.isiDaftar}
           // Isian multiline: return menyisipkan baris, bukan menutup keyboard.
           // Menggeser daftar adalah jalan keluarnya.
           keyboardDismissMode="on-drag"
           keyboardShouldPersistTaps="handled"
           data={daftar}
           keyExtractor={(p) => p.id}
-          renderItem={({ item }) => (
-            <View style={[s.gelembung, item.dariAku ? s.milikku : s.milikLawan]}>
-              <Text style={item.status === "sah" ? s.teks : s.tidakSah}>
-                {item.status === "sah" ? item.isi : "Pesan tidak bisa diverifikasi"}
-              </Text>
+          renderItem={({ item, index }) => (
+            <View style={s.sel}>
+              {/* Di dalam sel `inverted` isi tetap tegak: pemisah tampil di atas
+                  pesan TERLAMA pada harinya (Ruling B2-11). */}
+              {perluPemisahHari(daftar, index) ? (
+                <Text variant="caption" style={s.pemisah}>{formatTanggal(new Date(item.createdAtMs), kini)}</Text>
+              ) : null}
+              <View
+                style={[
+                  s.gelembung,
+                  item.dariAku
+                    ? { alignSelf: "flex-end", backgroundColor: kuning, borderBottomRightRadius: RADIUS.gelembungSudut }
+                    : {
+                      alignSelf: "flex-start",
+                      backgroundColor: latarKartu,
+                      borderColor: garis,
+                      borderWidth: 1,
+                      borderBottomLeftRadius: RADIUS.gelembungSudut,
+                    },
+                ]}
+              >
+                <Text
+                  variant="body"
+                  style={item.status !== "sah" ? { color: merah } : item.dariAku ? { color: teksDiKuning } : undefined}
+                >
+                  {item.status === "sah" ? item.isi : TEKS_PESAN_TIDAK_TERVERIFIKASI}
+                </Text>
+              </View>
             </View>
           )}
         />
+
         <View style={s.tulis}>
-          <TextInput
-            style={[s.input, { color: WARNA.teks }]}
-            placeholderTextColor={WARNA.placeholder}
-            value={isi}
-            onChangeText={setIsi}
-            placeholder="Tulis pesan"
-            multiline
-            maxLength={MAKS_ISI_PESAN}
-          />
-          <Button
-            title={labelKirimPesan(sibuk)}
-            disabled={sibuk || isi.trim().length === 0 || sisa < 0}
+          <View style={s.isian}>
+            <Input
+              value={isi}
+              onChangeText={setIsi}
+              placeholder={PLACEHOLDER_PESAN}
+              accessibilityLabel={PLACEHOLDER_PESAN}
+              type="textarea"
+              rows={1}
+              inputStyle={s.batasTinggi}
+              maxLength={MAKS_ISI_PESAN}
+            />
+          </View>
+          <Pressable
             onPress={() => { void kirim(); }}
-          />
+            disabled={!bisaKirim}
+            hitSlop={hitSlopSampai(UKURAN.tombolKirim)}
+            accessibilityRole="button"
+            accessibilityLabel={labelKirimPesan(sibuk)}
+            accessibilityState={{ disabled: !bisaKirim, busy: sibuk }}
+            style={[s.kirim, { backgroundColor: kuning, opacity: bisaKirim ? 1 : 0.4 }]}
+          >
+            <ArrowUp color={teksDiKuning} size={20} />
+          </Pressable>
         </View>
-        {sisa < 100 && <Text style={s.sisa}>{sisa} karakter tersisa</Text>}
+        {sisa < 100 ? <Text variant="caption" style={s.kanan}>{teksSisaKarakter(sisa)}</Text> : null}
       </View>
     </HindariKeyboard>
   );
 }
 
 const s = StyleSheet.create({
+  muat: { flex: 1, padding: 16 },
   root: { flex: 1, padding: 12, gap: 8 },
-  tengah: { flex: 1 },
-  alamat: { fontFamily: "monospace", fontSize: 11, color: "#666" },
-  aksi: { flexDirection: "row", justifyContent: "space-between" },
-  galat: { color: "#b00" },
+  kepala: { flexDirection: "row", alignItems: "center", gap: 12 },
+  kepalaTeks: { flex: 1, gap: 4 },
+  tebal: { fontWeight: "600" },
+  tombolMenu: {
+    width: UKURAN.sentuh,
+    height: UKURAN.sentuh,
+    alignItems: "center",
+    justifyContent: "center",
+  },
   daftar: { flex: 1 },
-  gelembung: { maxWidth: "80%", padding: 10, borderRadius: 12, marginVertical: 3 },
-  milikku: { alignSelf: "flex-end", backgroundColor: "#dbeafe" },
-  milikLawan: { alignSelf: "flex-start", backgroundColor: "#f1f1f1" },
-  teks: { color: "#111" },
-  tidakSah: { color: "#b00", fontStyle: "italic" },
+  isiDaftar: { gap: 4 },
+  sel: { gap: 8, paddingVertical: 4 },
+  pemisah: { alignSelf: "center" },
+  gelembung: { maxWidth: "80%", paddingHorizontal: 12, paddingVertical: 8, borderRadius: RADIUS.gelembung },
   tulis: { flexDirection: "row", alignItems: "flex-end", gap: 8 },
-  input: { flex: 1, borderWidth: 1, borderColor: "#ccc", borderRadius: 8, padding: 8, maxHeight: 120 },
-  sisa: { color: "#666", fontSize: 12, textAlign: "right" },
+  isian: { flex: 1 },
+  batasTinggi: { maxHeight: 120 },
+  kirim: {
+    width: UKURAN.tombolKirim,
+    height: UKURAN.tombolKirim,
+    borderRadius: RADIUS.kartu,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 4,
+  },
+  kanan: { textAlign: "right" },
 });
