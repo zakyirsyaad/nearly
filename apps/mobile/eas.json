@@ -1,31 +1,38 @@
 {
   "cli": {
-    "version": ">= 12.0.0",
+    "version": ">= 16.0.0",
     "appVersionSource": "remote"
   },
   "build": {
     "development": {
       "developmentClient": true,
       "distribution": "internal",
+      "channel": "development",
+      "environment": "development",
       "android": {
         "buildType": "apk"
-      },
-      "env": {
-        "EXPO_PUBLIC_API_URL": "http://192.168.0.102:8787",
-        "EXPO_PUBLIC_CONNECTION_REGISTRY": "0x7814656e4bcc5acae46099bd0238856e2a118811"
-      },
-      "environment": "development"
+      }
     },
     "preview": {
       "distribution": "internal",
+      "channel": "preview",
+      "environment": "preview",
+      "autoIncrement": true,
       "android": {
         "buildType": "apk"
+      }
+    },
+    "production": {
+      "channel": "production",
+      "environment": "production",
+      "autoIncrement": true,
+      "android": {
+        "buildType": "app-bundle"
       },
-      "env": {
-        "EXPO_PUBLIC_API_URL": "http://192.168.0.102:8787",
-        "EXPO_PUBLIC_CONNECTION_REGISTRY": "0x7814656e4bcc5acae46099bd0238856e2a118811"
-      },
-      "environment": "preview"
+      "ios": {}
     }
+  },
+  "submit": {
+    "production": {}
   }
 }
