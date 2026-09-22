@@ -110,7 +110,7 @@ describe("tema gelap navigasi (spec §3.2)", () => {
 
   // Ruling A2: layar yang belum dimigrasi tetap berlatar terang.
   it("latar isi gelap tidak diberikan ke layar yang belum dimigrasi", () => {
-    expect(opsiTampilan("mulai")).toEqual({});
+    expect(opsiTampilan("mulai", new Set())).toEqual({});
   });
 
   it("root layout tidak membaca skema warna OS; useColorScheme selalu gelap", () => {

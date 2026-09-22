@@ -37,7 +37,7 @@ describe("gerbang dompet", () => {
 
   it("impor kunci privat di layar Mulai hanya dirender saat __DEV__", () => {
     const mulai = baca("app/mulai.tsx");
-    const tombol = mulai.indexOf("Impor kunci privat (khusus pengembangan)");
+    const tombol = mulai.indexOf("{TEKS_IMPOR_KUNCI_DEV}");
     expect(tombol).toBeGreaterThan(-1);
     expect(mulai.slice(Math.max(0, tombol - 200), tombol)).toContain("{__DEV__ && (");
     expect(mulai).toContain('{__DEV__ && mode === "kunci-dev" && (');
@@ -77,9 +77,9 @@ describe("gerbang dompet", () => {
   it("isian 12 kata & kunci dev: Android tanpa autofill dan tanpa keyboard yang belajar", () => {
     const mulai = baca("app/mulai.tsx");
     const blokMnemonik = mulai.slice(mulai.indexOf('{mode === "mnemonik" && ('), mulai.indexOf("{PERINGATAN_MNEMONIK_UTAMA}"));
-    const blokKunci = mulai.slice(mulai.indexOf('{__DEV__ && mode === "kunci-dev" && ('), mulai.indexOf("Hanya untuk dompet uji"));
+    const blokKunci = mulai.slice(mulai.indexOf('{__DEV__ && mode === "kunci-dev" && ('), mulai.indexOf("{PERINGATAN_KUNCI_DEV}"));
     for (const blok of [blokMnemonik, blokKunci]) {
-      expect(blok).toContain("<TextInput");
+      expect(blok).toContain("<Input");
       expect(blok).toContain('importantForAutofill="no"');
       expect(blok).toContain("autoCorrect={false}");
       expect(blok).toContain('autoComplete="off"');
@@ -101,7 +101,7 @@ describe("gerbang dompet", () => {
 
   it("layar Mulai mematikan perekaman QuickType/autocomplete pada isian mnemonik & kunci dev", () => {
     const mulai = baca("app/mulai.tsx");
-    // Kedua TextInput harus memiliki textContentType="none"
+    // Kedua isian harus memiliki textContentType="none"
     const kecocokan = mulai.match(/textContentType="none"/g);
     expect(kecocokan?.length).toBe(2);
   });

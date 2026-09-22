@@ -127,4 +127,5 @@ export const LAYAR_TERMIGRASI: ReadonlySet<string> = new Set<string>([
   // Rencana B2 kelompok (f) — layar sisa (spec §9 langkah 5f).
   "(tabs)/(beranda)/feed/index",
   "(tabs)/(beranda)/feed/new",
+  "mulai",
 ]);

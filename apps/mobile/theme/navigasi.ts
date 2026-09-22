@@ -17,7 +17,11 @@ export const OPSI_STACK = {
   headerLargeTitleStyle: { fontFamily: FONT.bold },
 };
 
-const KUNCI_BERANDA = "(tabs)/(beranda)/index";
+/**
+ * Tanpa header setelah dimigrasi: Beranda (sapaan besar menggantikannya) dan
+ * Mulai (logo "n") — spec §4.7, §3.7, Ruling B2-17.
+ */
+const KUNCI_TANPA_HEADER: ReadonlySet<string> = new Set(["(tabs)/(beranda)/index", "mulai"]);
 
 /** Layar akar tab selain Beranda: header besar dengan judul di atas (spec §4.7). */
 const AKAR_TAB_JUDUL_BESAR: ReadonlySet<string> = new Set(
@@ -46,7 +50,7 @@ export function opsiTampilan(
   // 2026-09-19).
   const tampilanBaru = termigrasi.has(kunci);
   return {
-    ...(kunci === KUNCI_BERANDA && tampilanBaru ? { headerShown: false as const } : {}),
+    ...(KUNCI_TANPA_HEADER.has(kunci) && tampilanBaru ? { headerShown: false as const } : {}),
     // Judul besar hanya untuk layar yang sudah dimigrasi: iOS memberi ruang
     // yang benar hanya bila isinya ScrollView (contentInsetAdjustmentBehavior
     // "automatic"); layar lama akan tertutup di bagian atasnya.
