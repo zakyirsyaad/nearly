@@ -14,3 +14,8 @@ apps/mobile/android/
 
 # Mockup brainstorming & ledger SDD (lokal)
 .superpowers/
+
+# Kredensial Firebase (spec distribusi D7) — datang dari EAS file variable.
+apps/mobile/google-services.json
+apps/mobile/GoogleService-Info.plist
+
