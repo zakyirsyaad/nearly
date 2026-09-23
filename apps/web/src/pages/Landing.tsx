@@ -1,3 +1,5 @@
+import type { ReactNode } from "react";
+
 import { CHAIN_ID, KONTRAK, tautanBscScan } from "../kontrak";
 import { tautanApk } from "../unduhan";
 
@@ -123,12 +125,15 @@ export function Landing({ apkUrl = tautanApk() }: { apkUrl?: string | null } = {
       <section id="fitur">
         <div className="wadah">
           <h2>Inside the app</h2>
+          <p className="sorot">Everything is built on the one rule: you have to be there.</p>
           <ul className="fitur">
             <li>
+              <Ikon><rect x="3" y="3" width="7" height="7" rx="1.5" /><rect x="14" y="3" width="7" height="7" rx="1.5" /><rect x="3" y="14" width="7" height="7" rx="1.5" /><path d="M14 14h3v3h-3zM20 14v3M17 20h4" /></Ikon>
               <h3>Handshake <small>the one rule</small></h3>
               <p>A signed QR code that rotates every 30 seconds, plus a co-location check.</p>
             </li>
             <li>
+              <Ikon><rect x="3" y="5" width="18" height="16" rx="2" /><path d="M8 3v4M16 3v4M3 10h18M8 15l2.5 2.5L16 13" /></Ikon>
               <h3>Events</h3>
               <p>
                 Create an event, RSVP, and check in at the door by scanning the host&apos;s QR code.
@@ -136,6 +141,7 @@ export function Landing({ apkUrl = tautanApk() }: { apkUrl?: string | null } = {
               </p>
             </li>
             <li>
+              <Ikon><circle cx="12" cy="12" r="2" /><path d="M8.5 15.5a5 5 0 0 1 0-7M15.5 8.5a5 5 0 0 1 0 7M5.5 18.5a9 9 0 0 1 0-13M18.5 5.5a9 9 0 0 1 0 13" /></Ikon>
               <h3>Radar</h3>
               <p>
                 At an event, see who is here right now — a list, never a map, with no distance and no
@@ -143,6 +149,7 @@ export function Landing({ apkUrl = tautanApk() }: { apkUrl?: string | null } = {
               </p>
             </li>
             <li>
+              <Ikon><circle cx="8.5" cy="8" r="3" /><circle cx="16" cy="12" r="2.5" /><path d="M3 20c0-3 2.5-5 5.5-5s5.5 2 5.5 5M16 17.5c2.2 0 4 1.3 4 3" /></Ikon>
               <h3>Want to meet</h3>
               <p>
                 Mark someone you have not met yet. When you both mark each other, you are revealed to
@@ -150,6 +157,7 @@ export function Landing({ apkUrl = tautanApk() }: { apkUrl?: string | null } = {
               </p>
             </li>
             <li>
+              <Ikon><path d="M20 15a3 3 0 0 1-3 3H9l-4 3v-3H7a3 3 0 0 1-3-3V7a3 3 0 0 1 3-3h10a3 3 0 0 1 3 3z" /><path d="M10 11h.01M13.5 11h.01" /></Ikon>
               <h3>Messages</h3>
               <p>
                 End-to-end encrypted, and only between people who have actually met. Push
@@ -157,6 +165,7 @@ export function Landing({ apkUrl = tautanApk() }: { apkUrl?: string | null } = {
               </p>
             </li>
             <li>
+              <Ikon><rect x="3" y="4" width="18" height="16" rx="2" /><path d="M7 9h6M7 13h10M7 17h7" /></Ikon>
               <h3>Feed</h3>
               <p>
                 Anyone with a wallet can post. There is no way to connect with or message someone
@@ -164,10 +173,12 @@ export function Landing({ apkUrl = tautanApk() }: { apkUrl?: string | null } = {
               </p>
             </li>
             <li>
+              <Ikon><path d="M12 3l7 3v5.5c0 4.2-2.9 7.8-7 9-4.1-1.2-7-4.8-7-9V6z" /><path d="M9 12l2 2 4-4" /></Ikon>
               <h3>Vouches and tags</h3>
               <p>Between people who have met — revocable, and slashable.</p>
             </li>
             <li>
+              <Ikon><rect x="3" y="6" width="18" height="13" rx="2.5" /><path d="M3 10h18M16.5 14.5h.01" /></Ikon>
               <h3>Your wallet <small>on your phone</small></h3>
               <p>
                 Created on first launch and backed up with a 12-word recovery phrase. Keys never
@@ -368,6 +379,15 @@ export function Landing({ apkUrl = tautanApk() }: { apkUrl?: string | null } = {
         </div>
       </footer>
     </main>
+  );
+}
+
+/** Ikon fitur: dekoratif, judulnya tetap yang membawa makna (aria-hidden). */
+function Ikon({ children }: { children: ReactNode }) {
+  return (
+    <svg className="ikon" viewBox="0 0 24 24" aria-hidden="true">
+      {children}
+    </svg>
   );
 }
 

@@ -363,14 +363,48 @@ select:focus-visible {
 }
 
 .fitur li {
-  padding: var(--j4) 0;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 0 var(--j4);
+  padding: var(--j4);
+  margin: 0 calc(var(--j4) * -1);
   border-top: 1px solid var(--garis);
+  border-radius: var(--radius-besar);
+  transition: background-color 140ms ease, border-color 140ms ease;
+}
+
+/* Ikon di kolom 1; judul dan teks selalu di kolom 2. */
+.fitur li > :not(.ikon) {
+  grid-column: 2;
+}
+
+.fitur li:hover {
+  background: var(--kartu);
+  border-top-color: var(--aksen-garis);
+}
+
+.ikon {
+  width: 22px;
+  height: 22px;
+  margin-top: 2px;
+  color: var(--teks-samar);
+  stroke: currentColor;
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  fill: none;
+  transition: color 140ms ease;
+}
+
+.fitur li:hover .ikon {
+  color: var(--primer);
 }
 
 .fitur h3 {
   display: flex;
   align-items: baseline;
-  gap: var(--j3);
+  flex-wrap: wrap;
+  gap: var(--j2) var(--j3);
   font-size: 1rem;
   font-weight: 500;
   margin: 0 0 var(--j1);
