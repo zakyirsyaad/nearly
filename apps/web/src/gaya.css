@@ -72,17 +72,27 @@ select:focus-visible {
 
 /* ── Landing ─────────────────────────────────────────────────────────────── */
 
-/* Satu latar ambient untuk seluruh halaman (jatah efek: satu per halaman),
-   CSS murni tanpa animasi. */
+/* Halaman lebar penuh: tiap <section> melebar selebar layar, isinya dibatasi
+   .wadah di dalamnya. */
 .landing {
-  max-width: 54rem;
+  width: 100%;
+}
+
+.wadah {
+  width: 100%;
+  max-width: 68rem;
   margin: 0 auto;
-  padding: var(--j8) var(--j4) var(--j8);
-  background: radial-gradient(90% 60% at 15% 0%, var(--aksen-latar) 0%, transparent 62%);
+  padding: 0 var(--j4);
 }
 
 .landing section {
-  margin-top: var(--j8);
+  padding: var(--j8) 0;
+  border-top: 1px solid var(--garis);
+}
+
+/* Pita berlatar: memberi ritme antar bagian. */
+.pita {
+  background: var(--kartu);
 }
 
 .landing h2 {
@@ -91,64 +101,106 @@ select:focus-visible {
   letter-spacing: 0.14em;
   text-transform: uppercase;
   color: var(--teks-redup);
-  margin: 0 0 var(--j4);
+  margin: 0 0 var(--j6);
 }
 
 .landing p {
   margin: 0 0 var(--j3);
 }
 
-/* Hero */
+/* Header */
 
-.hero {
-  padding: var(--j8) 0 var(--j6);
+.bar {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: var(--latar);
+  border-bottom: 1px solid var(--garis);
+}
+
+.bar .wadah {
+  display: flex;
+  align-items: center;
+  gap: var(--j6);
+  min-height: 64px;
+}
+
+.bar nav {
+  display: none;
+  gap: var(--j6);
+  margin-left: auto;
+  font-size: 0.9rem;
+}
+
+.bar nav a {
+  color: var(--teks-redup);
+  text-decoration: none;
+}
+
+.bar nav a:hover {
+  color: var(--teks);
+}
+
+.bar .tombol-utama {
+  margin-left: auto;
+  min-height: 40px;
+  padding: 0 var(--j4);
+  font-size: 0.9rem;
 }
 
 .merek {
   display: flex;
   align-items: center;
   gap: var(--j2);
-  font-size: 0.75rem;
+  font-size: 0.8rem;
   font-weight: 500;
   letter-spacing: 0.14em;
   text-transform: uppercase;
-  color: var(--teks-redup);
-  margin: 0 0 var(--j6);
+  color: var(--teks);
+  margin: 0;
 }
 
 .merek span {
   display: grid;
   place-items: center;
-  width: 26px;
-  height: 26px;
+  width: 28px;
+  height: 28px;
   border-radius: var(--radius);
   background: var(--primer);
   color: var(--primer-teks);
-  font-size: 1rem;
+  font-size: 1.05rem;
   letter-spacing: 0;
   text-transform: none;
 }
 
+/* Hero: satu latar ambient untuk seluruh halaman, CSS murni tanpa animasi. */
+
+.hero {
+  border-top: 0 !important;
+  padding: calc(var(--j8) * 2) 0 calc(var(--j8) * 1.5);
+  background: radial-gradient(70% 70% at 12% 0%, var(--aksen-latar) 0%, transparent 65%);
+}
+
 .hero h1 {
-  font-size: clamp(2.2rem, 7vw, 3.6rem);
-  line-height: 1.08;
-  letter-spacing: -0.02em;
+  font-size: clamp(2.4rem, 6.5vw, 4.2rem);
+  line-height: 1.05;
+  letter-spacing: -0.03em;
   font-weight: 600;
-  margin: 0 0 var(--j4);
-  max-width: 18ch;
+  margin: 0 0 var(--j6);
+  max-width: 16ch;
 }
 
 .lead {
-  font-size: 1.05rem;
+  font-size: clamp(1rem, 1.6vw, 1.2rem);
   color: var(--teks-redup);
-  max-width: 54ch;
+  max-width: 58ch;
 }
 
 .aksi {
   display: flex;
   flex-wrap: wrap;
   gap: var(--j3);
-  margin: var(--j6) 0 var(--j4);
+  margin: var(--j8) 0 var(--j6);
 }
 
 .tombol-utama,
@@ -191,16 +243,11 @@ select:focus-visible {
 
 /* Pernyataan aturan inti */
 
-.aturan {
-  border-top: 1px solid var(--garis);
-  padding-top: var(--j8);
-}
-
 .aturan p:first-child {
-  font-size: clamp(1.5rem, 3.4vw, 2rem);
-  line-height: 1.3;
+  font-size: clamp(1.6rem, 4vw, 2.6rem);
+  line-height: 1.25;
   font-weight: 500;
-  max-width: 24ch;
+  max-width: 22ch;
 }
 
 .aturan em {
@@ -211,6 +258,7 @@ select:focus-visible {
 .aturan p + p {
   color: var(--teks-redup);
   max-width: 52ch;
+  margin: 0;
 }
 
 /* Get the app */
@@ -218,9 +266,10 @@ select:focus-visible {
 .unduh ol {
   list-style: none;
   counter-reset: langkah;
+  display: grid;
+  gap: 0;
   margin: 0;
   padding: 0;
-  max-width: 52ch;
 }
 
 .unduh li {
@@ -240,7 +289,7 @@ select:focus-visible {
 }
 
 .catatan {
-  margin-top: var(--j4);
+  margin: var(--j4) 0 0;
   color: var(--teks-samar);
   font-size: 0.9rem;
 }
@@ -257,13 +306,13 @@ select:focus-visible {
 
 .langkah li {
   padding-top: var(--j4);
-  border-top: 1px solid var(--garis);
+  border-top: 1px solid var(--garis-kuat);
 }
 
 .langkah h3 {
-  font-size: 1rem;
+  font-size: 1.15rem;
   font-weight: 500;
-  margin: var(--j3) 0 var(--j1);
+  margin: var(--j3) 0 var(--j2);
 }
 
 .langkah p {
@@ -274,28 +323,34 @@ select:focus-visible {
 .nomor {
   display: grid;
   place-items: center;
-  width: 26px;
-  height: 26px;
+  width: 28px;
+  height: 28px;
   border-radius: var(--radius-pil);
   border: 1px solid var(--aksen-garis);
   color: var(--primer);
-  font-size: 0.8rem;
+  font-size: 0.85rem;
   font-variant-numeric: tabular-nums;
 }
 
 /* Trust */
 
+.trust-isi {
+  display: grid;
+  gap: var(--j8);
+  align-items: center;
+}
+
 .sorot {
-  font-size: clamp(1.15rem, 2.6vw, 1.5rem);
-  line-height: 1.4;
+  font-size: clamp(1.3rem, 2.6vw, 1.9rem);
+  line-height: 1.35;
   color: var(--teks);
-  max-width: 34ch;
+  max-width: 30ch;
 }
 
 .graf {
   width: 100%;
   height: auto;
-  margin: var(--j6) 0 var(--j4);
+  margin: 0 0 var(--j4);
 }
 
 .graf-simpul {
@@ -319,7 +374,7 @@ select:focus-visible {
   list-style: none;
   display: grid;
   gap: var(--j2);
-  margin: 0 0 var(--j4);
+  margin: 0;
   padding: 0;
   font-size: 0.85rem;
   color: var(--teks-redup);
@@ -354,11 +409,11 @@ select:focus-visible {
   margin: 0;
 }
 
-/* Privacy: dua kolom baris bergaris; ikon selalu berpasangan dengan teks. */
+/* Privacy: baris bergaris; ikon selalu berpasangan dengan teks. */
 
 .privasi {
   display: grid;
-  gap: 0 var(--j6);
+  gap: 0 var(--j8);
   margin: 0;
   padding: 0;
   list-style: none;
@@ -367,15 +422,19 @@ select:focus-visible {
 .privasi li {
   display: flex;
   gap: var(--j3);
-  padding: var(--j3) 0;
+  padding: var(--j4) 0;
   border-top: 1px solid var(--garis);
+}
+
+.privasi p {
+  margin: 0;
 }
 
 .privasi svg {
   flex: none;
   width: 18px;
   height: 18px;
-  margin-top: 3px;
+  margin-top: 4px;
 }
 
 .privasi .ya {
@@ -394,15 +453,12 @@ select:focus-visible {
   color: var(--teks-redup);
 }
 
-/* Batas yang jujur: pita selebar halaman, bagian paling menonjol setelah hero. */
+/* Batas yang jujur: pita paling menonjol setelah hero. */
 
 .batas {
   background: var(--aksen-latar);
   border-top: 1px solid var(--aksen-garis);
   border-bottom: 1px solid var(--aksen-garis);
-  margin-left: calc(var(--j4) * -1);
-  margin-right: calc(var(--j4) * -1);
-  padding: var(--j8) var(--j4);
 }
 
 .batas h2 {
@@ -410,21 +466,18 @@ select:focus-visible {
 }
 
 .batas p:first-of-type {
-  font-size: clamp(1.15rem, 2.6vw, 1.5rem);
-  line-height: 1.4;
-  max-width: 38ch;
+  font-size: clamp(1.3rem, 2.6vw, 1.9rem);
+  line-height: 1.35;
+  max-width: 36ch;
 }
 
 .batas ul {
   list-style: none;
-  margin: var(--j4) 0 0;
+  display: grid;
+  gap: var(--j4);
+  margin: var(--j6) 0 0;
   padding: 0;
   color: var(--teks-redup);
-  max-width: 62ch;
-}
-
-.batas li {
-  padding: var(--j2) 0;
 }
 
 /* On-chain: baris padat, bukan kartu. */
@@ -449,7 +502,7 @@ select:focus-visible {
   gap: var(--j1) var(--j4);
   align-items: baseline;
   justify-content: space-between;
-  min-height: 48px;
+  min-height: 56px;
   padding: var(--j3) 0;
   color: inherit;
   text-decoration: none;
@@ -476,42 +529,77 @@ select:focus-visible {
   word-break: break-all;
 }
 
+/* Ajakan penutup + kaki */
+
+.penutup {
+  background: var(--kartu);
+  text-align: center;
+}
+
+.penutup p:first-child {
+  font-size: clamp(1.4rem, 3vw, 2.2rem);
+  line-height: 1.25;
+  font-weight: 500;
+  margin: 0 auto var(--j6);
+  max-width: 20ch;
+}
+
+.penutup .aksi {
+  justify-content: center;
+  margin: 0;
+}
+
 .kaki {
   display: flex;
   flex-wrap: wrap;
   gap: var(--j3);
   justify-content: space-between;
-  margin-top: var(--j8);
-  padding-top: var(--j4);
+  padding: var(--j6) 0;
   border-top: 1px solid var(--garis);
   color: var(--teks-samar);
   font-size: 0.9rem;
+}
+
+.kaki p {
+  margin: 0;
 }
 
 .kaki a {
   color: var(--teks-redup);
 }
 
-@media (min-width: 40rem) {
-  .landing {
-    padding-left: var(--j8);
-    padding-right: var(--j8);
+@media (min-width: 48rem) {
+  .wadah {
+    padding: 0 var(--j8);
   }
 
-  .batas {
-    margin-left: calc(var(--j8) * -1);
-    margin-right: calc(var(--j8) * -1);
-    padding-left: var(--j8);
-    padding-right: var(--j8);
+  .landing section {
+    padding: calc(var(--j8) * 1.75) 0;
+  }
+
+  .bar nav {
+    display: flex;
+  }
+
+  .bar .tombol-utama {
+    margin-left: 0;
   }
 
   .langkah {
     grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: var(--j4);
+    gap: var(--j8);
   }
 
-  .privasi {
+  .privasi,
+  .batas ul,
+  .unduh ol {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 64rem) {
+  .trust-isi {
+    grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
   }
 }
 

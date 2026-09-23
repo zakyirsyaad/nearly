@@ -16,33 +16,50 @@ import { tautanApk } from "../unduhan";
 export function Landing({ apkUrl = tautanApk() }: { apkUrl?: string | null } = {}) {
   return (
     <main className="landing">
+      <header className="bar">
+        <div className="wadah">
+          <p className="merek"><span aria-hidden="true">n</span>Nearly</p>
+          <nav>
+            <a href="#cara">How it works</a>
+            <a href="#trust">Trust</a>
+            <a href="#onchain">On-chain</a>
+            <a href="https://github.com/zakyirsyaad/nearly" target="_blank" rel="noreferrer">GitHub</a>
+          </nav>
+          <a className="tombol-utama" href={apkUrl ?? "/live"}>
+            {apkUrl ? "Download" : "Live graph"}
+          </a>
+        </div>
+      </header>
+
       {/* induk §2 (aturan inti), fase 6 §6.4 butir 1 */}
       <section className="hero">
-        <p className="merek"><span aria-hidden="true">n</span>Nearly</p>
-        <h1>Connections you can only make in person.</h1>
-        <p className="lead">
-          Nearly is a social graph with one rule: a connection cannot be made remotely. No follows,
-          no friend requests. The only way into someone&apos;s network is to stand next to them and
-          both confirm.
-        </p>
-        <p className="aksi">
-          {apkUrl && <a className="tombol-utama" href={apkUrl}>Download for Android</a>}
-          <a className="tombol-kedua" href="/live">See the live graph</a>
-        </p>
-        {/* fase 6 §6.4 butir 2 (chain), distribusi D1 (iPhone menyusul), lisensi repo */}
-        <p className="meta">
-          <span>BNB Smart Chain testnet</span>
-          <span aria-hidden="true">·</span>
-          <span>Open source, MIT</span>
-          <span aria-hidden="true">·</span>
-          <span>iPhone: coming soon</span>
-        </p>
+        <div className="wadah">
+          <h1>Connections you can only make in person.</h1>
+          <p className="lead">
+            Nearly is a social graph with one rule: a connection cannot be made remotely. No follows,
+            no friend requests. The only way into someone&apos;s network is to stand next to them and
+            both confirm.
+          </p>
+          <p className="aksi">
+            {apkUrl && <a className="tombol-utama" href={apkUrl}>Download for Android</a>}
+            <a className="tombol-kedua" href="/live">See the live graph</a>
+          </p>
+          {/* fase 6 §6.4 butir 2 (chain), distribusi D1 (iPhone menyusul), lisensi repo */}
+          <p className="meta">
+            <span>BNB Smart Chain testnet</span>
+            <span aria-hidden="true">·</span>
+            <span>Open source, MIT</span>
+            <span aria-hidden="true">·</span>
+            <span>iPhone: coming soon</span>
+          </p>
+        </div>
       </section>
 
       {/* distribusi D1, D4, D10; "stays on your phone" = spec dompet 2026-09-17
           (dompet dibuat dan disimpan di HP) */}
       {apkUrl && (
-        <section className="unduh">
+        <section className="unduh pita">
+          <div className="wadah">
           <h2>Get the app</h2>
           <ol>
             <li>Open the downloaded file on your Android phone.</li>
@@ -50,18 +67,22 @@ export function Landing({ apkUrl = tautanApk() }: { apkUrl?: string | null } = {
             <li>Open Nearly and create your wallet. It stays on your phone.</li>
           </ol>
           <p className="catatan">iPhone: coming soon.</p>
+          </div>
         </section>
       )}
 
       {/* induk §2 — aturan inti, kalimat yang sama dengan lead di atas */}
       <section className="aturan">
-        <p>A connection cannot be made <em>remotely</em>.</p>
-        <p>Stand next to someone. Both confirm. That is the only way in.</p>
+        <div className="wadah">
+          <p>A connection cannot be made <em>remotely</em>.</p>
+          <p>Stand next to someone. Both confirm. That is the only way in.</p>
+        </div>
       </section>
 
       {/* induk §7.1 (QR 30 detik, verifikasi ko-lokasi, on-chain lewat relayer), §9.4 (satu
           koneksi per pasangan); fase 6 §1 dan §6.4 butir 2 (BNB Smart Chain testnet) */}
-      <section>
+      <section id="cara" className="pita">
+        <div className="wadah">
         <h2>How it works</h2>
         <ol className="langkah">
           <li>
@@ -84,14 +105,28 @@ export function Landing({ apkUrl = tautanApk() }: { apkUrl?: string | null } = {
             </p>
           </li>
         </ol>
+        </div>
       </section>
 
       {/* induk §7.2 dan §8 (PageRank dari seed, diversitas, sybil terisolasi, tier + bukti),
           §9.1 (akun ganda mengencerkan), §14 butir 2 (seed = penyelenggara). Diagram di bawah
           menggambarkan §8 — simpul seed, jaringan yang terhubung, dan gumpalan tanpa jalur. */}
-      <section>
+      <section id="trust">
+        <div className="wadah">
         <h2>Trust comes from the graph</h2>
+        <div className="trust-isi">
+        <div>
         <p className="sorot">Nobody rates anybody. Trust is the shape of who you have really met.</p>
+        <p className="rincian">
+          Trust is computed with personalized PageRank seeded from a small set of trusted accounts,
+          such as event organizers. Meeting people across many events and over time weighs more than
+          meeting many people in one room in one hour. A cluster of accounts that only connect to each
+          other has no path to the trusted seed, so its trust stays near zero — extra accounts dilute
+          trust instead of multiplying it. People see a tier alongside concrete facts: connections,
+          events, regions, and vouches.
+        </p>
+        </div>
+        <div>
         <svg
           className="graf"
           viewBox="0 0 640 210"
@@ -133,20 +168,16 @@ export function Landing({ apkUrl = tautanApk() }: { apkUrl?: string | null } = {
           <li><span className="titik-seed" aria-hidden="true" />Trusted seed, such as an event organizer</li>
           <li><span className="titik-palsu" aria-hidden="true" />Accounts that only connect to each other — no path, trust stays near zero</li>
         </ul>
-        <p className="rincian">
-          Trust is computed with personalized PageRank seeded from a small set of trusted accounts,
-          such as event organizers. Meeting people across many events and over time weighs more than
-          meeting many people in one room in one hour. A cluster of accounts that only connect to each
-          other has no path to the trusted seed, so its trust stays near zero — extra accounts dilute
-          trust instead of multiplying it. People see a tier alongside concrete facts: connections,
-          events, regions, and vouches.
-        </p>
+        </div>
+        </div>
+        </div>
       </section>
 
       {/* induk §6 prinsip 2 dan 3 (tanpa peta orang, identitas asli tidak publik), §7.5 (pesan
           E2E hanya antar yang pernah bertemu, batas metadata server); fase 6 §6.4 butir 4 (lokasi
           kasar saja) */}
-      <section>
+      <section className="pita">
+        <div className="wadah">
         <h2>Privacy by design</h2>
         <ul className="privasi">
           <li>
@@ -179,6 +210,7 @@ export function Landing({ apkUrl = tautanApk() }: { apkUrl?: string | null } = {
             </p>
           </li>
         </ul>
+        </div>
       </section>
 
       {/* induk §9.3 dan §14 butir 4 ("jangan pernah mengklaim lebih dari ini"), §9.1 (sybil
@@ -187,6 +219,7 @@ export function Landing({ apkUrl = tautanApk() }: { apkUrl?: string | null } = {
           data publik sejak blokir privat dan seed off-chain, spec 4a §2); fase 6 §6.4 butir 5 —
           bagian ini WAJIB ada */}
       <section className="batas">
+        <div className="wadah">
         <h2>What Nearly does not claim</h2>
         <p>
           Nearly proves that a real human showed up. It does not prove that they are a good person.
@@ -211,10 +244,12 @@ export function Landing({ apkUrl = tautanApk() }: { apkUrl?: string | null } = {
             private inputs, so they cannot be fully reproduced from public data alone.
           </li>
         </ul>
+        </div>
       </section>
 
       {/* fase 6 §6.4 butir 6; alamat dari src/kontrak.ts, peran dari induk §10.3 */}
-      <section>
+      <section id="onchain">
+        <div className="wadah">
         <h2>On-chain</h2>
         <p className="rincian">BNB Smart Chain testnet (chainId {CHAIN_ID}).</p>
         <ul className="kontrak">
@@ -230,15 +265,29 @@ export function Landing({ apkUrl = tautanApk() }: { apkUrl?: string | null } = {
             </li>
           ))}
         </ul>
+        </div>
       </section>
 
-      <footer className="kaki">
-        <p>Nearly · testnet demo</p>
-        <p>
-          <a href="https://github.com/zakyirsyaad/nearly" target="_blank" rel="noreferrer">
-            Source on GitHub
-          </a>
-        </p>
+      {/* induk §2 — ajakan penutup memakai kalimat utama yang sama */}
+      <section className="penutup">
+        <div className="wadah">
+          <p>Connections you can only make in person.</p>
+          <p className="aksi">
+            {apkUrl && <a className="tombol-utama" href={apkUrl}>Download for Android</a>}
+            <a className="tombol-kedua" href="/live">See the live graph</a>
+          </p>
+        </div>
+      </section>
+
+      <footer>
+        <div className="wadah kaki">
+          <p>Nearly · testnet demo</p>
+          <p>
+            <a href="https://github.com/zakyirsyaad/nearly" target="_blank" rel="noreferrer">
+              Source on GitHub
+            </a>
+          </p>
+        </div>
       </footer>
     </main>
   );
