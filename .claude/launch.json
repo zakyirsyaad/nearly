@@ -9,6 +9,15 @@
         "set -a; . ./.env; set +a; exec pnpm --filter @nearly/api dev"
       ],
       "port": 8787
+    },
+    {
+      "name": "nearly-web",
+      "runtimeExecutable": "sh",
+      "runtimeArgs": [
+        "-c",
+        "VITE_API_URL=https://api.nearly.43-134-58-217.sslip.io VITE_APK_URL=https://unduh.nearly.43-134-58-217.sslip.io/nearly.apk exec pnpm --filter @nearly/web dev"
+      ],
+      "port": 5173
     }
   ]
 }

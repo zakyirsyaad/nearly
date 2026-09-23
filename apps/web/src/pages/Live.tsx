@@ -20,10 +20,11 @@ import { mulaiSiklus, type Cakupan, type Tampilan } from "../siklus-graf";
 type SimpulGambar = { id: string; label: string; radius: number; baruSampaiMs: number | null; munculMs: number };
 type SisiGambar = { id: number; source: string; target: string; baruSampaiMs: number | null };
 
-const WARNA_SIMPUL = "#e8eefc";
-const WARNA_SISI = "rgba(160, 180, 220, 0.35)";
-const WARNA_SOROT = "#ffd166";
-const WARNA_LABEL = "rgba(232, 238, 252, 0.9)";
+// Nilai disalin dari gaya.css :root (palet aplikasi) — kanvas tidak bisa membaca var().
+const WARNA_SIMPUL = "#e6edf7";
+const WARNA_SISI = "rgba(138, 150, 173, 0.35)";
+const WARNA_SOROT = "#f3ba2f";
+const WARNA_LABEL = "rgba(230, 237, 247, 0.9)";
 const DURASI_TUMBUH_MS = 600;
 
 const URL_API = import.meta.env.VITE_API_URL as string | undefined;
@@ -113,7 +114,7 @@ export function Live() {
         graphData={dataGraf}
         width={ukuran.lebar}
         height={ukuran.tinggi}
-        backgroundColor="#05070d"
+        backgroundColor="#07090f"
         enableNodeDrag={false}
         autoPauseRedraw={false}
         cooldownTime={15_000}

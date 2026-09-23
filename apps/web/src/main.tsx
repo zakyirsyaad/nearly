@@ -1,5 +1,8 @@
 import { lazy, StrictMode, Suspense } from "react";
 import { createRoot } from "react-dom/client";
+// Font di-self-host (tanpa request ke Google Fonts); sama dengan aplikasi mobile.
+import "@fontsource-variable/inter";
+import "@fontsource-variable/jetbrains-mono";
 import "./gaya.css";
 import { Landing } from "./pages/Landing";
 import { pilihHalaman } from "./rute";
