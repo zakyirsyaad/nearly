@@ -59,14 +59,20 @@ export function Landing({ apkUrl = tautanApk() }: { apkUrl?: string | null } = {
           (dompet dibuat dan disimpan di HP) */}
       {apkUrl && (
         <section className="unduh pita">
-          <div className="wadah">
-          <h2>Get the app</h2>
-          <ol>
-            <li>Open the downloaded file on your Android phone.</li>
-            <li>If Android asks, allow installing apps from this source.</li>
-            <li>Open Nearly and create your wallet. It stays on your phone.</li>
-          </ol>
-          <p className="catatan">iPhone: coming soon.</p>
+          <div className="wadah dua-kolom">
+            <div>
+              <h2>Get the app</h2>
+              {/* distribusi D1 & D4: APK diunduh langsung dari VPS, bukan lewat toko aplikasi */}
+              <p className="judul-samping">
+                Android, straight from this page — no store account needed.
+              </p>
+              <p className="catatan">iPhone: coming soon.</p>
+            </div>
+            <ol>
+              <li>Open the downloaded file on your Android phone.</li>
+              <li>If Android asks, allow installing apps from this source.</li>
+              <li>Open Nearly and create your wallet. It stays on your phone.</li>
+            </ol>
           </div>
         </section>
       )}
@@ -177,8 +183,14 @@ export function Landing({ apkUrl = tautanApk() }: { apkUrl?: string | null } = {
           E2E hanya antar yang pernah bertemu, batas metadata server); fase 6 §6.4 butir 4 (lokasi
           kasar saja) */}
       <section className="pita">
-        <div className="wadah">
-        <h2>Privacy by design</h2>
+        <div className="wadah dua-kolom">
+        <div>
+          <h2>Privacy by design</h2>
+          {/* induk §7.1 (verifikasi ko-lokasi) + §6 prinsip 2 (tanpa peta orang) */}
+          <p className="judul-samping">
+            The graph needs to know that two people stood in the same place — nothing more.
+          </p>
+        </div>
         <ul className="privasi">
           <li>
             <Silang />

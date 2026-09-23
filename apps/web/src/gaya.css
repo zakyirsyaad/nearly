@@ -261,29 +261,49 @@ select:focus-visible {
   margin: 0;
 }
 
+/* Pola dua kolom: judul + kalimat pendek di kiri, daftar di kanan. Dipakai
+   "Get the app", "Privacy by design", dan "Trust comes from the graph". */
+
+.dua-kolom {
+  display: grid;
+  gap: var(--j6);
+}
+
+.dua-kolom > div:first-child h2 {
+  margin-bottom: var(--j3);
+}
+
+.judul-samping {
+  color: var(--teks-redup);
+  max-width: 34ch;
+  margin: 0;
+}
+
 /* Get the app */
 
 .unduh ol {
   list-style: none;
   counter-reset: langkah;
-  display: grid;
-  gap: 0;
   margin: 0;
   padding: 0;
 }
 
 .unduh li {
   counter-increment: langkah;
-  position: relative;
-  padding: var(--j3) 0 var(--j3) var(--j8);
+  display: flex;
+  gap: var(--j4);
+  padding: var(--j4) 0;
   border-top: 1px solid var(--garis);
   color: var(--teks-redup);
 }
 
+.unduh li:last-child {
+  border-bottom: 1px solid var(--garis);
+}
+
 .unduh li::before {
   content: counter(langkah);
-  position: absolute;
-  left: 0;
+  flex: none;
   color: var(--primer);
   font-variant-numeric: tabular-nums;
 }
@@ -337,7 +357,7 @@ select:focus-visible {
 .trust-isi {
   display: grid;
   gap: var(--j8);
-  align-items: center;
+  align-items: start;
 }
 
 .sorot {
@@ -412,8 +432,6 @@ select:focus-visible {
 /* Privacy: baris bergaris; ikon selalu berpasangan dengan teks. */
 
 .privasi {
-  display: grid;
-  gap: 0 var(--j8);
   margin: 0;
   padding: 0;
   list-style: none;
@@ -421,9 +439,13 @@ select:focus-visible {
 
 .privasi li {
   display: flex;
-  gap: var(--j3);
+  gap: var(--j4);
   padding: var(--j4) 0;
   border-top: 1px solid var(--garis);
+}
+
+.privasi li:last-child {
+  border-bottom: 1px solid var(--garis);
 }
 
 .privasi p {
@@ -590,14 +612,17 @@ select:focus-visible {
     gap: var(--j8);
   }
 
-  .privasi,
-  .batas ul,
-  .unduh ol {
+  .batas ul {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 
 @media (min-width: 64rem) {
+  .dua-kolom {
+    grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.2fr);
+    gap: var(--j8);
+  }
+
   .trust-isi {
     grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
   }
