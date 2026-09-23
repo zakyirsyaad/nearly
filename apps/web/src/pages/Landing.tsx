@@ -22,8 +22,8 @@ export function Landing({ apkUrl = tautanApk() }: { apkUrl?: string | null } = {
         <div className="wadah">
           <p className="merek"><span aria-hidden="true">n</span>Nearly</p>
           <nav>
-            <a href="#cara">How it works</a>
             <a href="#fitur">Features</a>
+            <a href="#cara">How it works</a>
             <a href="#trust">Trust</a>
             <a href="#onchain">On-chain</a>
             <a href="https://github.com/zakyirsyaad/nearly" target="_blank" rel="noreferrer">GitHub</a>
@@ -85,35 +85,6 @@ export function Landing({ apkUrl = tautanApk() }: { apkUrl?: string | null } = {
         <div className="wadah">
           <p>A connection cannot be made <em>remotely</em>.</p>
           <p>Stand next to someone. Both confirm. That is the only way in.</p>
-        </div>
-      </section>
-
-      {/* induk §7.1 (QR 30 detik, verifikasi ko-lokasi, on-chain lewat relayer), §9.4 (satu
-          koneksi per pasangan); fase 6 §1 dan §6.4 butir 2 (BNB Smart Chain testnet) */}
-      <section id="cara" className="pita">
-        <div className="wadah">
-        <h2>How it works</h2>
-        <ol className="langkah">
-          <li>
-            <p className="nomor" aria-hidden="true">1</p>
-            <h3>Meet</h3>
-            <p>You are in the same room as someone. That is the only starting point Nearly accepts.</p>
-          </li>
-          <li>
-            <p className="nomor" aria-hidden="true">2</p>
-            <h3>Scan</h3>
-            <p>One phone shows a signed QR code that rotates every 30 seconds. The other phone scans it.</p>
-          </li>
-          <li>
-            <p className="nomor" aria-hidden="true">3</p>
-            <h3>Verified, then recorded</h3>
-            <p>
-              The server checks that both phones were in the same place at the same time. Only then is
-              the connection written on-chain, on BNB Smart Chain testnet. One connection per pair of
-              people, forever.
-            </p>
-          </li>
-        </ol>
         </div>
       </section>
 
@@ -186,6 +157,35 @@ export function Landing({ apkUrl = tautanApk() }: { apkUrl?: string | null } = {
               </p>
             </li>
           </ul>
+        </div>
+      </section>
+
+      {/* induk §7.1 (QR 30 detik, verifikasi ko-lokasi, on-chain lewat relayer), §9.4 (satu
+          koneksi per pasangan); fase 6 §1 dan §6.4 butir 2 (BNB Smart Chain testnet) */}
+      <section id="cara" className="pita">
+        <div className="wadah">
+        <h2>How it works</h2>
+        <ol className="langkah">
+          <li>
+            <p className="nomor" aria-hidden="true">1</p>
+            <h3>Meet</h3>
+            <p>You are in the same room as someone. That is the only starting point Nearly accepts.</p>
+          </li>
+          <li>
+            <p className="nomor" aria-hidden="true">2</p>
+            <h3>Scan</h3>
+            <p>One phone shows a signed QR code that rotates every 30 seconds. The other phone scans it.</p>
+          </li>
+          <li>
+            <p className="nomor" aria-hidden="true">3</p>
+            <h3>Verified, then recorded</h3>
+            <p>
+              The server checks that both phones were in the same place at the same time. Only then is
+              the connection written on-chain, on BNB Smart Chain testnet. One connection per pair of
+              people, forever.
+            </p>
+          </li>
+        </ol>
         </div>
       </section>
 
