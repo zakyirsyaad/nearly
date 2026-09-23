@@ -574,9 +574,10 @@ select:focus-visible {
 .kaki {
   display: flex;
   flex-wrap: wrap;
-  gap: var(--j3);
+  gap: var(--j4) var(--j8);
+  align-items: center;
   justify-content: space-between;
-  padding: var(--j6) 0;
+  padding: var(--j8) var(--j4);
   border-top: 1px solid var(--garis);
   color: var(--teks-samar);
   font-size: 0.9rem;
@@ -586,8 +587,20 @@ select:focus-visible {
   margin: 0;
 }
 
+.kaki nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--j6);
+}
+
 .kaki a {
   color: var(--teks-redup);
+  text-decoration: none;
+}
+
+.kaki a:hover {
+  color: var(--teks);
+  text-decoration: underline;
 }
 
 @media (min-width: 48rem) {
@@ -597,6 +610,10 @@ select:focus-visible {
 
   .landing section {
     padding: calc(var(--j8) * 1.75) 0;
+  }
+
+  .kaki {
+    padding: var(--j8);
   }
 
   .bar nav {

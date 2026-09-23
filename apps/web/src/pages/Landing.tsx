@@ -293,12 +293,14 @@ export function Landing({ apkUrl = tautanApk() }: { apkUrl?: string | null } = {
 
       <footer>
         <div className="wadah kaki">
-          <p>Nearly · testnet demo</p>
-          <p>
+          <p className="merek"><span aria-hidden="true">n</span>Nearly · testnet demo</p>
+          <nav>
+            <a href="/live">Live graph</a>
+            {apkUrl && <a href={apkUrl}>Download APK</a>}
             <a href="https://github.com/zakyirsyaad/nearly" target="_blank" rel="noreferrer">
               Source on GitHub
             </a>
-          </p>
+          </nav>
         </div>
       </footer>
     </main>
