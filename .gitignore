@@ -19,3 +19,7 @@ apps/mobile/android/
 apps/mobile/google-services.json
 apps/mobile/GoogleService-Info.plist
 
+
+# Materi pitch/video hackathon (lokal, tidak di-commit)
+docs/demo/naskah-video.md
+docs/demo/deck-pitch.md
