@@ -24,8 +24,10 @@ describe("Landing component", () => {
     expect(html).toContain("See the live graph");
     expect(html).toContain('href="/live"');
 
+    // Dicocokkan sebagai JUDUL (<h2>…</h2>), bukan teks mana pun: sejak landing
+    // punya navigasi, kata "How it works" dan "On-chain" juga muncul di header.
     const bagian = ["How it works", "Trust comes from the graph", "Privacy by design", "What Nearly does not claim", "On-chain"];
-    const posisi = bagian.map((b) => html.indexOf(b));
+    const posisi = bagian.map((b) => html.indexOf(`<h2>${b}</h2>`));
     for (const [i, p] of posisi.entries()) expect(p, bagian[i]).toBeGreaterThan(-1);
     expect([...posisi].sort((x, y) => x - y)).toEqual(posisi);
 
@@ -82,11 +84,11 @@ describe("Landing — Get the app (spec distribusi D10)", () => {
 
   it("tombol unduh APK tampil bila tautan ada, beserta catatan iPhone", () => {
     const html = renderToString(Landing({ apkUrl: APK }));
-    expect(html).toContain("Get the app");
+    expect(html).toContain("<h2>Get the app</h2>");
     expect(html).toContain(`href="${APK}"`);
     expect(html).toContain("Download for Android");
     expect(teksTerbaca(html)).toContain("iphone: coming soon");
-    expect(html.indexOf("Get the app")).toBeLessThan(html.indexOf("How it works"));
+    expect(html.indexOf("<h2>Get the app</h2>")).toBeLessThan(html.indexOf("<h2>How it works</h2>"));
   });
 
   it("tidak dirender bila tautan kosong", () => {

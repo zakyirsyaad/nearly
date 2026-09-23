@@ -9,51 +9,100 @@ import { tautanApk } from "../unduhan";
  * "fase 6" = 2026-09-14-nearly-fase-6-demo-design.md. Tidak ada angka
  * pengguna, testimoni, logo mitra, atau analitik. Klaim baru tanpa rujukan
  * tidak boleh masuk.
+ *
+ * TAMPILAN: palet disalin dari aplikasi (gaya.css :root). Di bawah hero tidak
+ * ada kartu — hanya tipografi, baris bergaris, dan satu diagram graf.
  */
 export function Landing({ apkUrl = tautanApk() }: { apkUrl?: string | null } = {}) {
   return (
     <main className="landing">
+      <header className="bar">
+        <div className="wadah">
+          <p className="merek"><span aria-hidden="true">n</span>Nearly</p>
+          <nav>
+            <a href="#cara">How it works</a>
+            <a href="#trust">Trust</a>
+            <a href="#onchain">On-chain</a>
+            <a href="https://github.com/zakyirsyaad/nearly" target="_blank" rel="noreferrer">GitHub</a>
+          </nav>
+          <a className="tombol-utama" href={apkUrl ?? "/live"}>
+            {apkUrl ? "Download" : "Live graph"}
+          </a>
+        </div>
+      </header>
+
       {/* induk §2 (aturan inti), fase 6 §6.4 butir 1 */}
       <section className="hero">
-        <p className="merek">Nearly</p>
-        <h1>Connections you can only make in person.</h1>
-        <p className="lead">
-          Nearly is a social graph with one rule: a connection cannot be made remotely. No follows,
-          no friend requests. The only way into someone&apos;s network is to stand next to them and
-          both confirm.
-        </p>
-        <a className="tombol-utama" href="/live">See the live graph</a>
+        <div className="wadah">
+          <h1>Connections you can only make in person.</h1>
+          <p className="lead">
+            Nearly is a social graph with one rule: a connection cannot be made remotely. No follows,
+            no friend requests. The only way into someone&apos;s network is to stand next to them and
+            both confirm.
+          </p>
+          <p className="aksi">
+            {apkUrl && <a className="tombol-utama" href={apkUrl}>Download for Android</a>}
+            <a className="tombol-kedua" href="/live">See the live graph</a>
+          </p>
+          {/* fase 6 §6.4 butir 2 (chain), distribusi D1 (iPhone menyusul), lisensi repo */}
+          <p className="meta">
+            <span>BNB Smart Chain testnet</span>
+            <span aria-hidden="true">·</span>
+            <span>Open source, MIT</span>
+            <span aria-hidden="true">·</span>
+            <span>iPhone: coming soon</span>
+          </p>
+        </div>
       </section>
 
-      {/* distribusi D1 (Android dulu lewat APK, iPhone menyusul lewat TestFlight), D4, D10;
-          "stays on your phone" = spec dompet 2026-09-17 (dompet dibuat dan disimpan di HP) */}
+      {/* distribusi D1, D4, D10; "stays on your phone" = spec dompet 2026-09-17
+          (dompet dibuat dan disimpan di HP) */}
       {apkUrl && (
-        <section className="unduh">
-          <h2>Get the app</h2>
-          <a className="tombol-utama" href={apkUrl}>Download for Android (APK)</a>
-          <ol className="langkah-pasang">
-            <li>Open the downloaded file on your Android phone.</li>
-            <li>If Android asks, allow installing apps from this source.</li>
-            <li>Open Nearly and create your wallet. It stays on your phone.</li>
-          </ol>
-          <p className="catatan">iPhone: coming soon.</p>
+        <section className="unduh pita">
+          <div className="wadah dua-kolom">
+            <div>
+              <h2>Get the app</h2>
+              {/* distribusi D1 & D4: APK diunduh langsung dari VPS, bukan lewat toko aplikasi */}
+              <p className="judul-samping">
+                Android, straight from this page — no store account needed.
+              </p>
+              <p className="catatan">iPhone: coming soon.</p>
+            </div>
+            <ol>
+              <li>Open the downloaded file on your Android phone.</li>
+              <li>If Android asks, allow installing apps from this source.</li>
+              <li>Open Nearly and create your wallet. It stays on your phone.</li>
+            </ol>
+          </div>
         </section>
       )}
 
+      {/* induk §2 — aturan inti, kalimat yang sama dengan lead di atas */}
+      <section className="aturan">
+        <div className="wadah">
+          <p>A connection cannot be made <em>remotely</em>.</p>
+          <p>Stand next to someone. Both confirm. That is the only way in.</p>
+        </div>
+      </section>
+
       {/* induk §7.1 (QR 30 detik, verifikasi ko-lokasi, on-chain lewat relayer), §9.4 (satu
           koneksi per pasangan); fase 6 §1 dan §6.4 butir 2 (BNB Smart Chain testnet) */}
-      <section>
+      <section id="cara" className="pita">
+        <div className="wadah">
         <h2>How it works</h2>
         <ol className="langkah">
           <li>
+            <p className="nomor" aria-hidden="true">1</p>
             <h3>Meet</h3>
             <p>You are in the same room as someone. That is the only starting point Nearly accepts.</p>
           </li>
           <li>
+            <p className="nomor" aria-hidden="true">2</p>
             <h3>Scan</h3>
             <p>One phone shows a signed QR code that rotates every 30 seconds. The other phone scans it.</p>
           </li>
           <li>
+            <p className="nomor" aria-hidden="true">3</p>
             <h3>Verified, then recorded</h3>
             <p>
               The server checks that both phones were in the same place at the same time. Only then is
@@ -62,51 +111,118 @@ export function Landing({ apkUrl = tautanApk() }: { apkUrl?: string | null } = {
             </p>
           </li>
         </ol>
+        </div>
       </section>
 
       {/* induk §7.2 dan §8 (PageRank dari seed, diversitas, sybil terisolasi, tier + bukti),
-          §9.1 (akun ganda mengencerkan), §14 butir 2 (seed = penyelenggara) */}
-      <section>
+          §9.1 (akun ganda mengencerkan), §14 butir 2 (seed = penyelenggara). Diagram di bawah
+          menggambarkan §8 — simpul seed, jaringan yang terhubung, dan gumpalan tanpa jalur. */}
+      <section id="trust">
+        <div className="wadah">
         <h2>Trust comes from the graph</h2>
-        <p>
-          Nobody rates anybody. Trust is computed from where you sit in the graph of real meetings,
-          using personalized PageRank seeded from a small set of trusted accounts, such as event
-          organizers.
+        <div className="trust-isi">
+        <div>
+        <p className="sorot">Nobody rates anybody. Trust is the shape of who you have really met.</p>
+        <p className="rincian">
+          Trust is computed with personalized PageRank seeded from a small set of trusted accounts,
+          such as event organizers. Meeting people across many events and over time weighs more than
+          meeting many people in one room in one hour. A cluster of accounts that only connect to each
+          other has no path to the trusted seed, so its trust stays near zero — extra accounts dilute
+          trust instead of multiplying it. People see a tier alongside concrete facts: connections,
+          events, regions, and vouches.
         </p>
-        <ul>
-          <li>
-            <strong>Diversity counts.</strong> Meeting people across many events and over time weighs
-            more than meeting many people in one room in one hour.
-          </li>
-          <li>
-            <strong>Fake accounts struggle.</strong> A cluster of accounts that only connect to each
-            other has no path to the trusted seed, so its trust stays near zero. Extra accounts dilute
-            trust instead of multiplying it.
-          </li>
-          <li>
-            <strong>A tier with evidence, not a bare number.</strong> People see a tier alongside
-            concrete facts: connections, events, regions, and vouches.
-          </li>
+        </div>
+        <div>
+        <svg
+          className="graf"
+          viewBox="0 0 640 210"
+          role="img"
+          aria-label="A trusted seed account connects to people met across events, while a cluster of accounts that only connect to each other has no path to the seed."
+        >
+          <g className="graf-sisi">
+            <line x1="120" y1="100" x2="210" y2="58" />
+            <line x1="120" y1="100" x2="212" y2="140" />
+            <line x1="120" y1="100" x2="196" y2="100" />
+            <line x1="210" y1="58" x2="300" y2="40" />
+            <line x1="196" y1="100" x2="300" y2="40" />
+            <line x1="196" y1="100" x2="304" y2="118" />
+            <line x1="212" y1="140" x2="304" y2="118" />
+            <line x1="304" y1="118" x2="386" y2="86" />
+            <line x1="300" y1="40" x2="386" y2="86" />
+            <line x1="516" y1="52" x2="572" y2="92" />
+            <line x1="516" y1="52" x2="500" y2="120" />
+            <line x1="572" y1="92" x2="500" y2="120" />
+          </g>
+          <circle className="graf-seed" cx="120" cy="100" r="11" />
+          <g className="graf-simpul">
+            <circle cx="210" cy="58" r="6" />
+            <circle cx="196" cy="100" r="6" />
+            <circle cx="212" cy="140" r="6" />
+            <circle cx="300" cy="40" r="6" />
+            <circle cx="304" cy="118" r="6" />
+            <circle cx="386" cy="86" r="6" />
+          </g>
+          <g className="graf-palsu">
+            <circle cx="516" cy="52" r="5" />
+            <circle cx="572" cy="92" r="5" />
+            <circle cx="500" cy="120" r="5" />
+          </g>
+        </svg>
+        {/* Legenda di luar SVG: teks SVG ikut mengecil di layar ponsel sampai tak terbaca.
+            Warna selalu berpasangan dengan label. */}
+        <ul className="legenda">
+          <li><span className="titik-seed" aria-hidden="true" />Trusted seed, such as an event organizer</li>
+          <li><span className="titik-palsu" aria-hidden="true" />Accounts that only connect to each other — no path, trust stays near zero</li>
         </ul>
+        </div>
+        </div>
+        </div>
       </section>
 
       {/* induk §6 prinsip 2 dan 3 (tanpa peta orang, identitas asli tidak publik), §7.5 (pesan
           E2E hanya antar yang pernah bertemu, batas metadata server); fase 6 §6.4 butir 4 (lokasi
           kasar saja) */}
-      <section>
-        <h2>Privacy by design</h2>
-        <ul>
-          <li><strong>No map of people.</strong> Nearly never shows people as pins on a map.</li>
+      <section className="pita">
+        <div className="wadah dua-kolom">
+        <div>
+          <h2>Privacy by design</h2>
+          {/* induk §7.1 (verifikasi ko-lokasi) + §6 prinsip 2 (tanpa peta orang) */}
+          <p className="judul-samping">
+            The graph needs to know that two people stood in the same place — nothing more.
+          </p>
+        </div>
+        <ul className="privasi">
           <li>
-            <strong>Coarse location only.</strong> Handshakes are checked against a coarse location
-            cell, not precise GPS coordinates.
+            <Silang />
+            <p>
+              <strong>No map of people.</strong> <span>Nearly never shows people as pins on a map.</span>
+            </p>
           </li>
           <li>
-            <strong>End-to-end encrypted messages</strong>, and only between people who have actually
-            met. The relay stores ciphertext; it can still see who messages whom, and when.
+            <Centang />
+            <p>
+              <strong>Coarse location only.</strong>{" "}
+              <span>Handshakes are checked against a coarse location cell, not precise GPS coordinates.</span>
+            </p>
           </li>
-          <li><strong>Your real identity is never public.</strong> You can stay pseudonymous.</li>
+          <li>
+            <Centang />
+            <p>
+              <strong>End-to-end encrypted messages</strong>{" "}
+              <span>
+                — and only between people who have actually met. The relay stores ciphertext; it can
+                still see who messages whom, and when.
+              </span>
+            </p>
+          </li>
+          <li>
+            <Silang />
+            <p>
+              <strong>Your real identity is never public.</strong> <span>You can stay pseudonymous.</span>
+            </p>
+          </li>
         </ul>
+        </div>
       </section>
 
       {/* induk §9.3 dan §14 butir 4 ("jangan pernah mengklaim lebih dari ini"), §9.1 (sybil
@@ -115,20 +231,20 @@ export function Landing({ apkUrl = tautanApk() }: { apkUrl?: string | null } = {
           data publik sejak blokir privat dan seed off-chain, spec 4a §2); fase 6 §6.4 butir 5 —
           bagian ini WAJIB ada */}
       <section className="batas">
+        <div className="wadah">
         <h2>What Nearly does not claim</h2>
+        <p>
+          Nearly proves that a real human showed up. It does not prove that they are a good person.
+        </p>
         <ul>
-          <li>
-            <strong>Nearly proves that a real human showed up. It does not prove that they are a good
-            person.</strong>
-          </li>
           <li>
             <strong>Multi-device sybils are detected, not prevented.</strong> One person with several
             real phones can still create several accounts; co-location fingerprints and the diversity
             factor make that pattern visible and weaker.
           </li>
           <li>
-            <strong>Location can be spoofed and is imprecise indoors.</strong> Short-lived QR codes and a
-            tight time window raise the cost of faking a meeting; they do not make it impossible.
+            <strong>Location can be spoofed and is imprecise indoors.</strong> Short-lived QR codes and
+            a tight time window raise the cost of faking a meeting; they do not make it impossible.
           </li>
           <li>
             <strong>A wallet with a good reputation can be sold.</strong> No soulbound system can fully
@@ -140,28 +256,68 @@ export function Landing({ apkUrl = tautanApk() }: { apkUrl?: string | null } = {
             private inputs, so they cannot be fully reproduced from public data alone.
           </li>
         </ul>
+        </div>
       </section>
 
       {/* fase 6 §6.4 butir 6; alamat dari src/kontrak.ts, peran dari induk §10.3 */}
-      <section>
+      <section id="onchain">
+        <div className="wadah">
         <h2>On-chain</h2>
-        <p>BNB Smart Chain testnet (chainId {CHAIN_ID}).</p>
+        <p className="rincian">BNB Smart Chain testnet (chainId {CHAIN_ID}).</p>
         <ul className="kontrak">
           {KONTRAK.map((k) => (
             <li key={k.nama}>
-              <span className="kontrak-nama">{k.nama}</span>
-              <span className="kontrak-peran">{k.peran}</span>
               <a href={tautanBscScan(k.alamat)} target="_blank" rel="noreferrer">
-                <code>{k.alamat}</code>
+                <span>
+                  <span className="kontrak-nama">{k.nama}</span>
+                  <span className="kontrak-peran">{k.peran}</span>
+                </span>
+                <span className="kontrak-alamat">{k.alamat}</span>
               </a>
             </li>
           ))}
         </ul>
+        </div>
       </section>
 
-      <footer className="kaki">
-        <p>Nearly · testnet demo</p>
+      {/* induk §2 — ajakan penutup memakai kalimat utama yang sama */}
+      <section className="penutup">
+        <div className="wadah">
+          <p>Connections you can only make in person.</p>
+          <p className="aksi">
+            {apkUrl && <a className="tombol-utama" href={apkUrl}>Download for Android</a>}
+            <a className="tombol-kedua" href="/live">See the live graph</a>
+          </p>
+        </div>
+      </section>
+
+      <footer>
+        <div className="wadah kaki">
+          <p>Nearly · testnet demo</p>
+          <p>
+            <a href="https://github.com/zakyirsyaad/nearly" target="_blank" rel="noreferrer">
+              Source on GitHub
+            </a>
+          </p>
+        </div>
       </footer>
     </main>
+  );
+}
+
+/** Penanda privasi: ikon SELALU berdampingan dengan teksnya, tidak pernah sendirian. */
+function Centang() {
+  return (
+    <svg className="ya" viewBox="0 0 24 24" fill="none" strokeWidth="2" aria-hidden="true">
+      <path d="M4 12.5 9.5 18 20 6.5" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+function Silang() {
+  return (
+    <svg className="tidak" viewBox="0 0 24 24" fill="none" strokeWidth="2" aria-hidden="true">
+      <path d="M6 6l12 12M18 6 6 18" strokeLinecap="round" />
+    </svg>
   );
 }
