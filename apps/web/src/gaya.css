@@ -87,7 +87,6 @@ select:focus-visible {
 
 .landing section {
   padding: var(--j8) 0;
-  border-top: 1px solid var(--garis);
 }
 
 /* Pita berlatar: memberi ritme antar bagian. */
@@ -115,7 +114,6 @@ select:focus-visible {
   top: 0;
   z-index: 2;
   background: var(--latar);
-  border-bottom: 1px solid var(--garis);
 }
 
 .bar .wadah {
@@ -176,7 +174,6 @@ select:focus-visible {
 /* Hero: satu latar ambient untuk seluruh halaman, CSS murni tanpa animasi. */
 
 .hero {
-  border-top: 0 !important;
   padding: calc(var(--j8) * 2) 0 calc(var(--j8) * 1.5);
   background: radial-gradient(70% 70% at 12% 0%, var(--aksen-latar) 0%, transparent 65%);
 }
@@ -292,13 +289,8 @@ select:focus-visible {
   counter-increment: langkah;
   display: flex;
   gap: var(--j4);
-  padding: var(--j4) 0;
-  border-top: 1px solid var(--garis);
+  padding: var(--j2) 0;
   color: var(--teks-redup);
-}
-
-.unduh li:last-child {
-  border-bottom: 1px solid var(--garis);
 }
 
 .unduh li::before {
@@ -325,8 +317,7 @@ select:focus-visible {
 }
 
 .langkah li {
-  padding-top: var(--j4);
-  border-top: 1px solid var(--garis-kuat);
+  padding-top: var(--j2);
 }
 
 .langkah h3 {
@@ -368,9 +359,8 @@ select:focus-visible {
   gap: 0 var(--j4);
   padding: var(--j4);
   margin: 0 calc(var(--j4) * -1);
-  border-top: 1px solid var(--garis);
   border-radius: var(--radius-besar);
-  transition: background-color 140ms ease, border-color 140ms ease;
+  transition: background-color 140ms ease;
 }
 
 /* Ikon di kolom 1; judul dan teks selalu di kolom 2. */
@@ -380,7 +370,6 @@ select:focus-visible {
 
 .fitur li:hover {
   background: var(--kartu);
-  border-top-color: var(--aksen-garis);
 }
 
 .ikon {
@@ -511,12 +500,7 @@ select:focus-visible {
 .privasi li {
   display: flex;
   gap: var(--j4);
-  padding: var(--j4) 0;
-  border-top: 1px solid var(--garis);
-}
-
-.privasi li:last-child {
-  border-bottom: 1px solid var(--garis);
+  padding: var(--j3) 0;
 }
 
 .privasi p {
@@ -550,8 +534,6 @@ select:focus-visible {
 
 .batas {
   background: var(--aksen-latar);
-  border-top: 1px solid var(--aksen-garis);
-  border-bottom: 1px solid var(--aksen-garis);
 }
 
 .batas h2 {
@@ -581,15 +563,16 @@ select:focus-visible {
   padding: 0;
 }
 
-.kontrak li {
-  border-top: 1px solid var(--garis);
-}
-
-.kontrak li:last-child {
-  border-bottom: 1px solid var(--garis);
+.kontrak li + li {
+  margin-top: var(--j1);
 }
 
 .kontrak a {
+  border-radius: var(--radius-besar);
+  margin: 0 calc(var(--j4) * -1);
+  padding-left: var(--j4);
+  padding-right: var(--j4);
+  transition: background-color 140ms ease;
   display: flex;
   flex-wrap: wrap;
   gap: var(--j1) var(--j4);
@@ -601,8 +584,8 @@ select:focus-visible {
   text-decoration: none;
 }
 
-.kontrak a:hover .kontrak-alamat {
-  text-decoration: underline;
+.kontrak a:hover {
+  background: var(--kartu);
 }
 
 .kontrak-nama {
@@ -649,7 +632,6 @@ select:focus-visible {
   align-items: center;
   justify-content: space-between;
   padding: var(--j8) var(--j4);
-  border-top: 1px solid var(--garis);
   color: var(--teks-samar);
   font-size: 0.9rem;
 }
