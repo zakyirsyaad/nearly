@@ -21,6 +21,7 @@ export function Landing({ apkUrl = tautanApk() }: { apkUrl?: string | null } = {
           <p className="merek"><span aria-hidden="true">n</span>Nearly</p>
           <nav>
             <a href="#cara">How it works</a>
+            <a href="#fitur">Features</a>
             <a href="#trust">Trust</a>
             <a href="#onchain">On-chain</a>
             <a href="https://github.com/zakyirsyaad/nearly" target="_blank" rel="noreferrer">GitHub</a>
@@ -111,6 +112,69 @@ export function Landing({ apkUrl = tautanApk() }: { apkUrl?: string | null } = {
             </p>
           </li>
         </ol>
+        </div>
+      </section>
+
+      {/* Fitur yang ada di aplikasi. Rujukan per butir: induk §7.1 (salaman), spec 3a
+          (acara & check-in), spec 4b5 (radar, Terlihat/Tersembunyi), spec 3c (ingin
+          bertemu), spec 4c (pesan E2E), spec 3b (feed terbuka, tanpa jalur koneksi),
+          induk §7.3 (vouch revocable & slashable), spec dompet 2026-09-17 (12 kata di HP).
+          Tidak ada fitur yang belum ada di aplikasi. */}
+      <section id="fitur">
+        <div className="wadah">
+          <h2>Inside the app</h2>
+          <ul className="fitur">
+            <li>
+              <h3>Handshake <small>the one rule</small></h3>
+              <p>A signed QR code that rotates every 30 seconds, plus a co-location check.</p>
+            </li>
+            <li>
+              <h3>Events</h3>
+              <p>
+                Create an event, RSVP, and check in at the door by scanning the host&apos;s QR code.
+                Check-ins inside the venue become proof of attendance on-chain.
+              </p>
+            </li>
+            <li>
+              <h3>Radar</h3>
+              <p>
+                At an event, see who is here right now — a list, never a map, with no distance and no
+                direction. One Visible or Hidden switch for your whole account.
+              </p>
+            </li>
+            <li>
+              <h3>Want to meet</h3>
+              <p>
+                Mark someone you have not met yet. When you both mark each other, you are revealed to
+                each other, and an event shows how many of your matches are coming.
+              </p>
+            </li>
+            <li>
+              <h3>Messages</h3>
+              <p>
+                End-to-end encrypted, and only between people who have actually met. Push
+                notifications never carry the message itself.
+              </p>
+            </li>
+            <li>
+              <h3>Feed</h3>
+              <p>
+                Anyone with a wallet can post. There is no way to connect with or message someone
+                from the feed — meeting is still the only path.
+              </p>
+            </li>
+            <li>
+              <h3>Vouches and tags</h3>
+              <p>Between people who have met — revocable, and slashable.</p>
+            </li>
+            <li>
+              <h3>Your wallet <small>on your phone</small></h3>
+              <p>
+                Created on first launch and backed up with a 12-word recovery phrase. Keys never
+                leave the device; the relayer pays the gas.
+              </p>
+            </li>
+          </ul>
         </div>
       </section>
 

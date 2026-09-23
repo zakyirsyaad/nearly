@@ -352,6 +352,43 @@ select:focus-visible {
   font-variant-numeric: tabular-nums;
 }
 
+/* Fitur: baris bergaris, bukan kartu. */
+
+.fitur {
+  list-style: none;
+  display: grid;
+  gap: 0 var(--j8);
+  margin: 0;
+  padding: 0;
+}
+
+.fitur li {
+  padding: var(--j4) 0;
+  border-top: 1px solid var(--garis);
+}
+
+.fitur h3 {
+  display: flex;
+  align-items: baseline;
+  gap: var(--j3);
+  font-size: 1rem;
+  font-weight: 500;
+  margin: 0 0 var(--j1);
+}
+
+.fitur h3 small {
+  color: var(--primer);
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.fitur p {
+  color: var(--teks-redup);
+  margin: 0;
+}
+
 /* Trust */
 
 .trust-isi {
@@ -629,7 +666,8 @@ select:focus-visible {
     gap: var(--j8);
   }
 
-  .batas ul {
+  .batas ul,
+  .fitur {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
