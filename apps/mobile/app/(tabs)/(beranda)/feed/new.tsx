@@ -51,6 +51,11 @@ function TulisScreenIsi({ signer }: { signer: NearlySigner }) {
     }
     const hasil = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ["images"], base64: true, quality: 0.7,
+      // Foto iPhone tersimpan HEIC. "compatible" membuat iOS mentranskode ke
+      // JPEG sebelum menyerahkan berkasnya; tanpa ini pemilihnya mengembalikan
+      // image/heic dan layar menolaknya (benar, tapi foto jadi tak bisa dikirim).
+      preferredAssetRepresentationMode:
+        ImagePicker.UIImagePickerPreferredAssetRepresentationMode.Compatible,
     });
     const aset = hasil.assets?.[0];
     if (hasil.canceled || !aset?.base64) return;

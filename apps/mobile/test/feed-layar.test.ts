@@ -35,6 +35,26 @@ describe("Feed (spec §7.1 pola daftar)", () => {
    * 2026-09-24: feed hanya memuat saat layar difokuskan, jadi unggahan orang
    * lain tidak pernah muncul selama layar dibiarkan terbuka.
    */
+  /**
+   * 2026-09-24: foto iPhone tersimpan sebagai HEIC, jadi pemilih mengembalikan
+   * image/heic dan layar menolaknya dengan benar — tapi pengguna jadi tidak
+   * bisa melampirkan foto sama sekali. Mode "compatible" membuat iOS
+   * mentranskode ke JPEG sebelum menyerahkan berkasnya.
+   */
+  describe("foto iPhone (HEIC)", () => {
+    for (const [nama, isi] of [["feed", feed], ["unggahan baru", tulis]] as const) {
+      it(`pemilih ${nama} meminta representasi yang kompatibel`, () => {
+        expect(isi()).toContain("preferredAssetRepresentationMode");
+        expect(isi()).toContain("UIImagePickerPreferredAssetRepresentationMode.Compatible");
+      });
+    }
+
+    it("penolakan format lain tetap ada — tidak dilabeli ulang", () => {
+      expect(feed()).toContain("PESAN_FORMAT_TIDAK_DIDUKUNG");
+      expect(tulis()).toContain("PESAN_FORMAT_TIDAK_DIDUKUNG");
+    });
+  });
+
   describe("kesegaran feed", () => {
     it("bisa ditarik untuk menyegarkan", () => {
       const isi = feed();
