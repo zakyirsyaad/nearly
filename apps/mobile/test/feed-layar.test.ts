@@ -31,6 +31,31 @@ describe("Feed (spec §7.1 pola daftar)", () => {
     expect(x).toContain('<KeadaanKosong');
   });
 
+  /**
+   * 2026-09-24: feed hanya memuat saat layar difokuskan, jadi unggahan orang
+   * lain tidak pernah muncul selama layar dibiarkan terbuka.
+   */
+  describe("kesegaran feed", () => {
+    it("bisa ditarik untuk menyegarkan", () => {
+      const isi = feed();
+      expect(isi).toContain("RefreshControl");
+      expect(isi).toContain("refreshControl=");
+    });
+
+    it("menyegarkan sendiri tiap 20 detik SELAMA layar fokus, dan intervalnya dibersihkan", () => {
+      const isi = feed();
+      expect(isi).toContain("JEDA_SEGARKAN_FEED_MS");
+      expect(isi).toContain("setInterval");
+      expect(isi).toContain("clearInterval");
+    });
+
+    it("interval hidup di dalam useFocusEffect, bukan useEffect biasa", () => {
+      const isi = feed();
+      const blok = isi.slice(isi.indexOf("setInterval") - 600, isi.indexOf("setInterval"));
+      expect(blok).toContain("useFocusEffect");
+    });
+  });
+
   it("m9b: tautan penulis mencapai target sentuh 48 lewat UKURAN (review minor m9)", () => {
     const x = feed();
     expect(x).toContain('import { RADIUS, UKURAN } from "@/theme/globals";');

@@ -1,6 +1,6 @@
 import { useCallback, useState } from "react";
 import { router, useFocusEffect } from "expo-router";
-import { FlatList, Image, Pressable, StyleSheet, View } from "react-native";
+import { FlatList, Image, Pressable, RefreshControl, StyleSheet, View } from "react-native";
 import { FileText } from "lucide-react-native";
 import * as ImagePicker from "expo-image-picker";
 import { lampirGambarTypedData, likeTypedData } from "@nearly/shared";
@@ -10,6 +10,7 @@ import { TautanKecil } from "@/components/tautan-kecil";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Text } from "@/components/ui/text";
+import { useColor } from "@/hooks/useColor";
 import { RADIUS, UKURAN } from "@/theme/globals";
 import { CONFIG } from "../../../../src/config";
 import type { NearlySigner } from "../../../../src/signer";
@@ -35,6 +36,13 @@ import {
 } from "../../../../src/teks-feed";
 import { TEKS_GAGAL_MENANDAI, TEKS_LAPOR } from "../../../../src/teks-profil";
 
+/**
+ * Feed menyegarkan diri selama layarnya terbuka (2026-09-24). 20 detik:
+ * cukup untuk memunculkan unggahan orang lain, jauh lebih longgar daripada
+ * polling Percakapan (4 detik) karena feed berubah jarang.
+ */
+const JEDA_SEGARKAN_FEED_MS = 20_000;
+
 export default function FeedScreen() {
   const signer = useNearlySigner(CONFIG.verifyingContract);
   // Dompet belum siap — mis. sesaat setelah Ganti dompet, selagi layar ini
@@ -59,6 +67,12 @@ function FeedScreenIsi({ signer }: { signer: NearlySigner }) {
   // sekaligus untuk kartu yang sama (finding #5).
   const [tandaiBusyId, setTandaiBusyId] = useState<string | null>(null);
 
+  // Feed bukan ruang percakapan, jadi jedanya jauh lebih longgar daripada
+  // Percakapan (4 detik) — cukup untuk memunculkan unggahan orang lain tanpa
+  // membebani baterai dan kuota.
+  const [menyegarkan, setMenyegarkan] = useState(false);
+  const warnaRedup = useColor("mutedForeground");
+
   const muat = useCallback(async () => {
     try {
       // Bukti LihatFeed setiap muat: tanpa itu server tidak menerapkan
@@ -77,7 +91,19 @@ function FeedScreenIsi({ signer }: { signer: NearlySigner }) {
   // useFocusEffect SENDIRIAN, bukan berpasangan dengan useEffect: ia sudah
   // menyala saat layar pertama kali fokus — yaitu saat mount — jadi useEffect
   // di sebelahnya cuma menggandakan `GET /feed` setiap kali layar dibuka.
-  useFocusEffect(useCallback(() => { void muat(); }, [muat]));
+  // Interval hidup DI DALAM efek fokus, jadi ia berhenti begitu layar
+  // ditinggalkan (pola yang sama dengan Radar).
+  useFocusEffect(useCallback(() => {
+    void muat();
+    const t = setInterval(() => { void muat(); }, JEDA_SEGARKAN_FEED_MS);
+    return () => clearInterval(t);
+  }, [muat]));
+
+  async function tarikSegarkan() {
+    setMenyegarkan(true);
+    await muat();
+    setMenyegarkan(false);
+  }
 
   /**
    * Satu jalur galat untuk semua aksi kartu: ApiError diterjemahkan
@@ -187,6 +213,9 @@ function FeedScreenIsi({ signer }: { signer: NearlySigner }) {
 
   return (
     <FlatList
+      refreshControl={
+        <RefreshControl refreshing={menyegarkan} onRefresh={() => void tarikSegarkan()} tintColor={warnaRedup} />
+      }
       contentContainerStyle={s.daftar}
       contentInsetAdjustmentBehavior="automatic"
       data={posts}

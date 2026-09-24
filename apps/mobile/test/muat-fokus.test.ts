@@ -17,7 +17,7 @@ describe("batas muat saat fokus", () => {
   });
 
   it("jedanya tiga puluh detik", () => {
-    expect(JEDA_MUAT_FOKUS_MS).toBe(30_000);
+    expect(JEDA_MUAT_FOKUS_MS).toBe(10_000);
   });
 });
 

@@ -422,7 +422,8 @@ both want to meet") dan sesi pesan untuk `getBelumDibaca`. Keduanya pindah ke ho
 `(tabs)/_layout.tsx` (dengan pola pembungkus):
 
 - dimuat saat `(tabs)` terpasang, saat tab aktif berganti, dan saat aplikasi kembali ke depan (`AppState` `active`);
-  paling sering **sekali per 30 detik**;
+  paling sering **sekali per 10 detik** (*diamandemen 2026-09-24*: semula 30 detik — terlalu lama,
+  cuplikan feed dan koneksi baru terasa basi saat kembali ke Beranda);
 - kegagalan masing-masing menghasilkan 0 tanpa galat — perilaku yang sama dengan beranda sekarang (komentar kode
   "Beranda tidak boleh gagal hanya karena lencana");
 - angka Pesan → `tabBarBadge` Pesan; angka kecocokan baru → titik lencana tab Profil **dan** lencana di baris
@@ -452,7 +453,8 @@ Layar tab **tidak dilepas** saat berpindah tab (berbeda dengan Stack lama, yang 
 | Salaman | isi mode (QR berputar / kamera) dipasang **hanya saat tab fokus** (`useIsFocused` di komponen isi, bukan di pembungkus). Pindah tab = seperti keluar dari layar QR/Pindai hari ini: `useRotatingQr` berhenti, kamera dilepas. Sheet salaman berhasil (§6.2) hidup di dalam isi mode Pindai, jadi pindah tab saat sheet terbuka ikut menutupnya; koneksinya sudah tercatat dan tetap terlihat di Beranda/Koneksi. |
 | Radar | sudah memakai `useFocusEffect` (detak & radar berhenti saat tidak fokus) — tetap. |
 | QR check-in host (`events/[id]/host-qr`) | *Ditambahkan 2026-09-18 (review Rencana A #2):* QR check-in dipasang **hanya saat layar fokus** (`useIsFocused` di komponen isi, pola sama dengan Salaman). Tanpa ini `useCheckInQr` terus membaca GPS, menandatangani, dan mengirim tawaran check-in tiap 30 detik selagi host di tab lain. |
-| Beranda | data dimuat saat fokus (`useFocusEffect`), paling sering sekali per 30 detik; setara "satu tanda tangan per pembukaan beranda" hari ini. |
+| Beranda | data dimuat saat fokus (`useFocusEffect`), paling sering sekali per 10 detik (*diamandemen 2026-09-24*, semula 30); setara "satu tanda tangan per pembukaan beranda" hari ini. |
+| Feed | *Ditambahkan 2026-09-24:* selain muat saat fokus, layar Feed menyegarkan diri tiap **20 detik selama layarnya terbuka** dan bisa **ditarik untuk menyegarkan**. Intervalnya hidup di dalam `useFocusEffect`, jadi berhenti begitu layar ditinggalkan (pola Radar). Feed berubah jarang, jadi jedanya jauh lebih longgar daripada Percakapan (4 detik). |
 | Pesan, Acara, Profil | memuat saat fokus dengan batas yang sama; layar yang sudah memuat saat dipasang tetap melakukannya. |
 
 ### 4.7 Judul layar
