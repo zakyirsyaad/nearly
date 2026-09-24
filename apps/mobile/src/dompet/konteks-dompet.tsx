@@ -3,6 +3,7 @@ import {
 } from "react";
 import type { Address, Hex } from "viem";
 import { createSignerDariKunci, type NearlySigner } from "../signer";
+import { req } from "../http";
 import { lupakanPendaftaranPush } from "../pesan/push";
 import {
   buatDompetBaru, imporDompetKunciDev, imporDompetMnemonik, keadaanPenyimpan, lupakanDompet,
@@ -19,6 +20,14 @@ export type NilaiDompet = {
   address: Address | null;
   punyaMnemonik: boolean;
   sudahDicadangkan: boolean;
+  /**
+   * Nama tampilan milik dompet ini menurut server. `undefined` = belum
+   * diketahui (permintaan sedang jalan ATAU gagal) — gerbang nama sengaja
+   * gagal-terbuka dalam keadaan itu, lihat src/nama-gerbang.ts.
+   */
+  namaTampilan: string | null | undefined;
+  /** Dipanggil layar nama setelah tersimpan, supaya gerbang langsung membuka. */
+  tandaiNama(nama: string): void;
   muatUlang(): void;
   buatBaru(): Promise<void>;
   imporMnemonik(teks: string): Promise<void>;
@@ -93,12 +102,29 @@ export function DompetProvider({ children }: { children: ReactNode }) {
 
   const info = status.keadaan === "siap" ? status.info : null;
 
+  // Nama tampilan dibaca dari profil publik — satu permintaan tanpa tanda
+  // tangan, dan gagalnya TIDAK mengunci aplikasi (nilai tetap undefined).
+  const [namaTampilan, setNamaTampilan] = useState<string | null | undefined>(undefined);
+  const alamat = info?.address ?? null;
+  useEffect(() => {
+    if (!alamat) { setNamaTampilan(undefined); return; }
+    let aktif = true;
+    void req<{ displayName?: string }>(`/profile/${alamat}`)
+      .then((p) => { if (aktif) setNamaTampilan(p.displayName ?? ""); })
+      .catch(() => { if (aktif) setNamaTampilan(undefined); });
+    return () => { aktif = false; };
+  }, [alamat]);
+
+  const tandaiNama = useCallback((nama: string) => setNamaTampilan(nama), []);
+
   const nilai = useMemo<NilaiDompet>(() => ({
     keadaan: status.keadaan,
     galat: status.keadaan === "galat" ? status.galat : null,
     address: info?.address ?? null,
     punyaMnemonik: info?.punyaMnemonik ?? false,
     sudahDicadangkan: info?.sudahDicadangkan ?? false,
+    namaTampilan,
+    tandaiNama,
     muatUlang,
     buatBaru,
     imporMnemonik,
@@ -106,7 +132,10 @@ export function DompetProvider({ children }: { children: ReactNode }) {
     gantiDompet,
     tampilkanMnemonik: bacaMnemonik,
     tandaiSudahDicadangkan,
-  }), [status, info, muatUlang, buatBaru, imporMnemonik, imporKunciDev, gantiDompet, tandaiSudahDicadangkan]);
+  }), [
+    status, info, namaTampilan, tandaiNama, muatUlang, buatBaru, imporMnemonik,
+    imporKunciDev, gantiDompet, tandaiSudahDicadangkan,
+  ]);
 
   return (
     <KonteksKunci.Provider value={info?.kunci ?? null}>
