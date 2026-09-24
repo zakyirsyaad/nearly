@@ -183,6 +183,35 @@ export function feedRoutes(deps: FeedDeps) {
    * BUKAN galat: rute ini tidak boleh gagal untuk orang yang membuka tautan.
    * `who` cacat jadi penonton anonim; bukti buruk jadi "tidak terbukti".
    */
+  /**
+   * Satu unggahan (layar detail, 2026-09-24). Kebijakan `who`/bukti sama
+   * dengan `/feed` di bawah — termasuk "bukti cacat BUKAN galat". Bedanya:
+   * unggahan yang tidak terlihat menjadi 404, karena di sini memang ada satu
+   * sumber daya yang diminta, bukan daftar yang kebetulan kosong.
+   */
+  r.get("/posts/:id", async (c) => {
+    const id = c.req.param("id");
+    if (!/^0x[0-9a-fA-F]{64}$/.test(id)) return c.json({ code: "tidak_ada" }, 404);
+
+    const q = c.req.query();
+    const viewer = q.who && isAddress(q.who) ? (q.who.toLowerCase() as Address) : null;
+    const terbukti = viewer !== null && await penontonTerbukti(q, deps);
+
+    const kandidat = await deps.feed.getCandidate({ postId: id as Hex, viewer, terbukti });
+    if (!kandidat) return c.json({ code: "tidak_ada" }, 404);
+
+    // rankFeed dipakai walau isinya satu: di sanalah `terlihat()` dan
+    // `imageUrlOf` hidup, jadi detail tidak bisa diam-diam menyimpang dari feed.
+    const [post] = rankFeed([kandidat], {
+      nowMs: deps.nowMs(),
+      viewer,
+      spEndpoint: deps.greenfield?.spEndpoint ?? null,
+    });
+    if (!post) return c.json({ code: "tidak_ada" }, 404);
+
+    return c.json({ post });
+  });
+
   r.get("/feed", async (c) => {
     const q = c.req.query();
     const viewer = q.who && isAddress(q.who) ? (q.who.toLowerCase() as Address) : null;

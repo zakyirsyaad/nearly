@@ -8,6 +8,13 @@
 export const TEKS_TULIS_SESUATU = "Write something";
 export const KOSONG_FEED = "No posts yet.";
 export const TEKS_GAGAL_MUAT_FEED = "Couldn't load the feed.";
+
+/**
+ * Layar detail, 404: unggahannya dihapus, dilaporkan cukup banyak, atau
+ * penulisnya kena slash. Sengaja TIDAK menyebut yang mana — pembaca tidak
+ * berhak tahu laporan siapa, dan "dihapus" pun bukan urusannya.
+ */
+export const TEKS_UNGGAHAN_HILANG = "This post is no longer available.";
 export const TEKS_GAGAL_SUKA = "Couldn't like this post.";
 export const TEKS_GAGAL_LAPOR_UNGGAHAN = "Couldn't report this post.";
 export const TEKS_GAGAL_HAPUS_UNGGAHAN = "Couldn't delete this post.";

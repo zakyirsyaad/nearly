@@ -3,6 +3,7 @@ import { baca, tanpaKomentar } from "./support/berkas";
 
 const feed = () => tanpaKomentar(baca("app/(tabs)/(beranda)/feed/index.tsx"));
 const tulis = () => tanpaKomentar(baca("app/(tabs)/(beranda)/feed/new.tsx"));
+const detail = () => tanpaKomentar(baca("app/(tabs)/(beranda)/feed/[postId].tsx"));
 
 describe("Feed (spec §7.1 pola daftar)", () => {
   it("FlatList", () => {
@@ -105,5 +106,53 @@ describe("Unggahan baru (spec §7.1 pola formulir)", () => {
     const x = tulis();
     expect(x).toContain("mimeGambarDiterima(aset.mimeType)");
     expect(x).not.toContain("e.message");
+  });
+});
+
+/**
+ * Layar detail (2026-09-24): kartu feed memotong teks dua baris dan memangkas
+ * foto jadi jalur 200 px, jadi harus ada tempat melihat keduanya utuh.
+ */
+describe("Detail unggahan", () => {
+  it("kartu feed membuka detail", () => {
+    expect(feed()).toContain("router.push(`/feed/${p.postId}`)");
+  });
+
+  it("mengambil ulang dari server, bukan mengoper unggahan lewat parameter navigasi", () => {
+    const isi = detail();
+    expect(isi).toContain("getPost(");
+    expect(isi).toContain("kueriBuktiFeed(signer)");
+  });
+
+  it("teks utuh: tidak ada pemotongan baris di layar ini", () => {
+    expect(detail()).not.toContain("numberOfLines");
+  });
+
+  it("foto memakai rasio aslinya, bukan dipangkas", () => {
+    const isi = detail();
+    expect(isi).toContain('resizeMode="contain"');
+    expect(isi).toContain("aspectRatio");
+    expect(isi).toContain("onLoad=");
+  });
+
+  it("404 memakai kalimatnya sendiri, bukan kalimat gagal jaringan", () => {
+    const isi = detail();
+    expect(isi).toContain("TEKS_UNGGAHAN_HILANG");
+    expect(isi).toContain("e.status === 404");
+  });
+
+  it("aksi memakai modul bersama, jadi tidak menyimpang dari kartu feed", () => {
+    const isi = detail();
+    for (const aksi of ["sukaUnggahan(", "laporUnggahan(", "hapusUnggahan("]) {
+      expect(isi, aksi).toContain(aksi);
+    }
+    // Hapus hanya untuk unggahan sendiri (spec §10.2), dengan dua ketukan.
+    expect(isi).toContain("bisaHapus(");
+    expect(isi).toContain("labelHapus(");
+  });
+
+  it("kartu feed dan detail memakai satu jalur tanda tangan suka", () => {
+    expect(feed()).toContain("sukaUnggahan(");
+    expect(feed()).not.toContain("likeTypedData(");
   });
 });

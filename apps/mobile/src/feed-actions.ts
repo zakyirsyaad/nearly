@@ -1,6 +1,6 @@
 import type { Address, Hex } from "viem";
-import { hapusPostTypedData, laporPostTypedData } from "@nearly/shared";
-import { postDelete, postReport } from "./feed-api";
+import { hapusPostTypedData, laporPostTypedData, likeTypedData } from "@nearly/shared";
+import { postDelete, postLike, postReport } from "./feed-api";
 
 /**
  * Aksi kartu feed yang butuh tanda tangan, dipisah dari layarnya supaya bisa
@@ -70,5 +70,27 @@ export async function hapusUnggahan(
   const sig = await signer.signTypedData(hapusPostTypedData(pesan, verifyingContract));
   await postDelete(postId, {
     postId, author: signer.address, expiresAt: expiresAt.toString(), sig,
+  });
+}
+
+/**
+ * Suka / batal suka. Dipakai kartu feed DAN layar detail: dua layar yang
+ * membangun tanda tangannya sendiri-sendiri cepat menyimpang, dan `suka` ikut
+ * ditandatangani tipe `Like`.
+ */
+export async function sukaUnggahan(
+  signer: PenandaTanganFeed,
+  p: { postId: Hex; sudahSuka: boolean },
+  verifyingContract: Address,
+): Promise<void> {
+  const berikutnya = !p.sudahSuka;
+  const expiresAt = BigInt(Math.floor(Date.now() / 1000) + MASA_BERLAKU_DETIK);
+  const sig = await signer.signTypedData(likeTypedData(
+    { postId: p.postId, who: signer.address, suka: berikutnya, expiresAt },
+    verifyingContract,
+  ));
+  await postLike(p.postId, {
+    postId: p.postId, who: signer.address, suka: berikutnya,
+    expiresAt: expiresAt.toString(), sig,
   });
 }

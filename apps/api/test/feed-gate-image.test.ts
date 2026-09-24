@@ -32,7 +32,7 @@ function store(over: Partial<FeedStore> = {}): FeedStore {
     setImagePending: vi.fn(async () => {}),
     setImageDone: vi.fn(async () => {}),
     setImageFailed: vi.fn(async () => {}),
-    listCandidates: vi.fn(async () => []),
+    listCandidates: vi.fn(async () => []), getCandidate: vi.fn(async () => null),
     ...over,
   };
 }

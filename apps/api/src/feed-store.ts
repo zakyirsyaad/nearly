@@ -145,6 +145,138 @@ async function gabungPerKelompok(
   return keluar;
 }
 
+/**
+ * Hidrasi kandidat feed: suka, laporan, snapshot trust, slash, nama, dan peta
+ * hop penonton. Dipakai `listCandidates` (jendela waktu) DAN `getCandidate`
+ * (satu unggahan untuk layar detail) — satu jalur, supaya aturan blokir dan
+ * `sudahSuka` tidak pernah berbeda antara feed dan detail.
+ */
+async function hidrasiKandidat(
+  db: SupabaseClient,
+  blokir: BlokirStore,
+  postRows: unknown[],
+  viewer: Address | null,
+  terbukti: boolean,
+): Promise<FeedCandidate[]> {
+    const aku = viewer ? viewer.toLowerCase() : null;
+
+    // Dua arah: unggahan orang yang kamu blokir hilang dari feedmu, DAN
+    // unggahanmu hilang dari feed mereka. Yang kedua terjadi sendirinya
+    // karena himpunan ini simetris (spec §5.1).
+    //
+    // HANYA untuk penonton TERBUKTI (review akhir 4a, C1). Untuk `who` yang
+    // datang tanpa bukti LihatFeed, `himpunanUntuk` tidak dipanggil sama
+    // sekali dan himpunannya kosong — baik untuk saringan unggahan maupun
+    // `petaHop` di bawah. Kalau tidak, `GET /feed` vs `GET /feed?who=A`
+    // gratis menyingkap siapa yang punya hubungan blokir dengan A: penulis
+    // yang hilang, dan `hop` yang bergeser.
+    const terblokir = aku && terbukti
+      ? await blokir.himpunanUntuk(viewer as Address)
+      : new Set<string>();
+
+    const posts = (postRows ?? []).map((r) => rowToPost(r as PostDbRow))
+      .filter((p) => !terblokir.has(p.author.toLowerCase()));
+    if (posts.length === 0) return [];
+
+    const ids = posts.map((p) => p.postId.toLowerCase());
+    const penulis = [...new Set(posts.map((p) => p.author.toLowerCase()))];
+
+    // Setiap `.in()` dipotong jadi kelompok maksimal UKURAN_KELOMPOK id.
+    const kelompokId = potongKelompok(ids);
+    const kelompokPenulis = potongKelompok(penulis);
+
+    const [likes, reports, snapshots, slashed, profiles] = await Promise.all([
+      gabungPerKelompok(kelompokId, (bagian) =>
+        db.from("post_likes").select("post_id, address").in("post_id", bagian),
+      "hidrasi feed"),
+      gabungPerKelompok(kelompokId, (bagian) =>
+        db.from("post_reports").select("post_id, reporter").in("post_id", bagian),
+      "hidrasi feed"),
+      gabungPerKelompok(kelompokPenulis, (bagian) =>
+        db.from("trust_snapshots").select("address, ratio, tier, connections").in("address", bagian),
+      "hidrasi feed"),
+      gabungPerKelompok(kelompokPenulis, (bagian) =>
+        db.from("slashes").select("subject").in("subject", bagian),
+      "hidrasi feed"),
+      gabungPerKelompok(kelompokPenulis, (bagian) =>
+        db.from("profiles").select("address, display_name").in("address", bagian),
+      "hidrasi feed"),
+    ]);
+
+    // `sudahSuka` HANYA untuk penonton terbukti. Siapa menyukai apa bukan
+    // informasi publik — cuma jumlahnya. Tanpa syarat `terbukti`,
+    // `GET /feed?who=A` tanpa tanda tangan menyingkap unggahan mana yang
+    // disukai A; kelas kebocoran yang sama dengan C1 di atas.
+    const jumlahSuka = new Map<string, number>();
+    const sukaAku = new Set<string>();
+    for (const r of likes as { post_id: string; address: string }[]) {
+      jumlahSuka.set(r.post_id, (jumlahSuka.get(r.post_id) ?? 0) + 1);
+      if (aku && terbukti && r.address.toLowerCase() === aku) sukaAku.add(r.post_id);
+    }
+
+    const jumlahLapor = new Map<string, number>();
+    for (const r of reports as { post_id: string }[]) {
+      jumlahLapor.set(r.post_id, (jumlahLapor.get(r.post_id) ?? 0) + 1);
+    }
+
+    const snap = new Map<string, { ratio: number; tier: number; connections: number }>();
+    for (const r of snapshots as
+      { address: string; ratio: number; tier: number; connections: number }[]) {
+      snap.set(r.address.toLowerCase(), r);
+    }
+
+    const kenaSlash = new Set(
+      (slashed as { subject: string }[]).map((r) => r.subject.toLowerCase()),
+    );
+
+    const nama = new Map<string, string>();
+    for (const r of profiles as { address: string; display_name: string }[]) {
+      nama.set(r.address.toLowerCase(), r.display_name);
+    }
+
+    // Graf penonton diambil dengan jumlah kueri TETAP — satu untuk lapis
+    // satu, lalu satu per kelompok untuk lapis dua — bukan satu kueri per
+    // unggahan.
+    let hop = new Map<string, 0 | 1 | 2>();
+    if (aku) {
+      const { data: t1, error: e2 } = await db
+        .from("connections").select("addr_a, addr_b")
+        .or(`addr_a.eq.${aku},addr_b.eq.${aku}`);
+      if (e2) throw new Error(`ambil koneksi gagal: ${e2.message}`);
+
+      const satu = [...new Set(((t1 ?? []) as { addr_a: string; addr_b: string }[])
+        .flatMap((t) => [t.addr_a.toLowerCase(), t.addr_b.toLowerCase()])
+        .filter((a) => a !== aku))];
+
+      // `.or(...in...)` juga masuk query string, dan orang dengan banyak
+      // koneksi membuatnya sama panjangnya. Dipotong dengan aturan sama.
+      const t2 = await gabungPerKelompok(
+        potongKelompok(satu),
+        (bagian) => db.from("connections").select("addr_a, addr_b")
+          .or(`addr_a.in.(${bagian.join(",")}),addr_b.in.(${bagian.join(",")})`),
+        "ambil koneksi lapis dua",
+      ) as { addr_a: string; addr_b: string }[];
+      hop = petaHop(viewer as Address, (t1 ?? []) as Tepi[], t2, terblokir);
+    }
+
+    return posts.map((p): FeedCandidate => {
+      const a = p.author.toLowerCase();
+      const s = snap.get(a);
+      return {
+        ...p,
+        displayName: nama.get(a) ?? "",
+        authorRatio: s?.ratio ?? 0,
+        authorTier: s?.tier ?? 0,
+        authorConnections: s?.connections ?? 0,
+        authorSlashed: kenaSlash.has(a),
+        reportCount: jumlahLapor.get(p.postId.toLowerCase()) ?? 0,
+        likeCount: jumlahSuka.get(p.postId.toLowerCase()) ?? 0,
+        sudahSuka: sukaAku.has(p.postId.toLowerCase()),
+        hop: hop.get(a) ?? null,
+      };
+    });
+}
+
 export function createFeedStore(db: SupabaseClient, blokir: BlokirStore): FeedStore {
   async function ensureProfile(address: Address): Promise<void> {
     const { error } = await db
@@ -248,123 +380,24 @@ export function createFeedStore(db: SupabaseClient, blokir: BlokirStore): FeedSt
         .limit(limit);
       if (e1) throw new Error(`ambil kandidat gagal: ${e1.message}`);
 
-      const aku = viewer ? viewer.toLowerCase() : null;
+      return hidrasiKandidat(db, blokir, postRows ?? [], viewer, terbukti);
+    },
 
-      // Dua arah: unggahan orang yang kamu blokir hilang dari feedmu, DAN
-      // unggahanmu hilang dari feed mereka. Yang kedua terjadi sendirinya
-      // karena himpunan ini simetris (spec §5.1).
-      //
-      // HANYA untuk penonton TERBUKTI (review akhir 4a, C1). Untuk `who` yang
-      // datang tanpa bukti LihatFeed, `himpunanUntuk` tidak dipanggil sama
-      // sekali dan himpunannya kosong — baik untuk saringan unggahan maupun
-      // `petaHop` di bawah. Kalau tidak, `GET /feed` vs `GET /feed?who=A`
-      // gratis menyingkap siapa yang punya hubungan blokir dengan A: penulis
-      // yang hilang, dan `hop` yang bergeser.
-      const terblokir = aku && terbukti
-        ? await blokir.himpunanUntuk(viewer as Address)
-        : new Set<string>();
+    /**
+     * Satu unggahan untuk layar detail — tanpa jendela waktu, karena tautan ke
+     * unggahan lama harus tetap terbuka. Unggahan yang terhapus TETAP
+     * dikembalikan; yang memutuskan terlihat atau tidak adalah `terlihat()` di
+     * feed-rank, persis seperti feed.
+     */
+    async getCandidate({ postId, viewer, terbukti }) {
+      const { data, error } = await db
+        .from("posts").select(KOLOM_POST)
+        .eq("post_id", postId.toLowerCase()).maybeSingle();
+      if (error) throw new Error(`ambil unggahan gagal: ${error.message}`);
+      if (!data) return null;
 
-      const posts = (postRows ?? []).map((r) => rowToPost(r as PostDbRow))
-        .filter((p) => !terblokir.has(p.author.toLowerCase()));
-      if (posts.length === 0) return [];
-
-      const ids = posts.map((p) => p.postId.toLowerCase());
-      const penulis = [...new Set(posts.map((p) => p.author.toLowerCase()))];
-
-      // Setiap `.in()` dipotong jadi kelompok maksimal UKURAN_KELOMPOK id.
-      const kelompokId = potongKelompok(ids);
-      const kelompokPenulis = potongKelompok(penulis);
-
-      const [likes, reports, snapshots, slashed, profiles] = await Promise.all([
-        gabungPerKelompok(kelompokId, (bagian) =>
-          db.from("post_likes").select("post_id, address").in("post_id", bagian),
-        "hidrasi feed"),
-        gabungPerKelompok(kelompokId, (bagian) =>
-          db.from("post_reports").select("post_id, reporter").in("post_id", bagian),
-        "hidrasi feed"),
-        gabungPerKelompok(kelompokPenulis, (bagian) =>
-          db.from("trust_snapshots").select("address, ratio, tier, connections").in("address", bagian),
-        "hidrasi feed"),
-        gabungPerKelompok(kelompokPenulis, (bagian) =>
-          db.from("slashes").select("subject").in("subject", bagian),
-        "hidrasi feed"),
-        gabungPerKelompok(kelompokPenulis, (bagian) =>
-          db.from("profiles").select("address, display_name").in("address", bagian),
-        "hidrasi feed"),
-      ]);
-
-      // `sudahSuka` HANYA untuk penonton terbukti. Siapa menyukai apa bukan
-      // informasi publik — cuma jumlahnya. Tanpa syarat `terbukti`,
-      // `GET /feed?who=A` tanpa tanda tangan menyingkap unggahan mana yang
-      // disukai A; kelas kebocoran yang sama dengan C1 di atas.
-      const jumlahSuka = new Map<string, number>();
-      const sukaAku = new Set<string>();
-      for (const r of likes as { post_id: string; address: string }[]) {
-        jumlahSuka.set(r.post_id, (jumlahSuka.get(r.post_id) ?? 0) + 1);
-        if (aku && terbukti && r.address.toLowerCase() === aku) sukaAku.add(r.post_id);
-      }
-
-      const jumlahLapor = new Map<string, number>();
-      for (const r of reports as { post_id: string }[]) {
-        jumlahLapor.set(r.post_id, (jumlahLapor.get(r.post_id) ?? 0) + 1);
-      }
-
-      const snap = new Map<string, { ratio: number; tier: number; connections: number }>();
-      for (const r of snapshots as
-        { address: string; ratio: number; tier: number; connections: number }[]) {
-        snap.set(r.address.toLowerCase(), r);
-      }
-
-      const kenaSlash = new Set(
-        (slashed as { subject: string }[]).map((r) => r.subject.toLowerCase()),
-      );
-
-      const nama = new Map<string, string>();
-      for (const r of profiles as { address: string; display_name: string }[]) {
-        nama.set(r.address.toLowerCase(), r.display_name);
-      }
-
-      // Graf penonton diambil dengan jumlah kueri TETAP — satu untuk lapis
-      // satu, lalu satu per kelompok untuk lapis dua — bukan satu kueri per
-      // unggahan.
-      let hop = new Map<string, 0 | 1 | 2>();
-      if (aku) {
-        const { data: t1, error: e2 } = await db
-          .from("connections").select("addr_a, addr_b")
-          .or(`addr_a.eq.${aku},addr_b.eq.${aku}`);
-        if (e2) throw new Error(`ambil koneksi gagal: ${e2.message}`);
-
-        const satu = [...new Set(((t1 ?? []) as { addr_a: string; addr_b: string }[])
-          .flatMap((t) => [t.addr_a.toLowerCase(), t.addr_b.toLowerCase()])
-          .filter((a) => a !== aku))];
-
-        // `.or(...in...)` juga masuk query string, dan orang dengan banyak
-        // koneksi membuatnya sama panjangnya. Dipotong dengan aturan sama.
-        const t2 = await gabungPerKelompok(
-          potongKelompok(satu),
-          (bagian) => db.from("connections").select("addr_a, addr_b")
-            .or(`addr_a.in.(${bagian.join(",")}),addr_b.in.(${bagian.join(",")})`),
-          "ambil koneksi lapis dua",
-        ) as { addr_a: string; addr_b: string }[];
-        hop = petaHop(viewer as Address, (t1 ?? []) as Tepi[], t2, terblokir);
-      }
-
-      return posts.map((p): FeedCandidate => {
-        const a = p.author.toLowerCase();
-        const s = snap.get(a);
-        return {
-          ...p,
-          displayName: nama.get(a) ?? "",
-          authorRatio: s?.ratio ?? 0,
-          authorTier: s?.tier ?? 0,
-          authorConnections: s?.connections ?? 0,
-          authorSlashed: kenaSlash.has(a),
-          reportCount: jumlahLapor.get(p.postId.toLowerCase()) ?? 0,
-          likeCount: jumlahSuka.get(p.postId.toLowerCase()) ?? 0,
-          sudahSuka: sukaAku.has(p.postId.toLowerCase()),
-          hop: hop.get(a) ?? null,
-        };
-      });
+      const [kandidat] = await hidrasiKandidat(db, blokir, [data], viewer, terbukti);
+      return kandidat ?? null;
     },
   };
 }

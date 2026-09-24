@@ -55,6 +55,13 @@ export function getFeed(bukti: string, cursor?: string) {
   return req<{ posts: FeedPost[]; cursor: string | null }>(`/feed?${q.toString()}`);
 }
 
+/**
+ * Satu unggahan untuk layar detail. `bukti` sama dengan feed: tanpa itu
+ * server tidak menerapkan blokirmu dan `sudahSuka` selalu false.
+ */
+export const getPost = (id: Hex, bukti: string) =>
+  req<{ post: FeedPost }>(`/posts/${id}?${bukti}`).then((r) => r.post);
+
 export const postPost = (b: unknown) => postJson<{ ok: true }>("/posts", b);
 export const postLike = (id: Hex, b: unknown) => postJson<{ ok: true }>(`/posts/${id}/like`, b);
 /**

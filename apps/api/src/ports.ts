@@ -283,6 +283,16 @@ export type FeedStore = {
   listCandidates(a: {
     sinceMs: number; limit: number; viewer: Address | null; terbukti: boolean;
   }): Promise<FeedCandidate[]>;
+  /**
+   * Satu unggahan untuk layar detail, aturan `viewer`/`terbukti` sama persis
+   * dengan `listCandidates`. TANPA jendela waktu: tautan ke unggahan lama
+   * harus tetap terbuka. Mengembalikan kandidat mentah — keputusan terlihat
+   * atau tidak tetap milik `terlihat()` di feed-rank, supaya feed dan detail
+   * tidak pernah berbeda pendapat.
+   */
+  getCandidate(a: {
+    postId: Hex; viewer: Address | null; terbukti: boolean;
+  }): Promise<FeedCandidate | null>;
 };
 
 export type GreenfieldPort = {
