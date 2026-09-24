@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { Hono } from "hono";
 import type { Address } from "viem";
-import { avatarRoutes, MAKS_BAIT_AVATAR } from "../src/routes/avatar";
+import { avatarRoutes, MAKS_BAIT_AVATAR, MAKS_LOMPATAN } from "../src/routes/avatar";
 
 /**
  * Proksi avatar ENS (2026-09-24). Yang diuji di sini bukan "gambarnya keluar",
@@ -15,9 +15,13 @@ const NOW = 1_800_000_000_000;
 const aslinya = globalThis.fetch;
 afterEach(() => { globalThis.fetch = aslinya; });
 
-function app(ensAvatar: () => Promise<string | null>) {
+/** DNS palsu: semua host fiktif di tes ini dianggap menunjuk ke IP publik. */
+type Resolver = (host: string) => Promise<string[]>;
+const DNS_PUBLIK: Resolver = async () => ["93.184.216.34"];
+
+function app(ensAvatar: () => Promise<string | null>, resolveDns: Resolver = DNS_PUBLIK) {
   const a = new Hono();
-  a.route("/", avatarRoutes({ identity: { ensAvatar }, nowMs: () => NOW } as never));
+  a.route("/", avatarRoutes({ identity: { ensAvatar }, nowMs: () => NOW, resolveDns } as never));
   return a;
 }
 
@@ -87,6 +91,59 @@ describe("GET /avatar/:address", () => {
     expect(satu.status).toBe(200);
     expect(dua.status).toBe(200);
     expect(ambil).toHaveBeenCalledTimes(1);
+  });
+
+  it("URL yang menunjuk ke jaringan dalam ditolak tanpa permintaan keluar", async () => {
+    // Inti SSRF: pemilik nama ENS menulis alamat internal VPS sebagai avatar.
+    for (const url of [
+      "https://127.0.0.1/x.png",
+      "https://169.254.169.254/latest/meta-data/",
+      "https://localhost:2333/x.png",
+      "https://[::1]/x.png",
+    ]) {
+      globalThis.fetch = vi.fn() as never;
+      const res = await app(async () => url, async () => ["127.0.0.1"]).request(`/avatar/${ALAMAT}`);
+      expect(res.status, url).toBe(404);
+      expect(globalThis.fetch, url).not.toHaveBeenCalled();
+    }
+  });
+
+  it("pengalihan ke alamat internal TIDAK diikuti", async () => {
+    // Host publik boleh membalas 302 ke localhost; itu sebabnya redirect
+    // diikuti manual dan setiap lompatan diperiksa ulang.
+    const ambil = vi.fn(async (u: string) =>
+      u.includes("awal")
+        ? new Response(null, { status: 302, headers: { location: "https://127.0.0.1/rahasia" } })
+        : new Response(new Uint8Array(8), { status: 200, headers: { "content-type": "image/png" } }));
+    globalThis.fetch = ambil as never;
+
+    const res = await app(async () => "https://contoh.test/awal.png", async (host) =>
+      host === "contoh.test" ? ["93.184.216.34"] : ["127.0.0.1"]).request(`/avatar/${ALAMAT}`);
+
+    expect(res.status).toBe(404);
+    expect(ambil).toHaveBeenCalledTimes(1); // lompatan kedua tidak pernah terjadi
+  });
+
+  it("pengalihan ke host publik tetap diikuti", async () => {
+    const ambil = vi.fn(async (u: string) =>
+      u.includes("awal")
+        ? new Response(null, { status: 302, headers: { location: "https://lain.test/b.png" } })
+        : new Response(new Uint8Array(16), { status: 200, headers: { "content-type": "image/png" } }));
+    globalThis.fetch = ambil as never;
+
+    const res = await app(async () => "https://contoh.test/awal.png").request(`/avatar/${ALAMAT}`);
+    expect(res.status).toBe(200);
+    expect(ambil).toHaveBeenCalledTimes(2);
+  });
+
+  it("pengalihan berputar berhenti di batas lompatan", async () => {
+    const ambil = vi.fn(async () =>
+      new Response(null, { status: 302, headers: { location: "https://contoh.test/lagi" } }));
+    globalThis.fetch = ambil as never;
+
+    const res = await app(async () => "https://contoh.test/a.png").request(`/avatar/${ALAMAT}`);
+    expect(res.status).toBe(404);
+    expect(ambil.mock.calls.length).toBeLessThanOrEqual(MAKS_LOMPATAN + 1);
   });
 
   it("RPC mainnet gagal → 404 TANPA ikut di-cache, supaya bisa dicoba lagi", async () => {

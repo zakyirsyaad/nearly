@@ -1,6 +1,7 @@
 import { Hono } from "hono";
 import { isAddress, type Address } from "viem";
 import type { FeedDeps } from "../ports";
+import { urlAman } from "../ssrf";
 
 /**
  * Proksi avatar ENS (2026-09-24).
@@ -21,13 +22,21 @@ export const MAKS_BAIT_AVATAR = 256 * 1024;
 export const MAKS_ENTRI_CACHE = 64;
 export const UMUR_CACHE_MS = 6 * 60 * 60 * 1000;
 export const TIMEOUT_AMBIL_MS = 5_000;
+/** Pengalihan diikuti manual, dan setiap lompatan diperiksa ulang. */
+export const MAKS_LOMPATAN = 3;
 
 /** SVG sengaja TIDAK diterima: ia bisa memuat skrip dan sumber daya jauh. */
 const TIPE_DIIZINKAN = ["image/png", "image/jpeg", "image/webp", "image/gif"] as const;
 
 type Entri = { sampai: number; bait: Uint8Array | null; tipe: string };
 
-export function avatarRoutes(deps: FeedDeps & { identity: { ensAvatar(a: Address): Promise<string | null> } }) {
+export function avatarRoutes(
+  deps: FeedDeps & {
+    identity: { ensAvatar(a: Address): Promise<string | null> };
+    /** Hanya untuk tes: mengganti DNS sungguhan dengan jawaban tetap. */
+    resolveDns?: (host: string) => Promise<string[]>;
+  },
+) {
   const r = new Hono();
   // Map biasa dipakai sebagai LRU sederhana: menyisipkan ulang memindahkan
   // kunci ke akhir, jadi entri terlama ada di awal iterasi.
@@ -73,14 +82,29 @@ export function avatarRoutes(deps: FeedDeps & { identity: { ensAvatar(a: Address
       // cache panjang — jawab 404 sekali, biarkan permintaan berikutnya coba lagi.
       return c.body(null, 404);
     }
-    if (!url || !/^https:\/\//i.test(url)) return kosong();
+    if (!url) return kosong();
 
     try {
-      const res = await fetch(url, {
-        signal: AbortSignal.timeout(TIMEOUT_AMBIL_MS),
-        redirect: "follow",
-      });
-      if (!res.ok) return kosong();
+      // Pengalihan TIDAK diikuti otomatis: host publik boleh mengalihkan ke
+      // alamat internal, jadi setiap lompatan harus lewat penjaga yang sama.
+      let tujuan = url;
+      let res: Response | null = null;
+      for (let lompatan = 0; lompatan <= MAKS_LOMPATAN; lompatan += 1) {
+        const aman = await urlAman(tujuan, deps.resolveDns);
+        if (!aman.ok) return kosong();
+
+        res = await fetch(tujuan, {
+          signal: AbortSignal.timeout(TIMEOUT_AMBIL_MS),
+          redirect: "manual",
+        });
+        if (res.status < 300 || res.status >= 400) break;
+
+        const lokasi = res.headers.get("location");
+        if (!lokasi) return kosong();
+        tujuan = new URL(lokasi, tujuan).toString();
+        res = null;
+      }
+      if (!res || !res.ok) return kosong();
 
       const tipe = (res.headers.get("content-type") ?? "").split(";")[0]?.trim().toLowerCase() ?? "";
       if (!(TIPE_DIIZINKAN as readonly string[]).includes(tipe)) return kosong();
