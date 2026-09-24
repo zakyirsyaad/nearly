@@ -70,3 +70,26 @@ describe("pola dipakai di avatar dan alamat dibuat terbaca", () => {
     expect(isi).toContain("{ color: teks }");
   });
 });
+
+describe("avatar ENS (2026-09-24)", () => {
+  it("dimuat lewat proksi API, bukan URL host asing", async () => {
+    const { urlAvatarEns } = await import("../src/avatar-ens");
+    const url = urlAvatarEns("0xAbC0000000000000000000000000000000000001");
+    expect(url).toContain("/avatar/0xabc0000000000000000000000000000000000001");
+    expect(url.startsWith("http")).toBe(true);
+  });
+
+  it("komponen jatuh kembali ke pola saat avatar tidak ada", () => {
+    const isi = tanpaKomentar(baca("components/avatar.tsx"));
+    expect(isi).toContain("urlAvatarEns(alamat)");
+    expect(isi).toContain("onError={() => setGagalEns(true)}");
+    // 404 adalah keadaan NORMAL: tidak pernah jadi pesan galat di layar.
+    expect(isi).not.toContain("setPesan");
+  });
+
+  it("huruf awal disembunyikan begitu foto ENS termuat", () => {
+    const isi = tanpaKomentar(baca("components/avatar.tsx"));
+    expect(isi).toContain("onLoad={() => setAdaEns(true)}");
+    expect(isi).toContain("{adaEns ? null : <Text");
+  });
+});

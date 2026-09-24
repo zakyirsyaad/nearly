@@ -13,5 +13,20 @@ export function createIdentity(mainnetRpc: string, chainRpc: string): IdentityPo
   return {
     ensName: (address) => eth.getEnsName({ address }),
     txCount: (address) => chain.getTransactionCount({ address }),
+
+    /**
+     * Resolusi BALIK lalu dicek MAJU. Reverse record bisa diisi siapa saja
+     * dengan nama apa saja; tanpa pemeriksaan maju, alamat mana pun bisa
+     * mengaku `vitalik.eth` dan ikut memakai fotonya.
+     */
+    async ensAvatar(address) {
+      const name = await eth.getEnsName({ address });
+      if (!name) return null;
+
+      const maju = await eth.getEnsAddress({ name });
+      if (!maju || maju.toLowerCase() !== address.toLowerCase()) return null;
+
+      return eth.getEnsAvatar({ name });
+    },
   };
 }

@@ -809,6 +809,15 @@ Selain teks di daftar ini dan kalimat data baru §8, setiap kalimat adalah terje
 - Detail unggahan (*ditambahkan 2026-09-24*): "This post is no longer available." — 404 dari `GET /posts/:id`,
   sengaja tidak menyebut sebabnya (dihapus, cukup dilaporkan, atau penulisnya kena slash).
 - Mulai: "Know the people you've actually met", "Create a new wallet", "Use an existing wallet".
+*Ditambahkan 2026-09-24 — avatar ENS.* Alamat yang punya nama ENS **dan** record avatar menampilkan fotonya
+di semua tempat `Avatar` dipakai; sisanya tetap pola identicon. Tiga syarat yang mengikat: (1) nama ENS harus
+lolos resolusi balik LALU dicek maju kembali ke alamat yang sama (`identity.ensAvatar`) — tanpa itu siapa pun
+bisa memakai foto milik nama orang lain, persis penyamaran yang ditolak spec induk §9.2; (2) gambar SELALU
+lewat proksi `GET /avatar/:address`, tidak pernah dimuat langsung dari host pemilik, karena URL avatar bisa
+berfungsi sebagai pelacak IP; (3) 404 adalah keadaan normal dan tidak pernah jadi pesan galat — avatar jatuh
+kembali ke pola. Proksi membatasi 256 KB per gambar, hanya PNG/JPEG/WebP/GIF (SVG ditolak karena bisa memuat
+skrip), cache 64 entri selama 6 jam.
+
 *Ditambahkan 2026-09-24 — pembeda orang senama.* Nama tidak unik dan tidak akan dibuat unik (spec induk
 §9.2: "tidak ada yang bisa mengklaim sebuah nama → handle-squatting mati sepenuhnya"), jadi dua orang boleh
 bernama sama. Dua perubahan kecil supaya keduanya tetap bisa dibedakan sekilas: (1) `Avatar` menggambar pola

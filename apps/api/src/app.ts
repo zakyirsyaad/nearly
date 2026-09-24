@@ -6,6 +6,7 @@ import { vouchRoutes } from "./routes/vouch";
 import { reportRoutes } from "./routes/report";
 import { adminRoutes } from "./routes/admin";
 import { eventRoutes } from "./routes/events";
+import { avatarRoutes } from "./routes/avatar";
 import { feedRoutes } from "./routes/feed";
 import { meetRoutes } from "./routes/meet";
 import { blokirRoutes } from "./routes/blokir";
@@ -92,6 +93,8 @@ export function createApp(deps: TrustDeps) {
   // mengubah graf pertemuan, jadi tidak ada skor trust yang perlu dihitung
   // ulang.
   app.route("/", feedRoutes(deps));
+  // Proksi avatar ENS: publik, tanpa tanda tangan, hanya membaca (2026-09-24).
+  app.route("/", avatarRoutes(deps));
   // `onChanged` TIDAK dipanggil dari rute meet — menandai bukan bertemu, jadi
   // tidak ada graf pertemuan yang berubah dan tidak ada skor trust yang perlu
   // dihitung ulang (spec §9).

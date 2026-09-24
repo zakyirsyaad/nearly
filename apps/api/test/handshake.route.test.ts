@@ -38,6 +38,7 @@ function deps(over: { saveSnapshots?: ReturnType<typeof vi.fn> } = {}): TrustDep
     identity: {
       ensName: async () => null,
       txCount: async () => 0,
+      ensAvatar: async () => null,
     },
     // Stub Fase 2: tidak dipakai langsung oleh test handshake ini, tapi
     // createApp memicu onChanged() (yang membaca deps trust) setelah accept

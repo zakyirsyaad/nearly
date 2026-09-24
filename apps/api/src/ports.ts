@@ -51,6 +51,15 @@ export type IdentityPort = {
   /** ENS hidup di Ethereum mainnet, BUKAN di opBNB. */
   ensName(addr: Address): Promise<string | null>;
   txCount(addr: Address): Promise<number>;
+  /**
+   * URL avatar ENS milik `addr`, atau null (2026-09-24).
+   *
+   * WAJIB diverifikasi dua arah oleh implementasinya: nama dari resolusi balik
+   * harus me-resolve MAJU kembali ke alamat yang sama. Tanpa itu siapa pun
+   * bisa menunjuk nama ENS orang lain dan memakai fotonya — tepat jenis
+   * penyamaran yang ditolak spec induk §9.2.
+   */
+  ensAvatar(addr: Address): Promise<string | null>;
 };
 
 import type { TrustGraph, TrustResult } from "@nearly/trust";
