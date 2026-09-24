@@ -57,6 +57,7 @@ export function depsFor(overrides: {
     identity: {
       ensName: vi.fn(async () => null),
       txCount: vi.fn(async () => 0),
+      ensAvatar: vi.fn(async () => null),
     },
     trust: {
       // Graf minimal berisi satu seed, cukup untuk computeTrust menghasilkan
