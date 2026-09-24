@@ -348,6 +348,7 @@ app/
     ├── (beranda)/index.tsx             Beranda                                  (dulu app/index.tsx)
     ├── (beranda)/feed/index.tsx        Feed
     ├── (beranda)/feed/new.tsx          Unggahan baru
+    ├── (beranda)/feed/[postId].tsx     Detail unggahan          (ditambahkan 2026-09-24)
     ├── (acara)/_layout.tsx             Stack, initialRouteName "events/index"
     ├── (acara)/events/index.tsx        Acara
     ├── (acara)/events/new.tsx          Buat acara
@@ -481,6 +482,7 @@ export const JUDUL_LAYAR: Record<string, string> = {
   "(tabs)/(beranda)/index": "Home",
   "(tabs)/(beranda)/feed/index": "Feed",
   "(tabs)/(beranda)/feed/new": "New post",
+  "(tabs)/(beranda)/feed/[postId]": "Post",
   "(tabs)/(acara)/events/index": "Events",
   "(tabs)/(acara)/events/new": "Create event",
   "(tabs)/(acara)/events/[id]": "Event details",
@@ -577,6 +579,15 @@ Urutan dari atas; setiap bagian memuat sendiri dan gagal sendiri (satu bagian ga
 | Acara LIVE | maks. 2 kartu acara yang sedang berlangsung: "● LIVE", `{checkins} checked in`, judul, lalu "You're checked in · Open radar ›" (ke `/radar/<id>`) bila `sudahCheckIn`, selainnya "Open event ›" (ke `/events/<id>`). Tidak ada acara live → bagian tidak tampil | `getDiscovery()` disaring `isEventLive`, lalu `getEvent(id, who, bukti)` dengan bukti yang sama seperti `events/[id]` |
 | Baru kamu temui | judul bagian "Recently met" + "See all ›" (ke `/connections`); maks. 3 `KartuOrang` terbaru: nama + alamat singkat, "✓ met in person", waktu relatif ("yesterday", "2 days ago", "Aug 12"), `BatangTrust` | `GET /connections/:alamat` (urut terbaru, sudah ada); per orang `GET /profile/:alamat` (nama) + `fetchTrust` (tier) — 3 × 2 permintaan publik |
 | Feed | judul bagian "Feed" + "See all ›" (ke `/feed`); maks. 4 unggahan: nama penulis · waktu, teks terpotong 2 baris; di bawah daftar tautan "Write something" (ke `/feed/new`). **Bagian ini tidak pernah disembunyikan** — lihat amandemen di bawah tabel | `getFeed(kueriBuktiFeed(signer))` — bukti yang sama dengan layar Feed |
+
+*Ditambahkan 2026-09-24 — layar detail unggahan `(beranda)/feed/[postId]`.* Kartu feed memotong teks jadi dua
+baris dan memangkas foto ke jalur 200 px (`resizeMode="cover"`), jadi isi unggahan tidak pernah terlihat utuh.
+Mengetuk isi kartu kini membuka detail: teks penuh, foto dengan rasio aslinya (dibaca dari `onLoad`, karena
+server tidak menyimpan dimensi), penulis + alamat singkat (R4), alasan muncul (§10.3), waktu relatif, serta suka,
+lapor, dan hapus (hanya unggahan sendiri, dua ketukan). Kartu feed sendiri TIDAK berubah — pemotongannya memang
+disengaja supaya daftar tetap seragam. Datanya diambil dari endpoint baru `GET /posts/:id`, yang memakai aturan
+`who`/bukti dan `terlihat()` yang sama dengan `GET /feed`; unggahan yang tidak terlihat menjadi 404. Aksi suka
+dipindah ke `src/feed-actions.ts` supaya kartu dan detail memakai satu jalur tanda tangan.
 
 *Diamandemen 2026-09-24 (bug: feed tak terjangkau).* Bagian Feed di Beranda semula dibungkus
 `feed === null || feed.length > 0`, sehingga judul **dan** tautan "See all ›" hilang persis saat feed
@@ -795,6 +806,8 @@ Selain teks di daftar ini dan kalimat data baru §8, setiap kalimat adalah terje
 - Lencana: "✓ met in person", " · N events together".
 - Profil orang: "Vouched for by N people you know", "Handshake at …", "Met in person", "Both attended · …".
 - Percakapan: "🔒 end-to-end encrypted".
+- Detail unggahan (*ditambahkan 2026-09-24*): "This post is no longer available." — 404 dari `GET /posts/:id`,
+  sengaja tidak menyebut sebabnya (dihapus, cukup dilaporkan, atau penulisnya kena slash).
 - Mulai: "Know the people you've actually met", "Create a new wallet", "Use an existing wallet".
 - Waktu relatif: "just now", "N minutes ago", "N hours ago", "yesterday", "N days ago", lalu tanggal "Aug 12"
   (§7.4).

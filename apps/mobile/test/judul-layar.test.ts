@@ -48,6 +48,7 @@ describe("judul layar", () => {
       "(tabs)/(beranda)/index": "Home",
       "(tabs)/(beranda)/feed/index": "Feed",
       "(tabs)/(beranda)/feed/new": "New post",
+      "(tabs)/(beranda)/feed/[postId]": "Post",
       "(tabs)/(acara)/events/index": "Events",
       "(tabs)/(acara)/events/new": "Create event",
       "(tabs)/(acara)/events/[id]": "Event details",

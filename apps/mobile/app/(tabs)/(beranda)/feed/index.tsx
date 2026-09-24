@@ -3,7 +3,7 @@ import { router, useFocusEffect } from "expo-router";
 import { FlatList, Image, Pressable, RefreshControl, StyleSheet, View } from "react-native";
 import { FileText } from "lucide-react-native";
 import * as ImagePicker from "expo-image-picker";
-import { lampirGambarTypedData, likeTypedData } from "@nearly/shared";
+import { lampirGambarTypedData } from "@nearly/shared";
 import type { Address } from "viem";
 import { KeadaanGalat, KeadaanKosong, KerangkaDaftar } from "@/components/keadaan";
 import { TautanKecil } from "@/components/tautan-kecil";
@@ -17,10 +17,10 @@ import type { NearlySigner } from "../../../../src/signer";
 import { useNearlySigner } from "../../../../src/dompet/konteks-dompet";
 import { ApiError } from "../../../../src/http";
 import {
-  getFeed, kueriBuktiFeed, postImage, postLike, type FeedPost,
+  getFeed, kueriBuktiFeed, postImage, type FeedPost,
 } from "../../../../src/feed-api";
 import {
-  bisaHapus, hapusUnggahan, laporUnggahan, MASA_BERLAKU_DETIK,
+  bisaHapus, hapusUnggahan, laporUnggahan, MASA_BERLAKU_DETIK, sukaUnggahan,
 } from "../../../../src/feed-actions";
 import { aksiTanda } from "../../../../src/meet-actions";
 import { mimeGambarDiterima, PESAN_FORMAT_TIDAK_DIDUKUNG } from "../../../../src/gambar";
@@ -121,18 +121,10 @@ function FeedScreenIsi({ signer }: { signer: NearlySigner }) {
     }
   }
 
-  const suka = (p: FeedPost) => jalankan(async () => {
-    const berikutnya = !p.sudahSuka;
-    const expiresAt = BigInt(Math.floor(Date.now() / 1000) + MASA_BERLAKU_DETIK);
-    const sig = await signer.signTypedData(likeTypedData(
-      { postId: p.postId, who: signer.address, suka: berikutnya, expiresAt },
-      CONFIG.verifyingContract,
-    ));
-    await postLike(p.postId, {
-      postId: p.postId, who: signer.address, suka: berikutnya,
-      expiresAt: expiresAt.toString(), sig,
-    });
-  }, TEKS_GAGAL_SUKA);
+  const suka = (p: FeedPost) => jalankan(
+    () => sukaUnggahan(signer, p, CONFIG.verifyingContract),
+    TEKS_GAGAL_SUKA,
+  );
 
   const lapor = (p: FeedPost) => jalankan(
     () => laporUnggahan(signer, p.postId, CONFIG.verifyingContract),
@@ -257,10 +249,18 @@ function FeedScreenIsi({ signer }: { signer: NearlySigner }) {
             </Pressable>
             {/* Spec §10.3 — kartu harus menjelaskan kenapa ia muncul. */}
             <Text variant="caption">{alasanMuncul(p.hop, p.displayName)}</Text>
-            <Text variant="body">{p.body}</Text>
-            {p.imageStatus === "ready" && p.imageUrl
-              ? <Image source={{ uri: p.imageUrl }} style={s.gambar} resizeMode="cover" />
-              : null}
+            {/* Isi kartu membuka detail: teks di sini dipotong dua baris dan
+                fotonya dipangkas, jadi harus ada jalan melihat yang utuh. */}
+            <Pressable
+              onPress={() => router.push(`/feed/${p.postId}`)}
+              accessibilityRole="button"
+              style={s.isi}
+            >
+              <Text variant="body" numberOfLines={2}>{p.body}</Text>
+              {p.imageStatus === "ready" && p.imageUrl
+                ? <Image source={{ uri: p.imageUrl }} style={s.gambar} resizeMode="cover" />
+                : null}
+            </Pressable>
             {p.imageStatus === "pending" ? <Text variant="caption">{TEKS_GAMBAR_DIUNGGAH}</Text> : null}
             {p.imageStatus === "failed" ? <Text variant="caption">{TEKS_GAMBAR_GAGAL}</Text> : null}
 
@@ -309,6 +309,7 @@ const s = StyleSheet.create({
     gap: 8, minHeight: UKURAN.sentuh,
   },
   tebal: { fontWeight: "600" },
+  isi: { gap: 8 },
   gambar: { width: "100%", height: 200, borderRadius: RADIUS.kartu },
   aksi: { flexDirection: "row", flexWrap: "wrap", columnGap: 16 },
 });

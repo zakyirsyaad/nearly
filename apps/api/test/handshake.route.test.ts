@@ -98,7 +98,7 @@ function deps(over: { saveSnapshots?: ReturnType<typeof vi.fn> } = {}): TrustDep
       setImagePending: async () => {},
       setImageDone: async () => {},
       setImageFailed: async () => {},
-      listCandidates: async () => [],
+      listCandidates: async () => [], getCandidate: vi.fn(async () => null),
     },
     greenfield: {
       bucket: "nearly-feed",

@@ -73,6 +73,7 @@ describe("tanpa kunci dev terbundel", () => {
       "app/(tabs)/(acara)/events/[id]/host-qr.tsx": ["signer:attendanceRegistry"],
       "app/(tabs)/(acara)/events/new.tsx": ["signer:attendanceRegistry"],
       "app/(tabs)/(acara)/radar/[eventId].tsx": [`signer:${V}`],
+      "app/(tabs)/(beranda)/feed/[postId].tsx": [`signer:${V}`],
       "app/(tabs)/(beranda)/feed/index.tsx": [`signer:${V}`],
       "app/(tabs)/(beranda)/feed/new.tsx": [`signer:${V}`],
       // Dua domain: bukti feed (ConnectionRegistry) dan bendera sudahCheckIn
