@@ -574,7 +574,20 @@ Urutan dari atas; setiap bagian memuat sendiri dan gagal sendiri (satu bagian ga
 | Spanduk cadangan | terjemahan `TEKS_PENGINGAT_CADANGAN` + " Open Wallet ›", ke `/dompet` (target sentuh §3.7) | `perluPengingatCadangan` (tidak berubah) |
 | Acara LIVE | maks. 2 kartu acara yang sedang berlangsung: "● LIVE", `{checkins} checked in`, judul, lalu "You're checked in · Open radar ›" (ke `/radar/<id>`) bila `sudahCheckIn`, selainnya "Open event ›" (ke `/events/<id>`). Tidak ada acara live → bagian tidak tampil | `getDiscovery()` disaring `isEventLive`, lalu `getEvent(id, who, bukti)` dengan bukti yang sama seperti `events/[id]` |
 | Baru kamu temui | judul bagian "Recently met" + "See all ›" (ke `/connections`); maks. 3 `KartuOrang` terbaru: nama + alamat singkat, "✓ met in person", waktu relatif ("yesterday", "2 days ago", "Aug 12"), `BatangTrust` | `GET /connections/:alamat` (urut terbaru, sudah ada); per orang `GET /profile/:alamat` (nama) + `fetchTrust` (tier) — 3 × 2 permintaan publik |
-| Feed | judul bagian "Feed" + "See all ›" (ke `/feed`); maks. 2 unggahan: nama penulis · waktu, teks terpotong 2 baris | `getFeed(kueriBuktiFeed(signer))` — bukti yang sama dengan layar Feed |
+| Feed | judul bagian "Feed" + "See all ›" (ke `/feed`); maks. 4 unggahan: nama penulis · waktu, teks terpotong 2 baris; di bawah daftar tautan "Write something" (ke `/feed/new`). **Bagian ini tidak pernah disembunyikan** — lihat amandemen di bawah tabel | `getFeed(kueriBuktiFeed(signer))` — bukti yang sama dengan layar Feed |
+
+*Diamandemen 2026-09-24 (bug: feed tak terjangkau).* Bagian Feed di Beranda semula dibungkus
+`feed === null || feed.length > 0`, sehingga judul **dan** tautan "See all ›" hilang persis saat feed
+kosong. Karena tautan itu satu-satunya jalan menuju `/feed` di seluruh aplikasi, pengguna baru tidak
+bisa membuat unggahan pertama dan feed tidak akan pernah terisi. Perubahannya:
+
+1. Bagian Feed **selalu dirender**, sejajar dengan "Recently met".
+2. Keadaan kosong: "No posts yet." + aksi **"Write something"** ke `/feed/new` — sesuai §7.2 yang
+   memang menetapkan aksi kosong Feed = "Write something".
+3. Gagal muat memakai **keadaan galat + Coba lagi**, bukan keadaan kosong (§7.2: "daftar kosong di
+   samping galat BUKAN keadaan kosong"). Sebelumnya `catch` menulis `setFeed([])`, jadi gagal muat
+   tampak identik dengan feed kosong.
+4. Cuplikan dinaikkan dari 2 menjadi **4 unggahan** supaya feed terasa hadir di Beranda.
 
 - **Tombol "Copy"** (#16C): ikon lucide `Copy` + teks "Copy" (varian `label`), `accessibilityLabel` "Copy address",
   target sentuh ≥ 48 lewat `hitSlop` (§3.7). Ketuk → `Clipboard.setStringAsync(signer.address)` (`expo-clipboard`) —

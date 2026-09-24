@@ -3,7 +3,7 @@ import { router } from "expo-router";
 import { Pressable, ScrollView, StyleSheet, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import * as Clipboard from "expo-clipboard";
-import { Copy, Handshake } from "lucide-react-native";
+import { Copy, Handshake, Newspaper } from "lucide-react-native";
 import type { Address } from "viem";
 import { isEventLive, lihatEventTypedData } from "@nearly/shared";
 import { KartuOrang } from "@/components/kartu-orang";
@@ -30,13 +30,14 @@ import {
   TEKS_AKSI_HANDSHAKE, TEKS_ALAMAT_DISALIN, TEKS_BUKA_ACARA, TEKS_BUKA_DOMPET, TEKS_BUKA_RADAR,
   TEKS_GAGAL_MUAT_KONEKSI, TEKS_LIHAT_SEMUA, TEKS_LIVE, TEKS_SALIN, TEKS_SUDAH_CHECK_IN,
 } from "../../../src/teks-beranda";
+import { KOSONG_FEED, TEKS_GAGAL_MUAT_FEED, TEKS_TULIS_SESUATU } from "../../../src/teks-feed";
 import { fetchTrust } from "../../../src/trust-api";
 import { sapaan, waktuRelatif } from "../../../src/waktu";
 
 /** Batas jumlah kartu per bagian (spec §6.1). */
 const MAKS_LIVE = 2;
 const MAKS_KONEKSI = 3;
-const MAKS_FEED = 2;
+const MAKS_FEED = 4;
 /** Ikon "Copy" sengaja lebih kecil dari teksnya — bukan ukuran huruf. */
 const IKON_SALIN = 14;
 
@@ -77,6 +78,7 @@ function HomeIsi({
   const [koneksi, setKoneksi] = useState<KartuKoneksi[] | null>(null);
   const [galatKoneksi, setGalatKoneksi] = useState(false);
   const [feed, setFeed] = useState<KartuFeed[] | null>(null);
+  const [galatFeed, setGalatFeed] = useState(false);
   const kabar = useKabar();
 
   const kuning = useColor("primary");
@@ -179,9 +181,12 @@ function HomeIsi({
         waktu: waktuRelatif(new Date(p.createdAtMs), kini),
         isi: p.body,
       })));
+      setGalatFeed(false);
       return true;
     } catch {
-      setFeed([]);
+      // Sama seperti bagian koneksi (§7.2): daftar yang sudah tampil dibiarkan,
+      // dan galat TIDAK pernah dirender sebagai "No posts yet.".
+      setGalatFeed(true);
       return false;
     }
   }, [signer]);
@@ -284,16 +289,29 @@ function HomeIsi({
           )}
         </View>
 
-        {feed === null || feed.length > 0 ? (
-          <View style={s.bagian}>
-            <View style={s.barisJudul}>
-              <Text variant="title" style={s.menyusut}>{JUDUL_FEED}</Text>
-              <TautanKecil label={TEKS_LIHAT_SEMUA} onPress={() => router.push("/feed")} />
-            </View>
-            {feed === null ? (
-              <KerangkaDaftar baris={MAKS_FEED} />
+        {/* Bagian ini TIDAK PERNAH disembunyikan: tautan di bawah adalah satu-satunya
+            jalan ke layar Feed, jadi menyembunyikannya saat feed kosong membuat
+            unggahan pertama mustahil dibuat (amandemen §6.1, 2026-09-24). */}
+        <View style={s.bagian}>
+          <View style={s.barisJudul}>
+            <Text variant="title" style={s.menyusut}>{JUDUL_FEED}</Text>
+            <TautanKecil label={TEKS_LIHAT_SEMUA} onPress={() => router.push("/feed")} />
+          </View>
+          {feed === null ? (
+            galatFeed ? (
+              <KeadaanGalat kalimat={TEKS_GAGAL_MUAT_FEED} onCobaLagi={() => void muatFeed()} />
             ) : (
-              feed.map((p) => (
+              <KerangkaDaftar baris={MAKS_FEED} />
+            )
+          ) : feed.length === 0 ? (
+            <KeadaanKosong
+              Ikon={Newspaper}
+              kalimat={KOSONG_FEED}
+              aksi={{ label: TEKS_TULIS_SESUATU, onPress: () => router.push("/feed/new") }}
+            />
+          ) : (
+            <>
+              {feed.map((p) => (
                 <Card key={p.id} style={s.kartu}>
                   <View style={s.barisKartu}>
                     <Text variant="body" style={[s.tebal, s.menyusut]}>{p.nama}</Text>
@@ -301,10 +319,11 @@ function HomeIsi({
                   </View>
                   <Text variant="body" numberOfLines={2}>{p.isi}</Text>
                 </Card>
-              ))
-            )}
-          </View>
-        ) : null}
+              ))}
+              <TautanKecil label={TEKS_TULIS_SESUATU} onPress={() => router.push("/feed/new")} />
+            </>
+          )}
+        </View>
       </ScrollView>
     </SafeAreaView>
   );
