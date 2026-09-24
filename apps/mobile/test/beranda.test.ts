@@ -94,6 +94,11 @@ describe("Beranda baru (spec desain UI §6.1)", () => {
       expect(muat).not.toContain("setFeed([])");
     });
 
+    it("kartu cuplikan membuka detail unggahan", () => {
+      const isi = beranda();
+      expect(isi).toContain("router.push(`/feed/${p.id}`)");
+    });
+
     it("cuplikan feed maksimal 4 unggahan (amandemen §6.1, 2026-09-24)", () => {
       expect(beranda()).toContain("const MAKS_FEED = 4");
     });

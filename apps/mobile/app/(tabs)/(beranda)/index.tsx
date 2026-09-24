@@ -312,13 +312,21 @@ function HomeIsi({
           ) : (
             <>
               {feed.map((p) => (
-                <Card key={p.id} style={s.kartu}>
-                  <View style={s.barisKartu}>
-                    <Text variant="body" style={[s.tebal, s.menyusut]}>{p.nama}</Text>
-                    <Text variant="caption">{p.waktu}</Text>
-                  </View>
-                  <Text variant="body" numberOfLines={2}>{p.isi}</Text>
-                </Card>
+                /* Teks dipotong dua baris di sini, jadi kartunya harus bisa
+                   membuka unggahan utuh — sama seperti kartu di layar Feed. */
+                <Pressable
+                  key={p.id}
+                  onPress={() => router.push(`/feed/${p.id}`)}
+                  accessibilityRole="button"
+                >
+                  <Card style={s.kartu}>
+                    <View style={s.barisKartu}>
+                      <Text variant="body" style={[s.tebal, s.menyusut]}>{p.nama}</Text>
+                      <Text variant="caption">{p.waktu}</Text>
+                    </View>
+                    <Text variant="body" numberOfLines={2}>{p.isi}</Text>
+                  </Card>
+                </Pressable>
               ))}
               <TautanKecil label={TEKS_TULIS_SESUATU} onPress={() => router.push("/feed/new")} />
             </>
