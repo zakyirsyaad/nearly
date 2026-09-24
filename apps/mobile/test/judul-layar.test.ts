@@ -44,6 +44,7 @@ describe("judul layar", () => {
   it("judul persis spec desain UI §4.7", () => {
     expect(JUDUL_LAYAR).toEqual({
       mulai: "Get started",
+      nama: "Your name",
       "profile/[address]": "Profile",
       "(tabs)/(beranda)/index": "Home",
       "(tabs)/(beranda)/feed/index": "Feed",
@@ -77,6 +78,12 @@ describe("judul layar", () => {
 
   // Tanpa dompet hanya layar Mulai; dengan dompet, (tabs) adalah layar pertama
   // yang dituju saat penjaga berubah (spec §4.2).
+  it("gerbang nama: dompet siap tapi nama kosong → HANYA layar nama", () => {
+    expect(layarMenurutDompet(true, true)).toEqual([["nama", { title: "Your name" }]]);
+    // Tanpa dompet, layar Mulai tetap duluan — nama belum bisa ditandatangani.
+    expect(layarMenurutDompet(false, true)).toEqual([["mulai", { title: "Get started" }]]);
+  });
+
   it("layarMenurutDompet: tanpa dompet hanya mulai; dengan dompet (tabs) lebih dulu", () => {
     expect(layarMenurutDompet(false)).toEqual([["mulai", { title: "Get started" }]]);
     expect(layarMenurutDompet(true)).toEqual([

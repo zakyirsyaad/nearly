@@ -809,6 +809,9 @@ Selain teks di daftar ini dan kalimat data baru §8, setiap kalimat adalah terje
 - Detail unggahan (*ditambahkan 2026-09-24*): "This post is no longer available." — 404 dari `GET /posts/:id`,
   sengaja tidak menyebut sebabnya (dihapus, cukup dilaporkan, atau penulisnya kena slash).
 - Mulai: "Know the people you've actually met", "Create a new wallet", "Use an existing wallet".
+- Gerbang nama (*ditambahkan 2026-09-24*): judul "What should people call you?", kalimat "People you meet see
+  this name next to your address. You can change it later in Profile.", placeholder "Your name", tombol
+  "Continue".
 - Waktu relatif: "just now", "N minutes ago", "N hours ago", "yesterday", "N days ago", lalu tanggal "Aug 12"
   (§7.4).
 - Tombol galat: "Try again".

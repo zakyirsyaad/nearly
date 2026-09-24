@@ -19,6 +19,14 @@ export const LABEL_VISIBILITAS = "Visibility";
 export const LABEL_TERLIHAT = "Visible";
 export const LABEL_TERSEMBUNYI = "Hidden";
 
+/* Gerbang nama wajib — app/nama.tsx (2026-09-24) */
+
+export const JUDUL_ISI_NAMA = "What should people call you?";
+export const KALIMAT_ISI_NAMA =
+  "People you meet see this name next to your address. You can change it later in Profile.";
+export const PLACEHOLDER_ISI_NAMA = "Your name";
+export const TEKS_LANJUT = "Continue";
+
 export const TEKS_TERSIMPAN = "Saved.";
 export const TEKS_GAGAL_MUAT_PROFIL_SAYA = "Couldn't load your profile.";
 export const TEKS_GAGAL_SIMPAN = "Couldn't save. Try again.";

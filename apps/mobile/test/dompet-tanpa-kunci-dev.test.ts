@@ -87,6 +87,7 @@ describe("tanpa kunci dev terbundel", () => {
       "app/(tabs)/(profil)/kecocokan.tsx": [`signer:${V}`],
       "app/(tabs)/(profil)/profil-saya.tsx": [`signer:${V}`],
       "app/(tabs)/(salaman)/salaman.tsx": ["signerHadir:attendanceRegistry", `signerSalaman:${V}`],
+      "app/nama.tsx": [`signer:${V}`],
       "app/profile/[address].tsx": [`signer:${V}`],
     };
     const nyata = Object.fromEntries(

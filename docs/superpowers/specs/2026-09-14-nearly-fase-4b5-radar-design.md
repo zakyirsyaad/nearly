@@ -459,6 +459,13 @@ Di Expo Go kalimat ini milik Expo Go; perubahan berlaku untuk development build 
 **`packages/shared`**
 - `AturProfil`: typed data, pemulihan, `JUMLAH_TIPE = 25`, tidak bertabrakan dan tidak ada di
   Solidity.
+*Diamandemen 2026-09-24 (keputusan pemilik — nama wajib di onboarding).* API TIDAK berubah: `displayName`
+kosong tetap sah, karena nama bukan identitas (spec induk §9.2) dan profil lama yang kosong tidak boleh
+mendadak ditolak. Yang berubah hanya **aplikasi**: setelah dompet siap — dibuat baru maupun diimpor —
+layar `app/nama.tsx` menutup aplikasi sampai nama diisi (`src/nama-gerbang.ts`). Gerbangnya **gagal-terbuka**:
+selama nama belum diketahui, termasuk saat permintaan profil gagal karena jaringan, gerbang tidak menutup —
+mengunci orang di luar aplikasinya sendiri lebih buruk daripada satu sesi tanpa nama.
+
 - Validasi nama: batas 32 code point (emoji dihitung per code point), trim, nama kosong sah, penolakan
   `Cc`/`Cf` termasuk U+202E dan U+200B.
 

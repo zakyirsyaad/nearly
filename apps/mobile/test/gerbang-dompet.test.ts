@@ -25,10 +25,17 @@ describe("gerbang dompet", () => {
     expect(layout.match(/SplashScreen\.hideAsync\(/g)?.length).toBe(1);
   });
 
-  it("_layout.tsx menjaga kedua sisi dengan Stack.Protected", () => {
+  it("_layout.tsx menjaga KETIGA sisi dengan Stack.Protected", () => {
     const layout = baca("app/_layout.tsx");
-    expect(layout).toMatch(/<Stack\.Protected guard=\{punyaDompet\}>\s*\{layarMenurutDompet\(true\)/);
+    // Gerbang nama (2026-09-24) menyisipkan satu sisi di antara keduanya:
+    // dompet siap tapi nama masih kosong.
+    expect(layout).toMatch(/<Stack\.Protected guard=\{punyaDompet && perluNama\}>\s*\{layarMenurutDompet\(true, true\)/);
+    expect(layout).toMatch(/<Stack\.Protected guard=\{punyaDompet && !perluNama\}>\s*\{layarMenurutDompet\(true\)/);
     expect(layout).toMatch(/<Stack\.Protected guard=\{!punyaDompet\}>\s*\{layarMenurutDompet\(false\)/);
+  });
+
+  it("gerbang nama memakai modul murni, bukan syarat inline", () => {
+    expect(baca("app/_layout.tsx")).toContain("perluIsiNama(punyaDompet, namaTampilan)");
   });
 
   it("keadaan galat tidak pernah jatuh ke layar Mulai", () => {

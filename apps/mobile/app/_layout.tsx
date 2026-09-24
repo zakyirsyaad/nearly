@@ -16,6 +16,7 @@ import { useColor } from "@/hooks/useColor";
 import { OPSI_STACK, opsiTampilan } from "@/theme/navigasi";
 import { ruteDariNotifikasi } from "../src/pesan/rute-push";
 import { layarMenurutDompet } from "../src/judul-layar";
+import { perluIsiNama } from "../src/nama-gerbang";
 import { DompetProvider, useDompet } from "../src/dompet/konteks-dompet";
 import { pesanGalatDompet } from "../src/dompet/teks-dompet";
 import { bolehSembunyikanSplash } from "../src/splash";
@@ -54,7 +55,7 @@ export default function RootLayout() {
  * expo-router memindahkan tumpukan ke layar pertama yang diizinkan.
  */
 function Navigasi() {
-  const { keadaan, galat, muatUlang } = useDompet();
+  const { keadaan, galat, muatUlang, namaTampilan } = useDompet();
   const [fontTermuat, fontGagal] = useFonts({
     Inter_400Regular,
     Inter_600SemiBold,
@@ -98,13 +99,23 @@ function Navigasi() {
   }
 
   const punyaDompet = keadaan === "siap";
+  // Nama wajib (2026-09-24): selama server bilang namanya kosong, hanya layar
+  // nama yang terdaftar — tidak ada jalan memutar ke dalam aplikasi.
+  const perluNama = perluIsiNama(punyaDompet, namaTampilan);
 
   // Judul semua layar dari JUDUL_LAYAR — alasannya di src/judul-layar.ts.
   return (
     <>
       <StatusBar style="light" />
       <Stack screenOptions={OPSI_STACK}>
-        <Stack.Protected guard={punyaDompet}>
+        {/* Tiga sisi gerbang, saling eksklusif: belum ada dompet, dompet siap
+            tapi nama kosong, dan aplikasi penuh. */}
+        <Stack.Protected guard={punyaDompet && perluNama}>
+          {layarMenurutDompet(true, true).map(([name, opsi]) => (
+            <Stack.Screen key={name} name={name} options={{ ...opsi, ...opsiTampilan(name) }} />
+          ))}
+        </Stack.Protected>
+        <Stack.Protected guard={punyaDompet && !perluNama}>
           {layarMenurutDompet(true).map(([name, opsi]) => (
             <Stack.Screen key={name} name={name} options={{ ...opsi, ...opsiTampilan(name) }} />
           ))}

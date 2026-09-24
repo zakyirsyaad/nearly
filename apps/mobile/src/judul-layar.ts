@@ -14,6 +14,7 @@
  */
 export const JUDUL_LAYAR: Record<string, string> = {
   mulai: "Get started",
+  nama: "Your name",
   "profile/[address]": "Profile",
   "(tabs)/(beranda)/index": "Home",
   "(tabs)/(beranda)/feed/index": "Feed",
@@ -40,13 +41,20 @@ export const JUDUL_LAYAR: Record<string, string> = {
  * sisi dompet: expo-router menuju layar pertama yang diizinkan saat penjaga
  * berubah.
  */
-export const LAYAR_AKAR = ["(tabs)", "mulai", "profile/[address]"] as const;
+export const LAYAR_AKAR = ["(tabs)", "mulai", "nama", "profile/[address]"] as const;
 
 /**
  * Rute yang HANYA bisa dibuka saat HP belum punya dompet. Semua layar akar lain
  * hanya bisa dibuka saat dompet siap (gerbang Stack.Protected di app/_layout.tsx).
  */
 export const RUTE_TANPA_DOMPET: readonly string[] = ["mulai"];
+
+/**
+ * Gerbang nama (2026-09-24): dompet siap tapi nama masih kosong. Hanya layar
+ * `nama` yang boleh dibuka — bukan `(tabs)`, bukan `profile/[address]` —
+ * supaya tidak ada jalan memutar masuk ke aplikasi tanpa nama.
+ */
+export const RUTE_GERBANG_NAMA: readonly string[] = ["nama"];
 
 export type OpsiLayarAkar = { title: string } | { headerShown: false };
 
@@ -55,9 +63,14 @@ export type OpsiLayarAkar = { title: string } | { headerShown: false };
  * adalah grup, bukan berkas: tanpa judul, tanpa header (header datang dari
  * Stack tiap tab).
  */
-export function layarMenurutDompet(punyaDompet: boolean): [string, OpsiLayarAkar][] {
+export function layarMenurutDompet(
+  punyaDompet: boolean,
+  perluNama = false,
+): [string, OpsiLayarAkar][] {
   return LAYAR_AKAR
-    .filter((nama) => RUTE_TANPA_DOMPET.includes(nama) !== punyaDompet)
+    .filter((nama) => (punyaDompet && perluNama
+      ? RUTE_GERBANG_NAMA.includes(nama)
+      : RUTE_TANPA_DOMPET.includes(nama) !== punyaDompet && !RUTE_GERBANG_NAMA.includes(nama)))
     .map((nama): [string, OpsiLayarAkar] => {
       if (nama === "(tabs)") return [nama, { headerShown: false }];
       const judul = JUDUL_LAYAR[nama];
