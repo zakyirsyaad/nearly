@@ -809,6 +809,13 @@ Selain teks di daftar ini dan kalimat data baru §8, setiap kalimat adalah terje
 - Detail unggahan (*ditambahkan 2026-09-24*): "This post is no longer available." — 404 dari `GET /posts/:id`,
   sengaja tidak menyebut sebabnya (dihapus, cukup dilaporkan, atau penulisnya kena slash).
 - Mulai: "Know the people you've actually met", "Create a new wallet", "Use an existing wallet".
+*Ditambahkan 2026-09-24 — pembeda orang senama.* Nama tidak unik dan tidak akan dibuat unik (spec induk
+§9.2: "tidak ada yang bisa mengklaim sebuah nama → handle-squatting mati sepenuhnya"), jadi dua orang boleh
+bernama sama. Dua perubahan kecil supaya keduanya tetap bisa dibedakan sekilas: (1) `Avatar` menggambar pola
+5×5 simetris yang diturunkan dari ALAMAT (`src/identicon.ts`), di belakang huruf awal, memakai
+`mutedForeground` pada opasitas 0,5 — tidak ada warna baru, palet §3.1 tidak berubah; (2) alamat singkat di
+`KartuOrang` memakai warna `text`, bukan redup, karena alamatlah pembeda sebenarnya.
+
 - Gerbang nama (*ditambahkan 2026-09-24*): judul "What should people call you?", kalimat "People you meet see
   this name next to your address. You can change it later in Profile.", placeholder "Your name", tombol
   "Continue".

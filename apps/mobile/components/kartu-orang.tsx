@@ -28,6 +28,10 @@ export type PropsKartuOrang = {
 export function KartuOrang({ nama, alamat, terverifikasi, lencana, keterangan, barisKeterangan, tier, onPress }: PropsKartuOrang) {
   const latar = useColor("card");
   const garis = useColor("border");
+  // Alamat dibuat SETERANG nama (2026-09-24): nama tidak unik, jadi alamat
+  // adalah pembeda sebenarnya — menampilkannya redup membuat dua orang senama
+  // sulit dibedakan sekilas.
+  const teks = useColor("text");
   const gaya = [s.kartu, { backgroundColor: latar, borderColor: garis }];
 
   const isi = (
@@ -41,7 +45,7 @@ export function KartuOrang({ nama, alamat, terverifikasi, lencana, keterangan, b
       <View style={s.teks}>
         <View style={s.nama}>
           <Text variant="body" style={s.tebal}>{namaKartuRadar(nama)}</Text>
-          <Text variant="mono">{alamatSingkat(alamat)}</Text>
+          <Text variant="mono" style={{ color: teks }}>{alamatSingkat(alamat)}</Text>
         </View>
         {lencana}
         {keterangan ? <Text variant="caption" numberOfLines={barisKeterangan}>{keterangan}</Text> : null}
