@@ -251,8 +251,21 @@ filesystem, dan mengakses Supabase lewat HTTP. Satu-satunya state di server
 lama adalah berkas env.
 
 1. **Proyek baru di Vercel**, terhubung ke repo yang sama, dengan
-   **Root Directory = `apps/api`**. Framework: *Other*. Biarkan build command
-   kosong — `vercel.json` sudah mengatur fungsi dan rewrite.
+   **Root Directory = `apps/api`** (WAJIB: tanpa itu `workspace:*` tidak bisa
+   diselesaikan dan `tsconfig.base.json` di akar tidak ditemukan). Framework:
+   *Other*. Build command diatur `vercel.json`, jangan diisi di dasbor.
+
+   **Fungsi yang disebarkan adalah bundel, bukan TypeScript mentah.**
+   `build:vercel` membundel `src/entri-vercel.ts` dengan esbuild menjadi
+   `api/index.js` berformat **CJS**. Dua alasannya, keduanya ditemukan dengan
+   cara yang mahal:
+   - paket ini `type: "module"` sementara seluruh kode mengimpor tanpa
+     ekstensi berkas (sah untuk `moduleResolution: "Bundler"` dan `tsx`, ESM
+     Node menolaknya) — menyerahkan `.ts` apa adanya BERHASIL DIBANGUN lalu
+     mati di setiap permintaan dengan `ERR_MODULE_NOT_FOUND`;
+   - `@bnb-chain/greenfield-js-sdk` sendiri mengimpor tanpa ekstensi, jadi ia
+     harus tetap eksternal dan dimuat dengan resolusi CommonJS. Membundelnya
+     ikut malah pecah di interop CJS `@ethereumjs/util`.
 2. **Env** (Settings → Environment Variables, lingkungan *Production*): semua
    kunci dari §1.3 kecuali `PORT` dan `HOST` (keduanya milik proses Node).
    Tambahan wajib: `WEB_ORIGINS` berisi origin situs web, dan `CRON_SECRET`
