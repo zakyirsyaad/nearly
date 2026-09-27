@@ -34,11 +34,17 @@ describe("perakitan graf di createApp", () => {
   });
 });
 
-describe("index.ts (spec 6 §4.6, §4.7)", () => {
-  const src = readFileSync(new URL("../src/index.ts", import.meta.url), "utf8");
+// Penyusunan dependensi produksi pindah dari src/index.ts ke
+// src/aplikasi-produksi.ts pada 2026-09-27, saat API mulai disebarkan
+// serverless; penjaganya ikut pindah, isinya tetap sama.
+describe("entri produksi (spec 6 §4.6, §4.7)", () => {
+  const src = readFileSync(new URL("../src/aplikasi-produksi.ts", import.meta.url), "utf8");
+  const entri = readFileSync(new URL("../src/index.ts", import.meta.url), "utf8");
 
   it("memakai bacaPort, bukan 8787 yang ditulis mati", () => {
-    expect(src).toContain("bacaPort(process.env.PORT)");
+    // Port milik entri server; penyebaran serverless tidak mendengarkan port.
+    expect(entri).toContain("bacaPort(process.env.PORT)");
+    expect(entri).not.toMatch(/port:\s*8787/);
     expect(src).not.toMatch(/port:\s*8787/);
   });
 

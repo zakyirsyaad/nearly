@@ -1,0 +1,6 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "functions": { "api/index.ts": { "maxDuration": 30 } },
+  "rewrites": [{ "source": "/(.*)", "destination": "/api/index" }],
+  "crons": [{ "path": "/tugas/sapu-lokasi", "schedule": "0 20 * * *" }]
+}

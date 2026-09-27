@@ -81,3 +81,34 @@ Runbook: §1 ditambah penyiapan `unduh.<domain>`; §3 ditulis ulang untuk EAS (e
 - TestFlight: grup penguji eksternal + tautan publik (maks. 10.000 penguji), satu kali Beta App Review (±1–2 hari).
 - `bundleIdentifier` `app.nearly.mobile` dan teks izin kamera/lokasi sudah ada di `app.json`. Push iOS memakai APNs lewat Expo; kode aplikasi tidak berubah.
 - Web: baris "iPhone: coming soon" diganti tautan TestFlight.
+
+
+---
+
+## Amandemen 2026-09-27 — D15: API produksi serverless di Vercel
+
+D13 menempatkan API di VPS bersama (nginx + certbot, Node 24 di `/opt/node24`,
+host sslip.io). Itu berakhir pada 27 September 2026: kuota bandwidth VPS habis
+dan penyedia memutus jaringannya sampai 1 Oktober — setelah tenggat hackathon.
+Survei VPS lain pemilik menunjukkan tidak ada yang layak: sisa RAM 117-160 MB
+terhadap proses API yang memuncak di ~295 MB, sehingga menumpangkannya berarti
+memicu OOM dan mematikan proyek lain di mesin yang sama.
+
+**Keputusan:** API produksi berjalan sebagai fungsi serverless di Vercel.
+
+- `src/aplikasi-produksi.ts` menjadi satu-satunya penyusun dependensi produksi;
+  `src/index.ts` (proses Node, pengembangan lokal dan VPS) dan `api/index.ts`
+  (Vercel) sama-sama memanggilnya. Penjaga tes melarang keduanya memanggil
+  `createApp` sendiri, karena dua entri yang bercabang berarti produksi
+  berperilaku lain dari pengembangan tanpa satu pun tes merah.
+- Sapuan lokasi saat boot tidak punya padanan di serverless, jadi retensi 24 jam
+  (spec 4b+5 §4.5, R3) dijaga cron harian ke `GET /tugas/sapu-lokasi`, dengan
+  rahasia `CRON_SECRET`. Rute itu menjawab 404 — bukan 401 — baik tanpa rahasia
+  maupun dengan token salah, supaya keberadaannya tidak dikonfirmasi.
+- APK TIDAK lagi dilayani dari infrastruktur sendiri. Ia berada di GitHub
+  Releases (`releases/latest/download/nearly.apk`): 62 MB dikali jumlah unduhan
+  adalah beban yang tidak pantas ditanggung VPS 1,9 GB, dan justru itu yang
+  menghabiskan kuota. D4 dan D10 tetap berlaku, hanya sumber tautannya berubah.
+
+**Yang tidak berubah:** kontrak, Supabase, model kepercayaan, dan API dari sisi
+klien. Yang berubah hanyalah tempat proses berjalan dan URL-nya.
