@@ -1,2 +1,5 @@
 .vercel
 .env*
+
+# Bundel fungsi Vercel: hasil build:vercel, bukan sumber.
+api/

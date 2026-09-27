@@ -1,5 +1,5 @@
 import { handle } from "@hono/node-server/vercel";
-import { buatAplikasiProduksi } from "../src/aplikasi-produksi";
+import { buatAplikasiProduksi } from "./aplikasi-produksi";
 
 /**
  * Entri serverless Vercel (2026-09-27).
@@ -17,6 +17,13 @@ import { buatAplikasiProduksi } from "../src/aplikasi-produksi";
  * Aplikasinya dibangun sekali per instans (cold start), lalu dipakai ulang
  * selama instans itu hidup. Dependensinya identik dengan entri proses Node —
  * keduanya memanggil `buatAplikasiProduksi()`, dan ada penjaga tes untuk itu.
+ *
+ * Berkas ini DIBUNDEL esbuild menjadi `api/index.js` (lihat skrip
+ * `build:vercel`), bukan dipakai apa adanya. Sebabnya: paket ini `type:
+ * "module"`, sementara seluruh kode mengimpor tanpa ekstensi berkas —
+ * sah untuk `moduleResolution: "Bundler"` dan `tsx`, tapi ESM Node menolaknya
+ * saat runtime. Membundel menghapus seluruh resolusi modul relatif, jadi
+ * kelasnya masalah itu hilang, bukan ditambal per berkas.
  */
 const { app } = buatAplikasiProduksi();
 

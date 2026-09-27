@@ -12,7 +12,7 @@ const baca = (rel: string) => readFileSync(new URL(`../${rel}`, import.meta.url)
 
 describe("entri Vercel dan entri Node", () => {
   it("keduanya memakai satu pembangun dependensi yang sama", () => {
-    for (const berkas of ["api/index.ts", "src/index.ts"]) {
+    for (const berkas of ["src/entri-vercel.ts", "src/index.ts"]) {
       expect(baca(berkas), berkas).toContain("buatAplikasiProduksi");
       // Tidak boleh menyusun deps sendiri: itulah cara keduanya bercabang.
       expect(baca(berkas), berkas).not.toContain("createApp(");
@@ -20,7 +20,7 @@ describe("entri Vercel dan entri Node", () => {
   });
 
   it("entri serverless tidak menyalakan server yang mendengarkan port", () => {
-    const isi = baca("api/index.ts");
+    const isi = baca("src/entri-vercel.ts");
     expect(isi).not.toContain("serve(");
     expect(isi).toContain('from "@hono/node-server/vercel"');
   });
@@ -49,8 +49,22 @@ describe("vercel.json", () => {
     expect(jalurCron).toContain("/tugas/sapu-lokasi");
   });
 
+  it("fungsi yang disebarkan adalah bundel JS, bukan TypeScript mentah", () => {
+    // Paket ini `type: "module"` sementara seluruh kode mengimpor tanpa
+    // ekstensi berkas — sah untuk `moduleResolution: "Bundler"` dan `tsx`,
+    // tapi ESM Node menolaknya saat runtime. Menyerahkan .ts apa adanya ke
+    // Vercel BERHASIL DIBANGUN lalu mati di setiap permintaan dengan
+    // ERR_MODULE_NOT_FOUND. Bundel menghapus resolusi modul relatif.
+    const berkas = Object.keys(cfg.functions);
+    expect(berkas).toEqual(["api/index.js"]);
+    expect(cfg.buildCommand).toContain("build:vercel");
+    const pkg = JSON.parse(baca("package.json"));
+    expect(pkg.scripts["build:vercel"]).toContain("--bundle");
+    expect(pkg.scripts["build:vercel"]).toContain("--outfile=api/index.js");
+  });
+
   it("batas durasi ada dan masih di dalam batas paket Hobby (60 detik)", () => {
-    const d = cfg.functions["api/index.ts"].maxDuration;
+    const d = cfg.functions["api/index.js"].maxDuration;
     expect(d).toBeGreaterThan(0);
     expect(d).toBeLessThanOrEqual(60);
   });
