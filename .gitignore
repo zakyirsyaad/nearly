@@ -23,3 +23,6 @@ apps/mobile/GoogleService-Info.plist
 # Materi pitch/video hackathon (lokal, tidak di-commit)
 docs/demo/naskah-video.md
 docs/demo/deck-pitch.md
+
+# Tautan proyek Vercel (milik mesin, bukan repo)
+.vercel

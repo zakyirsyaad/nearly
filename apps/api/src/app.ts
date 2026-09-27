@@ -7,6 +7,7 @@ import { reportRoutes } from "./routes/report";
 import { adminRoutes } from "./routes/admin";
 import { eventRoutes } from "./routes/events";
 import { avatarRoutes } from "./routes/avatar";
+import { tugasRoutes } from "./routes/tugas";
 import { feedRoutes } from "./routes/feed";
 import { meetRoutes } from "./routes/meet";
 import { blokirRoutes } from "./routes/blokir";
@@ -32,6 +33,8 @@ export type TrustDeps = GateDeps & {
   vouchChain: VouchChainPort;
   vouchContract: Address;
   adminToken: string;
+  /** Rahasia cron Vercel. Kosong = rute tugas terjadwal tidak ada. */
+  cronSecret?: string;
   events: EventStore;
   attendance: AttendanceChainPort;
   attendanceContract: Address;
@@ -95,6 +98,10 @@ export function createApp(deps: TrustDeps) {
   app.route("/", feedRoutes(deps));
   // Proksi avatar ENS: publik, tanpa tanda tangan, hanya membaca (2026-09-24).
   app.route("/", avatarRoutes(deps));
+
+  // Tugas terjadwal (cron Vercel). Tanpa `cronSecret` rutenya tidak terdaftar
+  // secara efektif: ia menjawab 404. Lihat routes/tugas.ts.
+  app.route("/", tugasRoutes(deps));
   // `onChanged` TIDAK dipanggil dari rute meet — menandai bukan bertemu, jadi
   // tidak ada graf pertemuan yang berubah dan tidak ada skor trust yang perlu
   // dihitung ulang (spec §9).

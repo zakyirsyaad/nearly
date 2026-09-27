@@ -239,6 +239,56 @@ curl -sI https://unduh.<domain>/nearly.apk | grep -i "content-type\|content-leng
 
 ---
 
+## 1b. Vercel — API serverless (2026-09-27, menggantikan §1 untuk produksi)
+
+Kuota bandwidth VPS habis dan penyedia memutus jaringannya sampai siklus
+berikutnya, sementara semua VPS lain pemilik hanya menyisakan 117-160 MB RAM
+(proses API memuncak ~295 MB). API dipindah ke Vercel. Bagian §1 tetap berlaku
+untuk penyebaran berbasis proses — `src/index.ts` tidak berubah.
+
+**Kenapa ini aman dilakukan:** API tidak punya timer latar, tidak menulis ke
+filesystem, dan mengakses Supabase lewat HTTP. Satu-satunya state di server
+lama adalah berkas env.
+
+1. **Proyek baru di Vercel**, terhubung ke repo yang sama, dengan
+   **Root Directory = `apps/api`** (WAJIB: tanpa itu `workspace:*` tidak bisa
+   diselesaikan dan `tsconfig.base.json` di akar tidak ditemukan). Framework:
+   *Other*. Build command diatur `vercel.json`, jangan diisi di dasbor.
+
+   **Fungsi yang disebarkan adalah bundel, bukan TypeScript mentah.**
+   `build:vercel` membundel `src/entri-vercel.ts` dengan esbuild menjadi
+   `api/index.js` berformat **CJS**. Dua alasannya, keduanya ditemukan dengan
+   cara yang mahal:
+   - paket ini `type: "module"` sementara seluruh kode mengimpor tanpa
+     ekstensi berkas (sah untuk `moduleResolution: "Bundler"` dan `tsx`, ESM
+     Node menolaknya) — menyerahkan `.ts` apa adanya BERHASIL DIBANGUN lalu
+     mati di setiap permintaan dengan `ERR_MODULE_NOT_FOUND`;
+   - `@bnb-chain/greenfield-js-sdk` sendiri mengimpor tanpa ekstensi, jadi ia
+     harus tetap eksternal dan dimuat dengan resolusi CommonJS. Membundelnya
+     ikut malah pecah di interop CJS `@ethereumjs/util`.
+2. **Env** (Settings → Environment Variables, lingkungan *Production*): semua
+   kunci dari §1.3 kecuali `PORT` dan `HOST` (keduanya milik proses Node).
+   Tambahan wajib: `WEB_ORIGINS` berisi origin situs web, dan `CRON_SECRET`
+   (string acak panjang; Vercel mengirimnya sebagai `Authorization: Bearer …`
+   saat cron berjalan). Tanpa `CRON_SECRET`, rute `/tugas/sapu-lokasi`
+   menjawab 404 — gagal tertutup, bukan terbuka.
+3. **Deploy**, lalu uji: `curl https://<proyek>.vercel.app/health` → `{"ok":true}`.
+4. **Sapuan retensi lokasi** jalan lewat cron harian di `vercel.json`
+   (`/tugas/sapu-lokasi`, 20:00 UTC). Sapuan oportunistik per permintaan di
+   rute radar tetap ada, dan di serverless justru lebih sering karena
+   penandanya di memori tiap instans.
+5. **Setelah URL API berubah**, tiga tempat harus menyusul:
+   - proyek web di Vercel: `VITE_API_URL` → redeploy;
+   - EAS: `EXPO_PUBLIC_API_URL` di lingkungan `preview`, lalu
+     `eas update --channel preview --environment preview`;
+   - README (baris tabel **API**).
+   APK yang sudah terpasang menarik pembaruan dari server Expo, jadi ia sembuh
+   sendiri setelah dibuka dua kali. Untuk APK yang dibagikan ke orang baru,
+   build ulang supaya URL-nya benar sejak buka pertama.
+
+**Batas paket Hobby yang relevan:** 60 detik per permintaan (`vercel.json`
+menyetel 30) dan cron sekali sehari.
+
 ## 2. Vercel — Web
 
 1. Hubungkan repo di Vercel. **Root Directory:** `apps/web`. Framework preset: Vite.
