@@ -9,11 +9,11 @@ themselves live on BNB Smart Chain.
 
 | | |
 |---|---|
-| **Android app** | [Download APK](https://unduh.nearly.43-134-58-217.sslip.io/nearly.apk) (arm64, ~65 MB) |
+| **Android app** | [Download APK](https://github.com/zakyirsyaad/nearly/releases/latest/download/nearly.apk) (arm64, ~62 MB) — or see [all releases](https://github.com/zakyirsyaad/nearly/releases) |
 | **Web** | [nearly-two.vercel.app](https://nearly-two.vercel.app) — landing page and the [live network graph](https://nearly-two.vercel.app/live) |
 | **API** | `https://api.nearly.43-134-58-217.sslip.io` |
 | **Chain** | BNB Smart Chain testnet (chainId 97) |
-| **Tests** | 2,010 passing — 1,940 TypeScript (Vitest) + 70 Solidity (Foundry) |
+| **Tests** | 2,089 passing — 2,019 TypeScript (Vitest) + 70 Solidity (Foundry) |
 
 iPhone: not yet distributed (TestFlight is planned). Developers can run the app on iOS through Expo Go.
 
