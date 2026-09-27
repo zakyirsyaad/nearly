@@ -1,7 +1,22 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
+  "framework": null,
   "buildCommand": "pnpm run build:vercel",
-  "functions": { "api/index.js": { "maxDuration": 30 } },
-  "rewrites": [{ "source": "/(.*)", "destination": "/api/index" }],
-  "crons": [{ "path": "/tugas/sapu-lokasi", "schedule": "0 20 * * *" }]
+  "functions": {
+    "api/index.js": {
+      "maxDuration": 30
+    }
+  },
+  "rewrites": [
+    {
+      "source": "/(.*)",
+      "destination": "/api/index"
+    }
+  ],
+  "crons": [
+    {
+      "path": "/tugas/sapu-lokasi",
+      "schedule": "0 20 * * *"
+    }
+  ]
 }

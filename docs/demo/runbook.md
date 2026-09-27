@@ -255,6 +255,15 @@ lama adalah berkas env.
    diselesaikan dan `tsconfig.base.json` di akar tidak ditemukan). Framework:
    *Other*. Build command diatur `vercel.json`, jangan diisi di dasbor.
 
+   **`framework: null` di `vercel.json` wajib.** Dibiarkan menyala, Vercel
+   mendeteksi Hono di `src/app.ts` dan membangun fungsi KEDUA dari sana dengan
+   kompilasi TS per-berkas; routing mode framework lalu memblokir tujuan
+   rewrite kita dan menjatuhkan semua permintaan ke fungsi rusak itu. Build
+   tetap hijau — gejalanya hanya 500 di setiap permintaan. Konsekuensinya
+   Vercel menuntut direktori keluaran statis, maka ada `public/` yang sengaja
+   kosong; jangan menaruh berkas di sana, pemeriksaan filesystem berjalan
+   sebelum rewrite.
+
    **Fungsi yang disebarkan adalah bundel, bukan TypeScript mentah.**
    `build:vercel` membundel `src/entri-vercel.ts` dengan esbuild menjadi
    `api/index.js` berformat **CJS**. Dua alasannya, keduanya ditemukan dengan

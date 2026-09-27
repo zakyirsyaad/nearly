@@ -63,6 +63,16 @@ describe("vercel.json", () => {
     expect(pkg.scripts["build:vercel"]).toContain("--outfile=api/index.js");
   });
 
+  it("deteksi backend framework dimatikan", () => {
+    // Dibiarkan menyala, Vercel membangun fungsi KEDUA dari src/app.ts dengan
+    // kompilasi TypeScript per-berkas — yang mati oleh impor tanpa ekstensi —
+    // lalu routing mode framework memblokir tujuan rewrite kita
+    // (`^/api(/.*)?$ -> 404`) dan menjatuhkan SEMUA permintaan ke fungsi rusak
+    // itu. Gejalanya menipu: build hijau, bundel benar terbentuk, tapi setiap
+    // permintaan 500.
+    expect(cfg.framework).toBeNull();
+  });
+
   it("batas durasi ada dan masih di dalam batas paket Hobby (60 detik)", () => {
     const d = cfg.functions["api/index.js"].maxDuration;
     expect(d).toBeGreaterThan(0);

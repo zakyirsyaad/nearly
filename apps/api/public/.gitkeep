@@ -1,0 +1,4 @@
+Vercel menuntut direktori keluaran statis untuk proyek tanpa framework.
+API ini tidak menyajikan berkas statis apa pun; direktori ini sengaja kosong.
+Jangan menaruh berkas di sini: pemeriksaan filesystem berjalan SEBELUM rewrite,
+jadi berkas bernama sama dengan rute (mis. `health`) akan menutupi rute itu.
